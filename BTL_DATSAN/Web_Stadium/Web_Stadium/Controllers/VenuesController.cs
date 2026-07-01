@@ -54,6 +54,8 @@ namespace Web_Stadium.Controllers
 
             var danhSach = await query
                 .Include(s => s.KhungGios)
+                .AsNoTracking()
+                .Take(100)
                 .ToListAsync();
 
             // Kiểm tra sân nào user đã bookmark (để hiện tim đỏ)
@@ -61,6 +63,7 @@ namespace Web_Stadium.Controllers
             if (userId.HasValue)
             {
                 var yeuThichIds = await _context.SanYeuThichs
+                    .AsNoTracking()
                     .Where(s => s.UserId == userId.Value)
                     .Select(s => s.SanBongId)
                     .ToListAsync();
@@ -71,9 +74,9 @@ namespace Web_Stadium.Controllers
                 ViewBag.YeuThichIds = new HashSet<int>();
             }
 
-            ViewBag.DanhSachQuan = await _context.DanhMucQuans.Where(q => q.IsActive).OrderBy(q => q.ThuTu).ToListAsync();
-            ViewBag.DanhSachLoaiSan = await _context.DanhMucLoaiSans.Where(l => l.IsActive).ToListAsync();
-            ViewBag.DanhSachLoaiCo = await _context.DanhMucLoaiCos.Where(l => l.IsActive).ToListAsync();
+            ViewBag.DanhSachQuan = await _context.DanhMucQuans.AsNoTracking().Where(q => q.IsActive).OrderBy(q => q.ThuTu).ToListAsync();
+            ViewBag.DanhSachLoaiSan = await _context.DanhMucLoaiSans.AsNoTracking().Where(l => l.IsActive).ToListAsync();
+            ViewBag.DanhSachLoaiCo = await _context.DanhMucLoaiCos.AsNoTracking().Where(l => l.IsActive).ToListAsync();
 
             ViewBag.Quan = quan;
             ViewBag.LoaiSan = loaiSan;
@@ -109,6 +112,7 @@ namespace Web_Stadium.Controllers
 
             // Ảnh sân
             var anhSanBongs = await _context.AnhSanBongs
+                .AsNoTracking()
                 .Where(a => a.SanBongId == id && a.IsActive)
                 .OrderBy(a => a.ThuTu)
                 .ToListAsync();
@@ -208,11 +212,12 @@ namespace Web_Stadium.Controllers
             await _context.SaveChangesAsync();
 
             // Cập nhật điểm TB sân
-            var allDG = await _context.DanhGias.Where(d => d.SanBongId == sanBongId).ToListAsync();
             var san = await _context.SanBongs.FindAsync(sanBongId);
             if (san != null)
             {
-                san.DanhGiaTrungBinh = allDG.Average(d => d.SoSao);
+                san.DanhGiaTrungBinh = await _context.DanhGias
+                    .Where(d => d.SanBongId == sanBongId)
+                    .AverageAsync(d => d.SoSao);
                 await _context.SaveChangesAsync();
             }
 

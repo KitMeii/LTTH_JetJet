@@ -234,6 +234,18 @@ public partial class SanBongContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DatSans_User");
+
+            entity.Property(e => e.TienGoc).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TienGiamSan).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TienGiamHeThong).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+
+            entity.HasOne(d => d.VoucherSan).WithMany(p => p.DatSanAsSan)
+                .HasForeignKey(d => d.VoucherSanId)
+                .HasConstraintName("FK_DatSans_VoucherSan");
+
+            entity.HasOne(d => d.VoucherHeThong).WithMany(p => p.DatSanAsHeThong)
+                .HasForeignKey(d => d.VoucherHeThongId)
+                .HasConstraintName("FK_DatSans_VoucherHeThong");
         });
 
         modelBuilder.Entity<DatSanDichVu>(entity =>
@@ -583,19 +595,35 @@ public partial class SanBongContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Vouchers__3214EC07092807B4");
             entity.HasIndex(e => e.MaVoucher, "UQ__Vouchers__0AAC5B1029A0D8F8").IsUnique();
+            entity.HasIndex(e => e.LoaiVoucher, "IX_Vouchers_LoaiVoucher");
+            entity.HasIndex(e => e.SanBongId, "IX_Vouchers_SanBongId");
             entity.Property(e => e.GiaTriGiam).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.GiamToiDa).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DieuKienToiThieu).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.LoaiGiam)
                 .HasMaxLength(20)
                 .HasDefaultValue("PhanTram");
+            entity.Property(e => e.LoaiVoucher)
+                .HasMaxLength(20)
+                .HasDefaultValue("HeThong");
             entity.Property(e => e.MaVoucher).HasMaxLength(50);
             entity.Property(e => e.MoTa).HasMaxLength(500);
             entity.Property(e => e.NgayTao)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.NgayBatDau).HasColumnType("datetime");
+            entity.Property(e => e.NgayHetHan).HasColumnType("datetime");
             entity.Property(e => e.SoNgayHieuLuc).HasDefaultValue(30);
             entity.Property(e => e.TenVoucher).HasMaxLength(200);
+
+            entity.HasOne(d => d.SanBong).WithMany()
+                .HasForeignKey(d => d.SanBongId)
+                .HasConstraintName("FK_Vouchers_SanBong");
+
+            entity.HasOne(d => d.Owner).WithMany()
+                .HasForeignKey(d => d.OwnerId)
+                .HasConstraintName("FK_Vouchers_Owner");
         });
 
         // ngày 22/5/2026   : Config 6 bảng mới của V6

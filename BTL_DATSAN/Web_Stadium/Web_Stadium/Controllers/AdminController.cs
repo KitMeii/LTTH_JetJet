@@ -54,35 +54,49 @@ namespace Web_Stadium.Controllers
                 .CountAsync(k => k.TrangThai == "ChoXuLy");
 
             // Doanh thu PitchHub tháng này (hoa hồng thực thu)
+            // Pre-load tỷ lệ hoa hồng một lần, tránh N+1 query
+            var tyLeMapIndex = await _context.DanhMucQuans
+                .AsNoTracking()
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.VungKhuVuc != null)
+                .ToDictionaryAsync(q => q.TenQuan, q => q.VungKhuVuc!.TyLeHoaHong);
+
             var datSansThang = await _context.DatSans
+                .AsNoTracking()
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Where(d => d.ThoiGianTao >= thangNay
                          && (d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
                           || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"))
                 .ToListAsync();
 
-            ViewBag.DoanhThuHoaHong = datSansThang.Sum(d => TinhPhiHoaHong(d));
+            ViewBag.DoanhThuHoaHong = datSansThang.Sum(d => TinhPhiHoaHong(d, tyLeMapIndex));
             ViewBag.DoanhThuSan = datSansThang.Sum(d => TinhDoanhThuPhaSinh(d));
 
-            // Biểu đồ 6 tháng
+            // Biểu đồ 6 tháng — load toàn bộ 6 tháng một lần thay vì 6 query riêng
+            var start6Thang = now.AddMonths(-5);
+            var start6ThangBd = new DateTime(start6Thang.Year, start6Thang.Month, 1);
+            var allRows6Thang = await _context.DatSans
+                .AsNoTracking()
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => d.ThoiGianTao >= start6ThangBd
+                         && (d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
+                          || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"))
+                .ToListAsync();
+
             var bieu6Thang = new List<object>();
             for (int i = 5; i >= 0; i--)
             {
                 var t = now.AddMonths(-i);
                 var bd = new DateTime(t.Year, t.Month, 1);
                 var kt = bd.AddMonths(1);
-                var rows = await _context.DatSans
-                    .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
-                    .Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt
-                             && (d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
-                              || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"))
-                    .ToListAsync();
-                var phi = rows.Sum(d => TinhPhiHoaHong(d));
+                var rows = allRows6Thang.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                var phi = rows.Sum(d => TinhPhiHoaHong(d, tyLeMapIndex));
                 bieu6Thang.Add(new { thang = t.ToString("MM/yyyy"), phi = (double)phi });
             }
             ViewBag.Bieu6Thang = bieu6Thang;
 
             ViewBag.TopSan = await _context.SanBongs
+                .AsNoTracking()
                 .Include(s => s.KhungGios).ThenInclude(k => k.DatSans)
                 .Where(s => s.TrangThaiDuyet == "DaDuyet")
                 .Select(s => new
@@ -94,6 +108,7 @@ namespace Web_Stadium.Controllers
 
             // Top 5 Owner có nhiều sân nhất
             ViewBag.TopOwners = await _context.Users
+                .AsNoTracking()
                 .Where(u => u.VaiTro == "Owner" && u.IsActive)
                 .Select(u => new {
                     u.HoTen,
@@ -106,6 +121,7 @@ namespace Web_Stadium.Controllers
 
             // 10 hoạt động gần nhất
             ViewBag.RecentActivity = await _context.AuditLogs
+                .AsNoTracking()
                 .OrderByDescending(a => a.ThoiGian)
                 .Take(10)
                 .Select(a => new {
@@ -115,19 +131,24 @@ namespace Web_Stadium.Controllers
                 })
                 .ToListAsync();
 
-            // Biểu đồ theo quý — mượn logic BaoCao case "quy"
+            // Biểu đồ theo quý — load toàn bộ năm hiện tại một lần
             {
-                var baseQuy = _context.DatSans
-                    .Include(d => d.KhungGio).ThenInclude(k => k.SanBong).ThenInclude(s => s.Owner)
-                    .Where(d => d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
-                             || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy");
+                var bdNam = new DateTime(now.Year, 1, 1);
+                var ktNam = new DateTime(now.Year + 1, 1, 1);
+                var allRowsNam = await _context.DatSans
+                    .AsNoTracking()
+                    .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                    .Where(d => d.ThoiGianTao >= bdNam && d.ThoiGianTao < ktNam
+                             && (d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
+                              || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"))
+                    .ToListAsync();
                 var dataQuy = new List<object>();
                 for (int q = 1; q <= 4; q++)
                 {
                     var bd = new DateTime(now.Year, (q - 1) * 3 + 1, 1);
                     var kt = bd.AddMonths(3);
-                    var rows = await baseQuy.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToListAsync();
-                    dataQuy.Add(BuildDataPoint($"Quý {q}", rows));
+                    var rows = allRowsNam.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                    dataQuy.Add(BuildDataPoint($"Quý {q}", rows, tyLeMapIndex));
                 }
                 ViewBag.DoanhThuTheoQuy = dataQuy;
             }
@@ -144,18 +165,19 @@ namespace Web_Stadium.Controllers
             return d.TongTien > 0 ? d.TongTien : d.TienCoc;
         }
 
-        private decimal TinhPhiHoaHong(DatSan d)
+        private decimal TinhPhiHoaHong(DatSan d, Dictionary<string, decimal>? tyLeMap = null)
         {
             var dt = TinhDoanhThuPhaSinh(d);
-
-            // Lấy tên quận của sân
             var tenQuan = d.KhungGio?.SanBong?.Quan;
 
-            // Tìm VungKhuVuc qua DanhMucQuan
-            var tyLe = _context.DanhMucQuans
-                .Where(q => q.TenQuan == tenQuan)
-                .Select(q => q.VungKhuVuc.TyLeHoaHong)
-                .FirstOrDefault();
+            decimal tyLe = 0;
+            if (tyLeMap != null)
+                tyLeMap.TryGetValue(tenQuan ?? "", out tyLe);
+            else
+                tyLe = _context.DanhMucQuans
+                    .Where(q => q.TenQuan == tenQuan)
+                    .Select(q => q.VungKhuVuc.TyLeHoaHong)
+                    .FirstOrDefault();
 
             return dt * (tyLe == 0 ? 0.10m : tyLe);
         }
@@ -488,13 +510,29 @@ namespace Web_Stadium.Controllers
         }
 
         // Xem hợp đồng Owner đã ký (trong trang DuyetSan)
-        public async Task<IActionResult> XemHopDong(int sanId)
+        public async Task<IActionResult> XemHopDong(int id)
         {
             var san = await _context.SanBongs
                 .Include(s => s.Owner)
-                .FirstOrDefaultAsync(s => s.Id == sanId);
+                .FirstOrDefaultAsync(s => s.Id == id);
             if (san == null) return NotFound();
             return View(san);
+        }
+
+        // Admin xem chi tiết đơn đặt sân (từ AuditLog)
+        public async Task<IActionResult> ChiTietDon(int id)
+        {
+            var don = await _context.DatSans
+                .AsNoTracking()
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong).ThenInclude(s => s.Owner)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
+                .Include(d => d.StaffCheckIn)
+                .FirstOrDefaultAsync(d => d.Id == id);
+            if (don == null) return NotFound();
+            return View(don);
         }
 
         // Admin: Danh sach tat ca hop dong + filter
@@ -514,7 +552,7 @@ namespace Web_Stadium.Controllers
                 ? query.OrderBy(s => s.NgayKyHopDong)
                 : query.OrderByDescending(s => s.NgayKyHopDong);
 
-            var list = await query.ToListAsync();
+            var list = await query.Take(100).ToListAsync();
             ViewBag.TuKhoa = tuKhoa;
             ViewBag.SapXep = sapXep;
             ViewBag.TongHD = list.Count;
@@ -672,7 +710,7 @@ namespace Web_Stadium.Controllers
                 .OrderBy(u => u.HoTen)
                 .ToListAsync();
 
-            return View(await query.OrderByDescending(u => u.NgayTao).ToListAsync());
+            return View(await query.OrderByDescending(u => u.NgayTao).Take(200).ToListAsync());
         }
 
         [HttpPost]
@@ -729,6 +767,7 @@ namespace Web_Stadium.Controllers
                 .OrderByDescending(k => k.NgayGui).ToListAsync();
             ViewBag.TrangThaiFilter = trangThai;
             ViewBag.SoChoXuLy = await _context.KhieuNais.CountAsync(k => k.TrangThai == "ChoXuLy");
+            ViewBag.KhieuNais = list;
             return View(list);
         }
 
@@ -797,13 +836,15 @@ namespace Web_Stadium.Controllers
         // BÁO CÁO — KA/KB + xếp hạng sân theo hoa hồng
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> BaoCao(
-            string loai = "thang", int? nam = null, int? thang = null)
+            string loai = "thang", int? nam = null, int? thang = null,
+            int? ownerId = null, int? sanId = null)
         {
             var now = DateTime.Now;
             nam ??= now.Year;
             thang ??= now.Month;
 
             ViewBag.Loai = loai; ViewBag.Nam = nam; ViewBag.Thang = thang;
+            ViewBag.OwnerId = ownerId; ViewBag.SanId = sanId;
 
             DateTime batDau, ketThuc;
             var data = new List<object>();
@@ -811,9 +852,37 @@ namespace Web_Stadium.Controllers
 
             // Load tất cả đơn kèm SanBong (cần TyLeHoaHong)
             IQueryable<DatSan> baseQ = _context.DatSans
+                .AsNoTracking()
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong).ThenInclude(s => s.Owner)
                 .Where(d => d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
                          || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy");
+
+            // Filter theo chủ sân / sân cụ thể
+            if (ownerId.HasValue)
+                baseQ = baseQ.Where(d => d.KhungGio.SanBong.OwnerId == ownerId.Value);
+            if (sanId.HasValue)
+                baseQ = baseQ.Where(d => d.KhungGio.SanBongId == sanId.Value);
+
+            // Load danh sách owner và sân cho dropdown
+            ViewBag.OwnerList = await _context.Users
+                .Where(u => u.VaiTro == "Owner")
+                .OrderBy(u => u.HoTen)
+                .Select(u => new { u.Id, u.HoTen })
+                .ToListAsync();
+            ViewBag.SanList = ownerId.HasValue
+                ? await _context.SanBongs
+                    .Where(s => s.OwnerId == ownerId.Value && s.TrangThaiDuyet == "DaDuyet")
+                    .OrderBy(s => s.TenSan).Select(s => new { s.Id, s.TenSan }).ToListAsync()
+                : await _context.SanBongs
+                    .Where(s => s.TrangThaiDuyet == "DaDuyet")
+                    .OrderBy(s => s.TenSan).Select(s => new { s.Id, s.TenSan }).ToListAsync();
+
+            // Pre-load tyLeMap cho BaoCao
+            var tyLeMapBaoCao = await _context.DanhMucQuans
+                .AsNoTracking()
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.VungKhuVuc != null)
+                .ToDictionaryAsync(q => q.TenQuan, q => q.VungKhuVuc!.TyLeHoaHong);
 
             switch (loai)
             {
@@ -821,12 +890,14 @@ namespace Web_Stadium.Controllers
                     batDau = new DateTime(nam.Value, thang.Value, 1);
                     ketThuc = batDau.AddMonths(1);
                     tieuDe = $"Theo ngày — Tháng {thang}/{nam}";
+                    // Load toàn bộ tháng một lần thay vì N query theo ngày
+                    var allRowsNgay = await baseQ.Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).ToListAsync();
                     for (int ng = 1; ng <= DateTime.DaysInMonth(nam.Value, thang.Value); ng++)
                     {
                         var bd = new DateTime(nam.Value, thang.Value, ng);
                         var kt = bd.AddDays(1);
-                        var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToListAsync();
-                        data.Add(BuildDataPoint($"{ng}/{thang}", rows));
+                        var rows = allRowsNgay.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                        data.Add(BuildDataPoint($"{ng}/{thang}", rows, tyLeMapBaoCao));
                     }
                     break;
 
@@ -834,12 +905,13 @@ namespace Web_Stadium.Controllers
                     batDau = new DateTime(nam.Value, thang.Value, 1);
                     ketThuc = batDau.AddMonths(1);
                     tieuDe = $"Theo tuần — Tháng {thang}/{nam}";
+                    var allRowsTuan = await baseQ.Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).ToListAsync();
                     int tuan = 1; var cur = batDau;
                     while (cur < ketThuc)
                     {
                         var kt = cur.AddDays(7) < ketThuc ? cur.AddDays(7) : ketThuc;
-                        var rows = await baseQ.Where(d => d.ThoiGianTao >= cur && d.ThoiGianTao < kt).ToListAsync();
-                        data.Add(BuildDataPoint($"T{tuan} ({cur:dd/MM}–{kt.AddDays(-1):dd/MM})", rows));
+                        var rows = allRowsTuan.Where(d => d.ThoiGianTao >= cur && d.ThoiGianTao < kt).ToList();
+                        data.Add(BuildDataPoint($"T{tuan} ({cur:dd/MM}–{kt.AddDays(-1):dd/MM})", rows, tyLeMapBaoCao));
                         cur = kt; tuan++;
                     }
                     break;
@@ -848,12 +920,13 @@ namespace Web_Stadium.Controllers
                     batDau = new DateTime(nam.Value, 1, 1);
                     ketThuc = new DateTime(nam.Value + 1, 1, 1);
                     tieuDe = $"Theo quý — Năm {nam}";
+                    var allRowsQuy = await baseQ.Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).ToListAsync();
                     for (int q = 1; q <= 4; q++)
                     {
                         var bd = new DateTime(nam.Value, (q - 1) * 3 + 1, 1);
                         var kt = bd.AddMonths(3);
-                        var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToListAsync();
-                        data.Add(BuildDataPoint($"Q{q}/{nam}", rows));
+                        var rows = allRowsQuy.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                        data.Add(BuildDataPoint($"Q{q}/{nam}", rows, tyLeMapBaoCao));
                     }
                     break;
 
@@ -861,12 +934,13 @@ namespace Web_Stadium.Controllers
                     batDau = new DateTime(now.Year - 4, 1, 1);
                     ketThuc = new DateTime(now.Year + 1, 1, 1);
                     tieuDe = "Theo năm — 5 năm gần nhất";
+                    var allRowsNam = await baseQ.Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).ToListAsync();
                     for (int y = now.Year - 4; y <= now.Year; y++)
                     {
                         var bd = new DateTime(y, 1, 1);
                         var kt = new DateTime(y + 1, 1, 1);
-                        var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToListAsync();
-                        data.Add(BuildDataPoint($"{y}", rows));
+                        var rows = allRowsNam.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                        data.Add(BuildDataPoint($"{y}", rows, tyLeMapBaoCao));
                     }
                     break;
 
@@ -874,12 +948,13 @@ namespace Web_Stadium.Controllers
                     batDau = new DateTime(nam.Value, 1, 1);
                     ketThuc = new DateTime(nam.Value + 1, 1, 1);
                     tieuDe = $"Theo tháng — Năm {nam}";
+                    var allRowsThang = await baseQ.Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).ToListAsync();
                     for (int t = 1; t <= 12; t++)
                     {
                         var bd = new DateTime(nam.Value, t, 1);
                         var kt = bd.AddMonths(1);
-                        var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToListAsync();
-                        data.Add(BuildDataPoint($"T{t}", rows));
+                        var rows = allRowsThang.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < kt).ToList();
+                        data.Add(BuildDataPoint($"T{t}", rows, tyLeMapBaoCao));
                     }
                     break;
             }
@@ -901,16 +976,7 @@ namespace Web_Stadium.Controllers
             ViewBag.DoanhThuTheoOwner = ViewBag.XepHangSan; // duoc set ben duoi
 
 
-            // Load TyLeHoaHong map từ VungKhuVuc trước
-            var tyLeMap = await _context.DanhMucQuans
-                .Include(q => q.VungKhuVuc)
-                .Where(q => q.VungKhuVuc != null)
-                .ToDictionaryAsync(
-                    q => q.TenQuan,
-                    q => q.VungKhuVuc!.TyLeHoaHong
-                );
-
-            // Xếp hạng sân theo hoa hồng
+            // Xếp hạng sân theo hoa hồng — reuse tyLeMapBaoCao đã load
             var allRows = await baseQ
                 .Where(d => d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc)
                 .ToListAsync();
@@ -920,9 +986,9 @@ namespace Web_Stadium.Controllers
                 {
                     TenSan = d.KhungGio?.SanBong?.TenSan ?? "?",
                     Owner = d.KhungGio?.SanBong?.Owner?.HoTen ?? "?",
-                    TyLe = tyLeMap.TryGetValue(
+                    TyLe = tyLeMapBaoCao.TryGetValue(
                                  d.KhungGio?.SanBong?.Quan ?? "",
-                                 out var tl) ? tl : 0.10m   // ✅ lấy từ VungKhuVuc
+                                 out var tl) ? tl : 0.10m
                 })
                 .Select(g => new
                 {
@@ -954,11 +1020,11 @@ namespace Web_Stadium.Controllers
             return View();
         }
 
-        private object BuildDataPoint(string nhan, List<DatSan> rows) => new
+        private object BuildDataPoint(string nhan, List<DatSan> rows, Dictionary<string, decimal>? tyLeMap = null) => new
         {
             nhan = nhan,
             dtSan = (double)rows.Sum(d => TinhDoanhThuPhaSinh(d)),
-            phi = (double)rows.Sum(d => TinhPhiHoaHong(d)),
+            phi = (double)rows.Sum(d => TinhPhiHoaHong(d, tyLeMap)),
             soLuot = rows.Count,
             soKA = rows.Count(d => d.TrangThai == "DaHuy"),
             soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung")
@@ -1134,7 +1200,7 @@ namespace Web_Stadium.Controllers
             if (!string.IsNullOrEmpty(trangThai))
                 query = query.Where(y => y.TrangThai == trangThai);
 
-            var list = await query.OrderByDescending(y => y.ThoiGianTao).ToListAsync();
+            var list = await query.OrderByDescending(y => y.ThoiGianTao).Take(100).ToListAsync();
             ViewBag.FilterTT = trangThai;
             return View(list);
         }
@@ -1201,7 +1267,7 @@ namespace Web_Stadium.Controllers
                 query = query.Where(y => y.TrangThai == trangThai);
 
             ViewBag.TrangThaiFilter = trangThai;
-            return View(await query.OrderByDescending(y => y.ThoiGianTao).ToListAsync());
+            return View(await query.OrderByDescending(y => y.ThoiGianTao).Take(100).ToListAsync());
         }
 
         [HttpPost]
@@ -1267,7 +1333,7 @@ namespace Web_Stadium.Controllers
                 query = query.Where(g => g.TrangThai == trangThai);
 
             ViewBag.TrangThaiFilter = trangThai;
-            return View(await query.OrderByDescending(g => g.ThoiGianTao).ToListAsync());
+            return View(await query.OrderByDescending(g => g.ThoiGianTao).Take(100).ToListAsync());
         }
 
         // ══════════════════════════════════════════════════════════
@@ -1286,7 +1352,113 @@ namespace Web_Stadium.Controllers
                 query = query.Where(c => c.TrangThai == trangThai);
 
             ViewBag.TrangThaiFilter = trangThai;
-            return View(await query.OrderByDescending(c => c.ThoiGianTao).ToListAsync());
+            return View(await query.OrderByDescending(c => c.ThoiGianTao).Take(100).ToListAsync());
+        }
+
+        // GET /Admin/XemHoSo/5
+        public IActionResult XemHoSo(int id)
+        {
+            return RedirectToAction("XemHopDong", new { id });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // VOUCHER HỆ THỐNG
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Admin/Voucher
+        public async Task<IActionResult> Voucher(string? filter = null)
+        {
+            var query = _context.Vouchers
+                .Where(v => v.LoaiVoucher == "HeThong");
+
+            if (filter == "active")
+                query = query.Where(v => v.IsActive && v.NgayHetHan > DateTime.Now);
+            else if (filter == "expired")
+                query = query.Where(v => !v.IsActive || v.NgayHetHan <= DateTime.Now);
+
+            var vouchers = await query.OrderByDescending(v => v.NgayTao).ToListAsync();
+
+            var allHT = await _context.Vouchers.Where(v => v.LoaiVoucher == "HeThong").ToListAsync();
+            ViewBag.TongPhatHanh = allHT.Sum(v => v.DaDung);
+            ViewBag.TongConLai = allHT.Sum(v => v.SoLuong == 0 ? 0 : Math.Max(0, v.SoLuong - v.DaDung));
+            ViewBag.TongTienGiam = await _context.DatSans
+                .Where(d => d.VoucherHeThongId != null)
+                .SumAsync(d => d.TienGiamHeThong);
+            ViewBag.Filter = filter;
+
+            return View(vouchers);
+        }
+
+        // GET /Admin/TaoVoucher
+        public IActionResult TaoVoucher() => View();
+
+        // POST /Admin/TaoVoucher
+        [HttpPost]
+        public async Task<IActionResult> TaoVoucher(
+            string tenVoucher, string? moTa,
+            string loaiGiam, decimal giaTriGiam, decimal? giamToiDa,
+            decimal dieuKienToiThieu, int soLuong,
+            DateTime ngayBatDau, DateTime ngayHetHan)
+        {
+            if (string.IsNullOrWhiteSpace(tenVoucher))
+            { TempData["Error"] = "Tên voucher không được để trống."; return View(); }
+
+            if (ngayHetHan <= ngayBatDau)
+            { TempData["Error"] = "Ngày hết hạn phải sau ngày bắt đầu."; return View(); }
+
+            if (giaTriGiam <= 0)
+            { TempData["Error"] = "Giá trị giảm phải lớn hơn 0."; return View(); }
+
+            var ma = $"HT-{DateTime.Now:yyyyMMddHHmmss}-{new Random().Next(100, 999)}";
+            var v = new Web_Stadium.EFCore.Voucher
+            {
+                MaVoucher = ma,
+                TenVoucher = tenVoucher.Trim(),
+                MoTa = moTa?.Trim(),
+                LoaiGiam = loaiGiam,
+                GiaTriGiam = giaTriGiam,
+                GiamToiDa = loaiGiam == "PhanTram" ? giamToiDa : null,
+                DieuKienToiThieu = dieuKienToiThieu,
+                SoLuong = soLuong,
+                LoaiVoucher = "HeThong",
+                NgayBatDau = ngayBatDau,
+                NgayHetHan = ngayHetHan,
+                IsActive = true,
+                NgayTao = DateTime.Now,
+                DiemCanDoi = 0,
+                SoNgayHieuLuc = 0
+            };
+            _context.Vouchers.Add(v);
+            await _context.SaveChangesAsync();
+            await GhiLog("TaoVoucher", "Voucher", v.Id, $"Tạo voucher hệ thống: {tenVoucher}");
+            TempData["Success"] = $"Đã tạo voucher \"{tenVoucher}\" — Mã: {ma}";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Admin/KichHoatVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> KichHoatVoucher(int id)
+        {
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
+            v.IsActive = true;
+            await _context.SaveChangesAsync();
+            await GhiLog("KichHoatVoucher", "Voucher", id, $"Kích hoạt: {v.TenVoucher}");
+            TempData["Success"] = $"Đã kích hoạt voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Admin/VoHieuVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> VoHieuVoucher(int id)
+        {
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
+            v.IsActive = false;
+            await _context.SaveChangesAsync();
+            await GhiLog("VoHieuVoucher", "Voucher", id, $"Vô hiệu: {v.TenVoucher}");
+            TempData["Success"] = $"Đã vô hiệu voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
         }
     }
 }

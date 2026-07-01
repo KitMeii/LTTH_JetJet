@@ -1,0 +1,155 @@
+@model Web_Stadium.EFCore.DatSan
+@{
+    ViewData["Title"] = "Chi tiết đặt sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var san = Model.KhungGio?.SanBong;
+    var kg = Model.KhungGio;
+    var tongGiam = Model.TienGiamSan + Model.TienGiamHeThong;
+    var tongDV = Model.DatSanDichVus.Sum(dv => (dv.DichVu?.Gia ?? 0) * dv.SoLuong);
+    var conLai = Model.TongTien - Model.TienCoc;
+
+    string TrangThaiText(string tt) => tt switch
+    {
+        "DaXacNhan"  => "Đã xác nhận",
+        "HoanThanh"  => "Hoàn thành",
+        "DangSuDung" => "Đang sử dụng",
+        "DaHuy"      => "Đã hủy",
+        _            => tt
+    };
+    string TrangThaiColor(string tt) => tt switch
+    {
+        "DaXacNhan"  => "#22c55e",
+        "HoanThanh"  => "#60a5fa",
+        "DangSuDung" => "#f59e0b",
+        "DaHuy"      => "#ef4444",
+        _            => "#94a3b8"
+    };
+}
+
+<div style="max-width:640px;margin:40px auto;padding:0 16px 60px;">
+
+    <!-- Back -->
+    <a href="/User/HoSo?tab=lichsu" style="display:inline-flex;align-items:center;gap:6px;color:#94a3b8;text-decoration:none;font-size:13px;margin-bottom:24px;">
+        ← Quay lại lịch sử
+    </a>
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);border-radius:20px;padding:28px 28px 24px;margin-bottom:20px;position:relative;overflow:hidden;">
+        <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:rgba(255,255,255,.03);border-radius:50%;"></div>
+        <div style="font-size:11px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Mã xác nhận</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;font-family:monospace;letter-spacing:1px;margin-bottom:16px;">@Model.MaXacNhan</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div>
+                <div style="font-size:18px;font-weight:700;color:#fff;">@(san?.TenSan ?? "—")</div>
+                <div style="font-size:13px;color:#94a3b8;margin-top:2px;">@(san?.Quan), @(san?.ThanhPho)</div>
+            </div>
+            <span style="background:@TrangThaiColor(Model.TrangThai)22;color:@TrangThaiColor(Model.TrangThai);
+                         border:1px solid @TrangThaiColor(Model.TrangThai)44;
+                         border-radius:999px;padding:5px 14px;font-weight:700;font-size:12px;">
+                @TrangThaiText(Model.TrangThai)
+            </span>
+        </div>
+    </div>
+
+    <!-- Thông tin đặt sân -->
+    <div style="background:#111827;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px;margin-bottom:16px;">
+        <div style="font-size:11px;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Thông tin đặt sân</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:3px;">Ngày thi đấu</div>
+                <div style="font-weight:600;color:#f1f5f9;">@Model.NgayThiDau.ToString("dd/MM/yyyy")</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:3px;">Khung giờ</div>
+                <div style="font-weight:600;color:#f1f5f9;">
+                    @(kg?.GioBatDau.ToString(@"hh\:mm")) – @(kg?.GioKetThuc.ToString(@"hh\:mm"))
+                </div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:3px;">Chủ sân</div>
+                <div style="font-weight:600;color:#f1f5f9;">@(san?.Owner?.HoTen ?? "—")</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:3px;">Ngày đặt</div>
+                <div style="font-weight:600;color:#f1f5f9;">@Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thanh toán -->
+    <div style="background:#111827;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px;margin-bottom:16px;">
+        <div style="font-size:11px;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Chi tiết thanh toán</div>
+
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <span style="color:#94a3b8;">Giá sân gốc</span>
+            <span style="color:#f1f5f9;font-weight:600;">@Model.TienGoc.ToString("N0")đ</span>
+        </div>
+
+        @if (Model.DatSanDichVus.Any())
+        {
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+                <span style="color:#94a3b8;">Dịch vụ kèm</span>
+                <span style="color:#f1f5f9;font-weight:600;">@tongDV.ToString("N0")đ</span>
+            </div>
+            @foreach (var dv in Model.DatSanDichVus)
+            {
+                <div style="display:flex;justify-content:space-between;padding:4px 0 4px 16px;">
+                    <span style="color:#64748b;font-size:12px;">@(dv.DichVu?.TenDichVu) × @dv.SoLuong</span>
+                    <span style="color:#64748b;font-size:12px;">@((dv.DichVu?.Gia ?? 0 * dv.SoLuong).ToString("N0"))đ</span>
+                </div>
+            }
+        }
+
+        @if (Model.TienGiamSan > 0)
+        {
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+                <span style="color:#94a3b8;">Voucher sân (@(Model.VoucherSan?.TenVoucher ?? ""))</span>
+                <span style="color:#22c55e;font-weight:600;">-@Model.TienGiamSan.ToString("N0")đ</span>
+            </div>
+        }
+        @if (Model.TienGiamHeThong > 0)
+        {
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+                <span style="color:#94a3b8;">Voucher hệ thống (@(Model.VoucherHeThong?.TenVoucher ?? ""))</span>
+                <span style="color:#22c55e;font-weight:600;">-@Model.TienGiamHeThong.ToString("N0")đ</span>
+            </div>
+        }
+
+        <div style="display:flex;justify-content:space-between;padding:12px 0 8px;border-top:1px solid rgba(255,255,255,.1);margin-top:4px;">
+            <span style="color:#f1f5f9;font-weight:700;">Tổng thanh toán</span>
+            <span style="color:#22c55e;font-weight:800;font-size:18px;">@Model.TongTien.ToString("N0")đ</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;">
+            <span style="color:#94a3b8;font-size:13px;">✅ Tiền cọc đã thanh toán</span>
+            <span style="color:#60a5fa;font-weight:700;">@Model.TienCoc.ToString("N0")đ</span>
+        </div>
+        @if (conLai > 0 && Model.TrangThai == "DaXacNhan")
+        {
+            <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                <span style="color:#94a3b8;font-size:13px;">⏳ Còn lại khi đến sân</span>
+                <span style="color:#f59e0b;font-weight:700;">@conLai.ToString("N0")đ</span>
+            </div>
+        }
+    </div>
+
+    <!-- Actions -->
+    @if (Model.TrangThai == "DaXacNhan")
+    {
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="/Booking/YeuCauDoiGio?datSanId=@Model.Id"
+               style="flex:1;min-width:130px;text-align:center;padding:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:12px;color:#f59e0b;text-decoration:none;font-size:13px;font-weight:600;">
+                🔄 Yêu cầu đổi giờ
+            </a>
+            <a href="/Booking/YeuCauDoiSan?datSanId=@Model.Id"
+               style="flex:1;min-width:130px;text-align:center;padding:10px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:12px;color:#3b82f6;text-decoration:none;font-size:13px;font-weight:600;">
+                🏟️ Yêu cầu đổi sân
+            </a>
+            <a href="/Booking/GhepTran?datSanId=@Model.Id"
+               style="flex:1;min-width:130px;text-align:center;padding:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;color:#22c55e;text-decoration:none;font-size:13px;font-weight:600;">
+                ⚽ Ghép trận
+            </a>
+        </div>
+    }
+
+</div>

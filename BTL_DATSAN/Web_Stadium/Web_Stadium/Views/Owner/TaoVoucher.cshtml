@@ -1,0 +1,170 @@
+@{
+    ViewData["Title"] = "Tạo Voucher Sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var sanList = (ViewBag.SanList as IEnumerable<Web_Stadium.EFCore.SanBong>) ?? Enumerable.Empty<Web_Stadium.EFCore.SanBong>();
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Owner — Tạo mới</div>
+        <h1 style="font-style:italic;line-height:0.9">TẠO VOUCHER<br><span class="text-green">CHO SÂN</span></h1>
+    </div>
+</div>
+
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Owner/Voucher" class="btn btn-success rounded-pill">🎫 Voucher</a>
+    </div>
+</div>
+
+<div class="container section" style="max-width:800px;">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="row g-4">
+        <!-- Form -->
+        <div class="col-md-7">
+            <form method="post" action="/Owner/TaoVoucher">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Sân áp dụng *</label>
+                    <select name="sanBongId" class="form-select" required onchange="capNhatPreview()">
+                        <option value="">-- Chọn sân --</option>
+                        @foreach (var s in sanList)
+                        {
+                            <option value="@s.Id">@s.TenSan</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên voucher *</label>
+                    <input type="text" name="tenVoucher" class="form-control" placeholder="VD: Giảm 15% cuối tuần" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Mô tả</label>
+                    <textarea name="moTa" class="form-control" rows="2" placeholder="Áp dụng cho..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Loại giảm *</label>
+                    <div class="d-flex gap-3">
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="loaiGiam" value="PhanTram" checked onchange="toggleGiamToiDa(true)" />
+                            Phần trăm (%)
+                        </label>
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="loaiGiam" value="SoTien" onchange="toggleGiamToiDa(false)" />
+                            Số tiền cố định (đ)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Giá trị giảm *</label>
+                        <div class="input-group">
+                            <input type="number" name="giaTriGiam" id="giaTriGiam" class="form-control" min="0.1" step="0.1" required oninput="capNhatPreview()" />
+                            <span class="input-group-text" id="dvGiam">%</span>
+                        </div>
+                    </div>
+                    <div class="col-6" id="giamToiDaWrap">
+                        <label class="form-label fw-bold">Giảm tối đa (đ)</label>
+                        <input type="number" name="giamToiDa" id="giamToiDa" class="form-control" min="0" step="1000" placeholder="Không giới hạn" oninput="capNhatPreview()" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Điều kiện tối thiểu (đ)</label>
+                    <input type="number" name="dieuKienToiThieu" class="form-control" min="0" step="1000" value="0" placeholder="0 = Không giới hạn" oninput="capNhatPreview()" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Số lượng phát hành</label>
+                    <input type="number" name="soLuong" class="form-control" min="0" value="0" />
+                    <div class="form-text">0 = Không giới hạn</div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Ngày bắt đầu *</label>
+                        <input type="datetime-local" name="ngayBatDau" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold">Ngày hết hạn *</label>
+                        <input type="datetime-local" name="ngayHetHan" class="form-control" value="@DateTime.Now.AddDays(30).ToString("yyyy-MM-ddTHH:mm")" required />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success rounded-pill px-4">Tạo Voucher</button>
+                    <a href="/Owner/Voucher" class="btn btn-outline-secondary rounded-pill px-4">Hủy</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Preview -->
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm p-4" style="border-radius:20px;position:sticky;top:80px;">
+                <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Preview tác động</div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:13px;">Giả lập đơn đặt sân</label>
+                    <input type="number" id="donMau" class="form-control form-control-sm" value="200000" step="10000" oninput="capNhatPreview()" />
+                </div>
+                <div id="previewBox" style="background:var(--bg2);border-radius:12px;padding:16px;font-size:14px;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="color:var(--muted);">Giá gốc</span>
+                        <span id="pvGiaGoc">200,000đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1" style="color:#ef4444;">
+                        <span>Owner chịu</span>
+                        <span>- <span id="pvTienGiam">0đ</span></span>
+                    </div>
+                    <hr style="border-color:var(--border);margin:8px 0;" />
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Khách trả</span>
+                        <span id="pvTongSauGiam" style="color:var(--green);">200,000đ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function fmt(n) { return Math.round(n).toLocaleString('vi-VN') + 'đ'; }
+
+    function toggleGiamToiDa(show) {
+        document.getElementById('giamToiDaWrap').style.display = show ? '' : 'none';
+        document.getElementById('dvGiam').textContent = show ? '%' : 'đ';
+        capNhatPreview();
+    }
+
+    function capNhatPreview() {
+        var loai = document.querySelector('input[name="loaiGiam"]:checked').value;
+        var gtg = parseFloat(document.getElementById('giaTriGiam').value) || 0;
+        var gtdEl = document.getElementById('giamToiDa');
+        var gtd = gtdEl ? parseFloat(gtdEl.value) || 0 : 0;
+        var don = parseFloat(document.getElementById('donMau').value) || 200000;
+
+        var giam = 0;
+        if (loai === 'PhanTram') {
+            giam = don * gtg / 100;
+            if (gtd > 0) giam = Math.min(giam, gtd);
+        } else {
+            giam = Math.min(gtg, don);
+        }
+
+        var tongSauGiam = Math.max(0, don - giam);
+        document.getElementById('pvGiaGoc').textContent = fmt(don);
+        document.getElementById('pvTienGiam').textContent = fmt(giam);
+        document.getElementById('pvTongSauGiam').textContent = fmt(tongSauGiam);
+    }
+
+    capNhatPreview();
+</script>

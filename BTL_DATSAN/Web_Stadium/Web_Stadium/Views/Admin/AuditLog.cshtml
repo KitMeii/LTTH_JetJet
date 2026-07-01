@@ -60,50 +60,48 @@
                         <th>Đối tượng</th>
                         <th>Mô tả</th>
                         <th>IP</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var log in Model)
                     {
+                        var roleColor = log.VaiTro switch
+                        {
+                            "Admin" => "bg-danger",
+                            "Owner" => "bg-primary",
+                            "Staff" => "bg-warning",
+                            _ => "bg-secondary"
+                        };
+                        var actionColor = log.HanhDong.Contains("Khoa") || log.HanhDong.Contains("TuChoi")
+                            ? "var(--danger)"
+                            : log.HanhDong.Contains("MoKhoa") || log.HanhDong.Contains("PheDuyet") || log.HanhDong.Contains("HoanCoc")
+                            ? "var(--green2)"
+                            : "var(--blue)";
+                        var moTaSafe = (log.MoTa ?? "").Replace("\"", "&quot;").Replace("'", "&#39;");
                         <tr>
                             <td><small style="color:var(--muted);">@log.ThoiGian.ToString("dd/MM HH:mm:ss")</small></td>
                             <td>
                                 <div style="font-weight:700;font-size:13px;">@log.User?.HoTen</div>
                                 <small style="color:var(--muted);">@log.User?.Email</small>
                             </td>
-                            <td>
-                                @{
-                                    var roleColor = log.VaiTro switch
-                                    {
-                                        "Admin" => "bg-danger",
-                                        "Owner" => "bg-primary",
-                                        "Staff" => "bg-warning",
-                                        _ => "bg-secondary"
-                                    };
-                                }
-                                <span class="badge @roleColor">@log.VaiTro</span>
-                            </td>
-                            <td>
-                                @{
-                                    var actionColor = log.HanhDong.Contains("Khoa") || log.HanhDong.Contains("TuChoi")
-                                    ? "var(--danger)"
-                                    : log.HanhDong.Contains("MoKhoa") || log.HanhDong.Contains("PheDuyet") || log.HanhDong.Contains("HoanCoc")
-                                    ? "var(--green2)"
-                                    : "var(--blue)";
-                                }
-                                <span style="color:@actionColor;font-weight:700;font-size:12px;">@log.HanhDong</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-light">@log.DoiTuong #@log.DoiTuongId</span>
-                            </td>
-                            <td><small style="color:var(--muted);">@log.MoTa</small></td>
+                            <td><span class="badge @roleColor">@log.VaiTro</span></td>
+                            <td><span style="color:@actionColor;font-weight:700;font-size:12px;">@log.HanhDong</span></td>
+                            <td><span class="badge bg-light text-dark">@log.DoiTuong #@log.DoiTuongId</span></td>
+                            <td style="max-width:260px;"><small style="color:var(--muted);">@log.MoTa</small></td>
                             <td><small style="color:var(--muted2);">@log.IpAddress</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                        onclick="xemChiTiet('@log.Id','@log.ThoiGian.ToString("dd/MM/yyyy HH:mm:ss")','@(log.User?.HoTen)','@(log.User?.Email)','@log.VaiTro','@log.HanhDong','@log.DoiTuong','@log.DoiTuongId','@moTaSafe','@log.IpAddress')">
+                                    Chi tiết
+                                </button>
+                            </td>
                         </tr>
                     }
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="7" style="text-align:center;color:var(--muted);padding:40px;">
+                            <td colspan="8" style="text-align:center;color:var(--muted);padding:40px;">
                                 Không có dữ liệu log.
                             </td>
                         </tr>
@@ -130,3 +128,71 @@
         </nav>
     }
 </div>
+
+<!-- Modal Chi tiết Audit Log -->
+<div class="modal fade" id="modalChiTiet" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#111827;border:1px solid rgba(255,255,255,.1);border-radius:16px;">
+            <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.08);">
+                <h6 class="modal-title" style="font-weight:700;color:#f1f5f9;">
+                    Chi tiết hành động <span id="mdId" style="color:#60a5fa;font-family:monospace;"></span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:20px 24px;">
+                <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+                    <tbody id="mdBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function xemChiTiet(id, thoiGian, hoTen, email, vaiTro, hanhDong, doiTuong, doiTuongId, moTa, ip) {
+    var roleColor = { Admin: '#ef4444', Owner: '#3b82f6', Staff: '#f59e0b' }[vaiTro] || '#6b7280';
+    var actColor = (hanhDong.includes('Khoa') || hanhDong.includes('TuChoi')) ? '#ef4444'
+        : (hanhDong.includes('MoKhoa') || hanhDong.includes('PheDuyet') || hanhDong.includes('HoanCoc')) ? '#22c55e'
+        : '#60a5fa';
+
+    // Link xem chi tiết tùy đối tượng
+    var linkMap = {
+        'DatSan':  '/Admin/ChiTietDon/',
+        'GiaiDau': '/AdminTournament/Details/',
+        'SanBong': '/Venues/Details/',
+    };
+    var detailHtml = '';
+    if (linkMap[doiTuong]) {
+        detailHtml = '<a href="' + linkMap[doiTuong] + doiTuongId + '" target="_blank" '
+            + 'style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:8px 16px;'
+            + 'background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.3);border-radius:10px;'
+            + 'color:#60a5fa;text-decoration:none;font-size:13px;font-weight:600;">'
+            + '🔗 Xem chi tiết ' + escHtml(doiTuong) + ' #' + doiTuongId + ' →</a>';
+    }
+
+    document.getElementById('mdId').textContent = '#' + id;
+    document.getElementById('mdBody').innerHTML =
+        row('🕐 Thời gian', '<strong style="color:#f1f5f9">' + thoiGian + '</strong>') +
+        row('👤 Người thực hiện', '<strong style="color:#f1f5f9">' + escHtml(hoTen) + '</strong><br><small style="color:#64748b">' + escHtml(email) + '</small>') +
+        row('🎖 Vai trò', '<span style="background:' + roleColor + '22;color:' + roleColor + ';border:1px solid ' + roleColor + '44;border-radius:6px;padding:2px 10px;font-weight:700;font-size:12px;">' + vaiTro + '</span>') +
+        row('⚡ Hành động', '<span style="color:' + actColor + ';font-weight:700;">' + escHtml(hanhDong) + '</span>') +
+        row('📋 Đối tượng', '<code style="background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;color:#e2e8f0;">' + escHtml(doiTuong) + ' #' + doiTuongId + '</code>') +
+        row('📝 Mô tả', '<span style="color:#94a3b8;line-height:1.6;">' + escHtml(moTa || '—') + '</span>') +
+        row('🌐 IP Address', '<code style="color:#94a3b8;">' + escHtml(ip || '—') + '</code>') +
+        (detailHtml ? '<tr><td colspan="2" style="padding-top:4px;">' + detailHtml + '</td></tr>' : '');
+
+    new bootstrap.Modal(document.getElementById('modalChiTiet')).show();
+}
+
+function row(label, val) {
+    return '<tr><td style="padding:10px 0 10px 0;color:#64748b;font-size:12px;font-weight:600;letter-spacing:.5px;width:140px;vertical-align:top;">' + label + '</td>'
+         + '<td style="padding:10px 0 10px 12px;border-bottom:1px solid rgba(255,255,255,.05);">' + val + '</td></tr>';
+}
+
+function escHtml(s) {
+    return String(s).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+}

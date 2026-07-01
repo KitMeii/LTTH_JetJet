@@ -200,23 +200,77 @@
 }
 
 
-<div class="d-flex gap-2 flex-wrap">
-    @if (Model.TrangThai is "Active" or "Finished")
-    {
-        <a href="/AdminTournament/ExcelDoiSoat/@Model.Id"
-           class="btn-outline-green">📊 Tải Excel</a>
-    }
-    @if (Model.TrangThai == "Draft")
-    {
-        <button type="button" class="btn btn-success rounded-pill"
-                onclick="moModalPheDuyet(@Model.Id, '@Model.TenGiai.Replace("'", "\\'")')">
-            ✅ Phê duyệt ngay
-        </button>
-    }
-</div>
-</div>
-</div>
-</div>
+<!-- ══ PAGE HEADER ══════════════════════════════════════════════════════ -->
+<div style="background:var(--card);border-bottom:1px solid var(--border);
+            padding:24px 32px 20px;margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;
+                gap:16px;flex-wrap:wrap;">
+
+        <!-- Left: title + meta -->
+        <div>
+            <div style="display:flex;align-items:center;gap:12px;
+                        margin-bottom:8px;flex-wrap:wrap;">
+                <h1 style="font-family:var(--ff-h);font-size:1.5rem;font-weight:900;
+                            margin:0;line-height:1.2;letter-spacing:-0.5px;">
+                    @Model.TenGiai
+                </h1>
+                <span class="@spClass">@spLabel</span>
+            </div>
+            <div style="font-size:13px;color:var(--muted);
+                        display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+                <span>
+                    🏟&nbsp;<strong style="color:var(--text)">@(Model.SanBong?.TenSan ?? "—")</strong>
+                    @if (!string.IsNullOrEmpty(Model.SanBong?.Quan))
+                    {
+                        <span>&nbsp;·&nbsp;@Model.SanBong.Quan</span>
+                    }
+                </span>
+                <span>
+                    👤&nbsp;<strong style="color:var(--text)">@(Model.Owner?.HoTen ?? "—")</strong>
+                    @if (!string.IsNullOrEmpty(Model.Owner?.Email))
+                    {
+                        <span style="font-size:12px">&nbsp;·&nbsp;@Model.Owner.Email</span>
+                    }
+                </span>
+                <span style="color:var(--muted2);font-size:11px;letter-spacing:.5px;">
+                    #@Model.Id
+                </span>
+            </div>
+        </div>
+
+        <!-- Right: action buttons -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:4px;">
+            <a href="/AdminTournament"
+               style="display:inline-flex;align-items:center;gap:6px;
+                      padding:7px 16px;border-radius:999px;
+                      border:1px solid var(--border);color:var(--muted);
+                      font-size:13px;text-decoration:none;transition:.2s;"
+               onmouseover="this.style.borderColor='var(--border2)';this.style.color='var(--text)'"
+               onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+                ← Quay lại
+            </a>
+            @if (Model.TrangThai is "Active" or "Finished")
+            {
+                <a href="/AdminTournament/ExcelDoiSoat/@Model.Id"
+                   style="display:inline-flex;align-items:center;gap:6px;
+                          padding:7px 18px;border-radius:999px;
+                          border:1px solid var(--green);color:var(--green);
+                          font-size:13px;font-weight:600;text-decoration:none;transition:.2s;"
+                   onmouseover="this.style.background='rgba(14,168,106,.08)'"
+                   onmouseout="this.style.background='transparent'">
+                    📊 Tải Excel
+                </a>
+            }
+            @if (Model.TrangThai == "Draft")
+            {
+                <button type="button"
+                        class="btn btn-success btn-sm rounded-pill px-4"
+                        onclick="moModalPheDuyet(@Model.Id)">
+                    ✅ Phê duyệt ngay
+                </button>
+            }
+        </div>
+    </div>
 </div>
 
 <div class="container py-4">
@@ -365,6 +419,16 @@
 
     <!-- TAB: BXH -->
     <div class="t-panel" id="tab-bxh">
+        @if (!bxh.Values.Any(r => r.Any()))
+        {
+            <div style="text-align:center;padding:48px 20px;color:var(--muted)">
+                <div style="font-size:2rem;margin-bottom:10px">📊</div>
+                <div style="font-weight:600;font-size:14px;margin-bottom:4px">Chưa có dữ liệu bảng xếp hạng</div>
+                <div style="font-size:12px">BXH sẽ cập nhật sau khi có trận đấu kết thúc</div>
+            </div>
+        }
+        else
+        {
         @foreach (var bang in Model.BangDaus ?? new List<Web_Stadium.EFCore.BangDau>())
         {
             <div style="margin-bottom:28px">
@@ -414,12 +478,26 @@
                 }
             </div>
         }
+        }
     </div>
 
     <!-- TAB: ĐỘI -->
     <div class="t-panel" id="tab-doi">
+        @{
+            var doiThanhToan = Model.DoiBongs?.Where(d => d.DaThanhToan).ToList() ?? new();
+        }
+        @if (!doiThanhToan.Any())
+        {
+            <div style="text-align:center;padding:48px 20px;color:var(--muted)">
+                <div style="font-size:2rem;margin-bottom:10px">👥</div>
+                <div style="font-weight:600;font-size:14px;margin-bottom:4px">Chưa có đội nào hoàn tất thanh toán</div>
+                <div style="font-size:12px">Đội tham dự sẽ hiển thị sau khi đăng ký và thanh toán</div>
+            </div>
+        }
+        else
+        {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-            @foreach (var doi in Model.DoiBongs?.Where(d => d.DaThanhToan) ?? new List<Web_Stadium.EFCore.DoiBong>())
+            @foreach (var doi in doiThanhToan)
             {
                 <div style="background:var(--card);border:1px solid var(--border);
                                             border-radius:var(--r);padding:14px;
@@ -442,6 +520,7 @@
                 </div>
             }
         </div>
+        }
     </div>
 
     <!-- TAB: VUA PHÁ LƯỚI -->

@@ -32,6 +32,7 @@ namespace Web_Stadium.End
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("TournamentBackgroundService started.");
+            await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {

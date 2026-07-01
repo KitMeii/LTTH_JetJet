@@ -42,7 +42,7 @@ namespace Web_Stadium.Controllers
                 query = query.Where(m =>
                     m.DatSan.KhungGio.SanBong.Quan == quan);
 
-            var list = await query.ToListAsync();
+            var list = await query.AsNoTracking().Take(100).ToListAsync();
 
             ViewBag.LoaiSan = loaiSan;
             ViewBag.Quan = quan;
@@ -54,6 +54,7 @@ namespace Web_Stadium.Controllers
             {
                 var userDons = await _context.DatSans
                     .Include(d => d.KhungGio)
+                    .AsNoTracking()
                     .Where(d => d.UserId == currentUserId && d.TrangThai == "DaXacNhan")
                     .ToListAsync();
                 ViewBag.UserDonDict = userDons

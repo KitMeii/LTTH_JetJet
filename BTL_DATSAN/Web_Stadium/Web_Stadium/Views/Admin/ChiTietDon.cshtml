@@ -1,0 +1,294 @@
+@model Web_Stadium.EFCore.DatSan
+@{
+    ViewData["Title"] = "Chi tiết đơn đặt sân";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    var san    = Model.KhungGio?.SanBong;
+    var kg     = Model.KhungGio;
+    var tongDV = Model.DatSanDichVus.Sum(dv => (dv.DichVu?.Gia ?? 0) * dv.SoLuong);
+    var conLai = Model.TongTien - Model.TienCoc;
+    var tongGiam = Model.TienGiamSan + Model.TienGiamHeThong;
+
+    (string text, string color, string bg, string icon) TtInfo(string tt) => tt switch
+    {
+        "DaXacNhan"  => ("Đã xác nhận",  "#22c55e", "rgba(34,197,94,.12)",   "✅"),
+        "HoanThanh"  => ("Hoàn thành",   "#60a5fa", "rgba(96,165,250,.12)",  "🏁"),
+        "DangSuDung" => ("Đang sử dụng", "#f59e0b", "rgba(245,158,11,.12)",  "⚽"),
+        "DaHuy"      => ("Đã hủy",       "#ef4444", "rgba(239,68,68,.12)",   "❌"),
+        _            => (tt,              "#94a3b8", "rgba(148,163,184,.08)", "📋")
+    };
+    var tt = TtInfo(Model.TrangThai);
+}
+
+@section Styles {
+<style>
+.ctd-hero {
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.ctd-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: rgba(34,197,94,.08);
+    border-radius: 50%;
+}
+.ctd-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 30%;
+    width: 160px; height: 160px;
+    background: rgba(96,165,250,.06);
+    border-radius: 50%;
+}
+.ctd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.ctd-grid-2 {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 20px;
+}
+.ctd-card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 18px;
+    padding: 28px 28px;
+    transition: border-color .2s;
+}
+.ctd-card:hover { border-color: rgba(255,255,255,.12); }
+.ctd-card-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.ctd-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    font-size: 13.5px;
+}
+.ctd-stat:last-child { border-bottom: none; }
+.ctd-stat-label { color: #94a3b8; }
+.ctd-stat-val { color: #f1f5f9; font-weight: 600; }
+.ctd-avatar {
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(34,197,94,.2), rgba(96,165,250,.15));
+    border: 1px solid rgba(34,197,94,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #22c55e; font-size: 20px;
+    flex-shrink: 0;
+}
+.ctd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    border: 1px solid;
+}
+.ctd-total-box {
+    background: linear-gradient(135deg, rgba(34,197,94,.1), rgba(34,197,94,.04));
+    border: 1px solid rgba(34,197,94,.2);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+</style>
+}
+
+<div style="padding-bottom:56px;">
+
+    <!-- BACK -->
+    <a href="/Admin/AuditLog"
+       style="display:inline-flex;align-items:center;gap:6px;color:#64748b;text-decoration:none;
+              font-size:13px;margin-bottom:22px;transition:color .15s;"
+       onmouseover="this.style.color='#f1f5f9'" onmouseout="this.style.color='#64748b'">
+        ← Quay lại Audit Log
+    </a>
+
+    <!-- HERO BANNER -->
+    <div class="ctd-hero">
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+            <div>
+                <div style="font-size:11px;color:#64748b;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;">Đơn đặt sân · #@Model.Id</div>
+                <div style="font-size:26px;font-weight:900;color:#fff;font-family:monospace;letter-spacing:2px;margin-bottom:12px;">
+                    @Model.MaXacNhan
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <span class="ctd-pill" style="background:@tt.bg;color:@tt.color;border-color:@tt.color+'44';">
+                        @tt.icon @tt.text
+                    </span>
+                    <span style="color:#64748b;font-size:13px;">Đặt lúc @Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:11px;color:#64748b;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Tổng thanh toán</div>
+                <div style="font-size:36px;font-weight:900;color:#22c55e;line-height:1;">@Model.TongTien.ToString("N0")<span style="font-size:18px;font-weight:600;">đ</span></div>
+                @if (tongGiam > 0)
+                {
+                    <div style="font-size:12px;color:#22c55e;margin-top:4px;">Đã giảm @tongGiam.ToString("N0")đ</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ROW 1: 3 KPI cards -->
+    <div class="ctd-grid">
+        <!-- Sân & giờ -->
+        <div class="ctd-card">
+            <div class="ctd-card-label">🏟 Sân bóng</div>
+            <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:6px;">@(san?.TenSan ?? "—")</div>
+            <div style="font-size:12.5px;color:#94a3b8;margin-bottom:16px;">@(san?.DiaChi), @(san?.Quan)</div>
+            <div class="ctd-stat" style="padding-top:0;">
+                <span class="ctd-stat-label">📅 Ngày</span>
+                <span class="ctd-stat-val">@Model.NgayThiDau.ToString("dd/MM/yyyy")</span>
+            </div>
+            <div class="ctd-stat">
+                <span class="ctd-stat-label">⏰ Khung giờ</span>
+                <span class="ctd-stat-val">@(kg?.GioBatDau.ToString(@"hh\:mm")) – @(kg?.GioKetThuc.ToString(@"hh\:mm"))</span>
+            </div>
+            <div class="ctd-stat">
+                <span class="ctd-stat-label">👤 Chủ sân</span>
+                <span class="ctd-stat-val">@(san?.Owner?.HoTen ?? "—")</span>
+            </div>
+        </div>
+
+        <!-- Người đặt -->
+        <div class="ctd-card">
+            <div class="ctd-card-label">👤 Người đặt sân</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+                <div class="ctd-avatar">@(Model.User?.HoTen?.FirstOrDefault())</div>
+                <div>
+                    <div style="font-size:15px;font-weight:800;color:#f1f5f9;">@(Model.User?.HoTen ?? "—")</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:2px;">@(Model.User?.Email)</div>
+                </div>
+            </div>
+            <div class="ctd-stat" style="padding-top:0;">
+                <span class="ctd-stat-label">📱 SĐT</span>
+                <span class="ctd-stat-val">@(Model.User?.SoDienThoai ?? "—")</span>
+            </div>
+            @if (Model.StaffCheckIn != null)
+            {
+                <div class="ctd-stat">
+                    <span class="ctd-stat-label">✅ Check-in bởi</span>
+                    <span class="ctd-stat-val" style="font-size:12px;">@Model.StaffCheckIn.HoTen</span>
+                </div>
+            }
+        </div>
+
+        <!-- Tóm tắt tài chính -->
+        <div class="ctd-card">
+            <div class="ctd-card-label">💰 Tài chính</div>
+            <div class="ctd-stat" style="padding-top:0;">
+                <span class="ctd-stat-label">Giá sân gốc</span>
+                <span class="ctd-stat-val">@Model.TienGoc.ToString("N0")đ</span>
+            </div>
+            @if (tongDV > 0)
+            {
+                <div class="ctd-stat">
+                    <span class="ctd-stat-label">Dịch vụ</span>
+                    <span class="ctd-stat-val">+@tongDV.ToString("N0")đ</span>
+                </div>
+            }
+            @if (tongGiam > 0)
+            {
+                <div class="ctd-stat">
+                    <span class="ctd-stat-label">Giảm voucher</span>
+                    <span style="color:#22c55e;font-weight:600;">-@tongGiam.ToString("N0")đ</span>
+                </div>
+            }
+            <div class="ctd-total-box">
+                <span style="color:#94a3b8;font-size:13px;font-weight:600;">Tổng</span>
+                <span style="color:#22c55e;font-size:22px;font-weight:900;">@Model.TongTien.ToString("N0")đ</span>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+                <div style="flex:1;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.15);border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Đã cọc</div>
+                    <div style="color:#60a5fa;font-weight:800;font-size:14px;">@Model.TienCoc.ToString("N0")đ</div>
+                </div>
+                @if (conLai > 0)
+                {
+                    <div style="flex:1;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:10px 12px;text-align:center;">
+                        <div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Còn lại</div>
+                        <div style="color:#f59e0b;font-weight:800;font-size:14px;">@conLai.ToString("N0")đ</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ROW 2: Voucher + Dịch vụ (chỉ hiện nếu có) -->
+    @if ((Model.TienGiamSan > 0 || Model.TienGiamHeThong > 0 || Model.DatSanDichVus.Any()))
+    {
+        <div class="ctd-grid-2">
+            @if (Model.TienGiamSan > 0 || Model.TienGiamHeThong > 0)
+            {
+                <div class="ctd-card">
+                    <div class="ctd-card-label">🎟 Voucher đã áp dụng</div>
+                    @if (Model.TienGiamSan > 0)
+                    {
+                        <div class="ctd-stat" style="padding-top:0;">
+                            <div>
+                                <div style="color:#f1f5f9;font-weight:600;font-size:13.5px;">@(Model.VoucherSan?.TenVoucher ?? "Voucher sân")</div>
+                                <div style="color:#64748b;font-size:11.5px;margin-top:2px;">Voucher chủ sân</div>
+                            </div>
+                            <span style="color:#22c55e;font-weight:700;font-size:15px;">-@Model.TienGiamSan.ToString("N0")đ</span>
+                        </div>
+                    }
+                    @if (Model.TienGiamHeThong > 0)
+                    {
+                        <div class="ctd-stat">
+                            <div>
+                                <div style="color:#f1f5f9;font-weight:600;font-size:13.5px;">@(Model.VoucherHeThong?.TenVoucher ?? "Voucher hệ thống")</div>
+                                <div style="color:#64748b;font-size:11.5px;margin-top:2px;">Voucher PitchHub</div>
+                            </div>
+                            <span style="color:#22c55e;font-weight:700;font-size:15px;">-@Model.TienGiamHeThong.ToString("N0")đ</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Model.DatSanDichVus.Any())
+            {
+                <div class="ctd-card">
+                    <div class="ctd-card-label">🎯 Dịch vụ kèm</div>
+                    @foreach (var dv in Model.DatSanDichVus)
+                    {
+                        <div class="ctd-stat" style="@(dv == Model.DatSanDichVus.First() ? "padding-top:0;" : "")">
+                            <span class="ctd-stat-label">@(dv.DichVu?.TenDichVu) × @dv.SoLuong</span>
+                            <span class="ctd-stat-val">@((dv.DichVu?.Gia ?? 0 * dv.SoLuong).ToString("N0"))đ</span>
+                        </div>
+                    }
+                    <div style="display:flex;justify-content:space-between;padding:12px 0 0;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;font-size:13.5px;">
+                        <span style="color:#94a3b8;font-weight:600;">Tổng dịch vụ</span>
+                        <span style="color:#f1f5f9;font-weight:800;">@tongDV.ToString("N0")đ</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>

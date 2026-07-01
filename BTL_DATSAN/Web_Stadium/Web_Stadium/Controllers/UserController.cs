@@ -42,6 +42,7 @@ namespace Web_Stadium.Controllers
                 .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
                 .Where(d => d.UserId == userId)
                 .OrderByDescending(d => d.ThoiGianTao)
+                .Take(50)
                 .ToListAsync();
 
             // Tab Điểm thưởng — lịch sử giao dịch

@@ -485,7 +485,7 @@
 
     <!-- ── Avatar Card ─────────────────────────────────────── -->
     <div class="profile-avatar-card">
-        <div class="avatar-circle">@Model.HoTen[0].ToString().ToUpper()</div>
+        <div class="avatar-circle">@(Model.HoTen?.Length > 0 ? Model.HoTen[0].ToString().ToUpper() : "?")</div>
         <div class="avatar-info">
             <h4>@Model.HoTen</h4>
             <span class="badge-role">@Model.VaiTro</span>
@@ -693,24 +693,24 @@
                             @if (don.TrangThai == "DaXacNhan")
                             {
                                 <div class="mt-1" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
-                                    <a href="/Booking/YeuCauDoiGio/@don.Id"
+                                    <a href="/Booking/YeuCauDoiGio?datSanId=@don.Id"
                                        style="font-size:.72rem;padding:3px 10px;border:1px solid #f59e0b;border-radius:6px;
                                               color:#f59e0b;text-decoration:none;display:inline-block;">
                                         🔄 Đổi giờ
                                     </a>
-                                    <a href="/Booking/YeuCauDoiSan/@don.Id"
+                                    <a href="/Booking/YeuCauDoiSan?datSanId=@don.Id"
                                        style="font-size:.72rem;padding:3px 10px;border:1px solid #3b82f6;border-radius:6px;
                                               color:#3b82f6;text-decoration:none;display:inline-block;">
                                         🏟️ Đổi sân
                                     </a>
-                                    <a href="/Booking/GhepTran/@don.Id"
+                                    <a href="/Booking/GhepTran?datSanId=@don.Id"
                                        style="font-size:.72rem;padding:3px 10px;border:1px solid var(--green);border-radius:6px;
                                               color:var(--green);text-decoration:none;display:inline-block;">
                                         ⚽ Ghép trận
                                     </a>
                                     @if (!datSanDaCoCn.Contains(don.Id))
                                     {
-                                        <a href="/ChuyenNhuong/DangBai/@don.Id"
+                                        <a href="/ChuyenNhuong/DangBai?datSanId=@don.Id"
                                            style="font-size:.72rem;padding:3px 10px;border:1px solid #a855f7;border-radius:6px;
                                                   color:#a855f7;text-decoration:none;display:inline-block;">
                                             📢 Chuyển nhượng

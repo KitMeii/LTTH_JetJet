@@ -9,6 +9,7 @@ var _selectedGia = 0;
 var _tyLeCoc = 0.3;
 var _dichVuMap = {};   // { id: gia }
 var _dichVuSL = {};   // { id: soLuong }
+var _tongDV = 0;       // tổng tiền dịch vụ hiện tại (dùng bởi apDungVoucher)
 
 // ── Đăng ký dịch vụ (gọi từ Razor trước initVenuesDetails) ───
 function registerDichVu(id, gia) {
@@ -143,25 +144,37 @@ function _capNhatGia() {
     // 3. Nếu chưa chọn slot → dừng
     if (!_selectedKhungGioId) return;
 
-    // 4. Tính tiền đúng nghiệp vụ:
-    //    Tiền cọc sân  = Giá sân × tyLeCoc
-    //    Cọc dịch vụ   = Tổng DV × tyLeCoc
-    //    Thanh toán ngay = Tiền cọc sân + Cọc dịch vụ
+    // 4. Cập nhật label giá sân và tiền cọc sân cơ bản
     var tienCoc = Math.round(_selectedGia * _tyLeCoc);
-    var cocDV = Math.round(tongDV * _tyLeCoc);
-    var tongThanhToan = tienCoc + cocDV;
-
     var pct = Math.round(_tyLeCoc * 100);
 
     var elGia = $('priceGia');
     var lblCoc = $('lblCoc');
     var elCoc = $('priceCoc');
-    var elTotal = $('priceTotal');
 
     if (elGia) elGia.textContent = _fmt(_selectedGia);
-    if (lblCoc) lblCoc.textContent = 'Ti\u1ec1n c\u1ecdc (' + pct + '%)';
+    if (lblCoc) lblCoc.textContent = 'Tiền cọc (' + pct + '%)';
     if (elCoc) elCoc.textContent = _fmt(tienCoc);
-    if (elTotal) elTotal.textContent = _fmt(tongThanhToan);
+
+    // Lưu tổng dịch vụ toàn cục để apDungVoucher tính đúng
+    _tongDV = tongDV;
+
+    // Tính lại tổng có xét voucher đang chọn (nếu có)
+    if (typeof apDungVoucher === 'function') {
+        apDungVoucher();
+    } else {
+        // Fallback khi apDungVoucher chưa load
+        var elTotal = $('priceTotal');
+        var conLaiRow = $('conLaiRow');
+        var priceConLaiEl = $('priceConLai');
+        var tongThanhToan = tienCoc + Math.round(tongDV * _tyLeCoc);
+        var conLai = (_selectedGia + tongDV) - tongThanhToan;
+        if (elTotal) elTotal.textContent = _fmt(tongThanhToan);
+        if (conLai > 0 && conLaiRow) {
+            conLaiRow.style.display = '';
+            if (priceConLaiEl) priceConLaiEl.textContent = _fmt(conLai);
+        }
+    }
 }
 
 // ── Sync hidden inputs cho form POST ─────────────────────────

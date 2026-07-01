@@ -10,6 +10,11 @@
     var nam = (int)(ViewBag.Nam ?? DateTime.Now.Year);
     var thang = (int)(ViewBag.Thang ?? DateTime.Now.Month);
     var tieuDe = (string)(ViewBag.TieuDe ?? "");
+    var ownerIdFilter = ViewBag.OwnerId as int?;
+    var sanIdFilter = ViewBag.SanId as int?;
+    var ownerList = (ViewBag.OwnerList as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var sanList = (ViewBag.SanList as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var filterSuffix = $"&ownerId={ownerIdFilter}&sanId={sanIdFilter}";
 
     double tongPhi = (double)(ViewBag.TongPhiHoaHong ?? 0.0);
     double tongDTSan = (double)(ViewBag.TongDoanhThuSan ?? 0.0);
@@ -402,11 +407,11 @@
 <div class="bc-shell">
     <div class="bc-sb">
         <div class="sbt">Khoảng thời gian</div>
-        <a href="/Admin/BaoCao?loai=ngay&nam=@nam&thang=@thang" class="sbl @(loai == "ngay" ? "active" : "")">📅 Theo ngày</a>
-        <a href="/Admin/BaoCao?loai=tuan&nam=@nam&thang=@thang" class="sbl @(loai == "tuan" ? "active" : "")">📆 Theo tuần</a>
-        <a href="/Admin/BaoCao?loai=thang&nam=@nam" class="sbl @(loai == "thang" ? "active" : "")">🗓 Theo tháng</a>
-        <a href="/Admin/BaoCao?loai=quy&nam=@nam" class="sbl @(loai == "quy" ? "active" : "")">📊 Theo quý</a>
-        <a href="/Admin/BaoCao?loai=nam" class="sbl @(loai == "nam" ? "active" : "")">📈 Theo năm</a>
+        <a href="/Admin/BaoCao?loai=ngay&nam=@nam&thang=@thang@filterSuffix" class="sbl @(loai == "ngay" ? "active" : "")">📅 Theo ngày</a>
+        <a href="/Admin/BaoCao?loai=tuan&nam=@nam&thang=@thang@filterSuffix" class="sbl @(loai == "tuan" ? "active" : "")">📆 Theo tuần</a>
+        <a href="/Admin/BaoCao?loai=thang&nam=@nam@filterSuffix" class="sbl @(loai == "thang" ? "active" : "")">🗓 Theo tháng</a>
+        <a href="/Admin/BaoCao?loai=quy&nam=@nam@filterSuffix" class="sbl @(loai == "quy" ? "active" : "")">📊 Theo quý</a>
+        <a href="/Admin/BaoCao?loai=nam@filterSuffix" class="sbl @(loai == "nam" ? "active" : "")">📈 Theo năm</a>
         <div class="sbt">Lọc nâng cao</div>
         <form method="get" action="/Admin/BaoCao">
             <input type="hidden" name="loai" value="@loai" />
@@ -424,6 +429,28 @@
                         <option value="@m" selected="@(m == thang)">Tháng @m</option>
                     }
                 </select>
+            }
+            else
+            {
+                <input type="hidden" name="thang" value="@thang" />
+            }
+            <select name="ownerId" class="sbsel" onchange="this.form.submit()">
+                <option value="">-- Tất cả chủ sân --</option>
+                @foreach (var o in ownerList)
+                {
+                    <option value="@o.Id" selected="@(ownerIdFilter.HasValue && ownerIdFilter.Value == (int)o.Id)">@o.HoTen</option>
+                }
+            </select>
+            <select name="sanId" class="sbsel" onchange="this.form.submit()">
+                <option value="">-- Tất cả sân --</option>
+                @foreach (var s in sanList)
+                {
+                    <option value="@s.Id" selected="@(sanIdFilter.HasValue && sanIdFilter.Value == (int)s.Id)">@s.TenSan</option>
+                }
+            </select>
+            @if (ownerIdFilter.HasValue || sanIdFilter.HasValue)
+            {
+                <a href="/Admin/BaoCao?loai=@loai&nam=@nam&thang=@thang" class="sbl" style="color:var(--red);margin-top:4px;">✕ Bỏ lọc sân</a>
             }
         </form>
         <div class="sbt">Công cụ</div>

@@ -15,10 +15,9 @@ namespace Web_Stadium
 
             // 1. Đăng ký DbContext - liên kết EFCore với SQL Server
             builder.Services.AddDbContext<SanBongContext>(options => options.UseSqlServer(
-                builder.Configuration.GetConnectionString("ConnectedDb")
-            //Đọc chuỗi keets nối từ file appsettings.json -> ConnectionStrings -> ConnectedDb
-                )
-            );
+                builder.Configuration.GetConnectionString("ConnectedDb"),
+                opts => opts.CommandTimeout(120)
+            ));
 
             // Đăng ký Repository vào Dependency Injection Container
             builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

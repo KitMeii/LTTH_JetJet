@@ -1603,5 +1603,115 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
 
             return RedirectToAction("ChuyenNhuong");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // VOUCHER SÂN
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Owner/Voucher
+        public async Task<IActionResult> Voucher()
+        {
+            var ownerId = GetOwnerId();
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var vouchers = await _context.Vouchers
+                .Include(v => v.SanBong)
+                .Where(v => v.LoaiVoucher == "Owner" && v.OwnerId == ownerId)
+                .OrderByDescending(v => v.NgayTao)
+                .ToListAsync();
+
+            var sanList = await SanCuaToi()
+                .Where(s => s.TrangThaiDuyet == "DaDuyet")
+                .ToListAsync();
+
+            ViewBag.SanList = sanList;
+            ViewBag.TongLuotDung = vouchers.Sum(v => v.DaDung);
+            ViewBag.TongTienGiam = await _context.DatSans
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId) && d.VoucherSanId != null)
+                .SumAsync(d => d.TienGiamSan);
+
+            return View(vouchers);
+        }
+
+        // GET /Owner/TaoVoucher
+        public async Task<IActionResult> TaoVoucher()
+        {
+            ViewBag.SanList = await SanCuaToi()
+                .Where(s => s.TrangThaiDuyet == "DaDuyet")
+                .ToListAsync();
+            return View();
+        }
+
+        // POST /Owner/TaoVoucher
+        [HttpPost]
+        public async Task<IActionResult> TaoVoucher(
+            int sanBongId, string tenVoucher, string? moTa,
+            string loaiGiam, decimal giaTriGiam, decimal? giamToiDa,
+            decimal dieuKienToiThieu, int soLuong,
+            DateTime ngayBatDau, DateTime ngayHetHan)
+        {
+            var ownerId = GetOwnerId();
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanBongId);
+            if (san == null)
+            { TempData["Error"] = "Sân không hợp lệ."; return RedirectToAction("TaoVoucher"); }
+
+            if (string.IsNullOrWhiteSpace(tenVoucher))
+            { TempData["Error"] = "Tên voucher không được để trống."; return RedirectToAction("TaoVoucher"); }
+
+            if (ngayHetHan <= ngayBatDau)
+            { TempData["Error"] = "Ngày hết hạn phải sau ngày bắt đầu."; return RedirectToAction("TaoVoucher"); }
+
+            var ma = $"OWN-{sanBongId}-{DateTime.Now:yyyyMMddHHmmss}";
+            var v = new Voucher
+            {
+                MaVoucher = ma,
+                TenVoucher = tenVoucher.Trim(),
+                MoTa = moTa?.Trim(),
+                LoaiGiam = loaiGiam,
+                GiaTriGiam = giaTriGiam,
+                GiamToiDa = loaiGiam == "PhanTram" ? giamToiDa : null,
+                DieuKienToiThieu = dieuKienToiThieu,
+                SoLuong = soLuong,
+                LoaiVoucher = "Owner",
+                SanBongId = sanBongId,
+                OwnerId = ownerId,
+                NgayBatDau = ngayBatDau,
+                NgayHetHan = ngayHetHan,
+                IsActive = true,
+                NgayTao = DateTime.Now,
+                DiemCanDoi = 0,
+                SoNgayHieuLuc = 0
+            };
+            _context.Vouchers.Add(v);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã tạo voucher \"{tenVoucher}\" cho sân {san.TenSan}.";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Owner/KichHoatVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> KichHoatVoucher(int id)
+        {
+            var ownerId = GetOwnerId();
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.OwnerId != ownerId) return NotFound();
+            v.IsActive = true;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã kích hoạt voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Owner/VoHieuVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> VoHieuVoucher(int id)
+        {
+            var ownerId = GetOwnerId();
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.OwnerId != ownerId) return NotFound();
+            v.IsActive = false;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã vô hiệu voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
+        }
     }
 }

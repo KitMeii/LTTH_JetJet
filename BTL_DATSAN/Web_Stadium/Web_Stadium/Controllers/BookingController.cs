@@ -117,13 +117,12 @@ namespace Web_Stadium.Controllers
             string? ngayThiDauStr,
             List<int>? dichVuIds,
             List<int>? soLuongs,
-            string? userVoucherId)
+            int? voucherSanId,
+            int? voucherHeThongId)
         {
-            // Parse ngày an toàn — tránh SqlDateTime overflow
             if (!DateTime.TryParse(ngayThiDauStr, out var ngayThiDau) || ngayThiDau < new DateTime(1753, 1, 1))
                 ngayThiDau = DateTime.Today;
 
-            // ❌ FIX 1: Không cho đặt ngày trong quá khứ
             if (ngayThiDau.Date < DateTime.Today)
             {
                 TempData["Error"] = "Không thể đặt sân cho ngày đã qua. Vui lòng chọn ngày hôm nay hoặc tương lai!";
@@ -132,12 +131,10 @@ namespace Web_Stadium.Controllers
 
             var userId = TokenHelper.LayUserId(Request, _config);
 
-            // ❌ FIX 2: Kiểm tra đã xác thực SĐT/Email chưa
             var userCheck = await _context.Users.FindAsync(userId);
             if (userCheck == null || !userCheck.DaXacThucSdt)
             {
                 var returnUrl = $"/Booking/Create?khungGioId={khungGioId}&ngayThiDauStr={ngayThiDauStr}";
-                // Giải phóng slot đang giữ
                 var kgTam = await _context.KhungGios.FindAsync(khungGioId);
                 if (kgTam != null && kgTam.TrangThai == "DangGiu")
                 {
@@ -153,7 +150,6 @@ namespace Web_Stadium.Controllers
                 .FirstOrDefaultAsync(k => k.Id == khungGioId);
             if (khungGio == null) return NotFound();
 
-            // ❌ FIX 1b: Nếu đặt hôm nay → kiểm tra khung giờ chưa qua
             if (ngayThiDau.Date == DateTime.Today)
             {
                 var gioBD = khungGio.GioBatDau.ToTimeSpan();
@@ -164,41 +160,7 @@ namespace Web_Stadium.Controllers
                 }
             }
 
-            var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
-            var tienCocGoc = khungGio.Gia * tyLeCoc;
-            var tienCocSauGiam = tienCocGoc;
-
-            // ── Áp dụng voucher nếu có ──────────────────────────
-            UserVoucher? uvDung = null;
-            if (!string.IsNullOrEmpty(userVoucherId))
-            {
-                uvDung = await _context.UserVouchers
-                    .Include(uv => uv.Voucher)
-                    .FirstOrDefaultAsync(uv => uv.MaSuDung == userVoucherId
-                                            && uv.UserId == userId
-                                            && !uv.IsUsed
-                                            && uv.NgayHetHan > DateTime.Now);
-
-                if (uvDung?.Voucher != null)
-                {
-                    var v = uvDung.Voucher;
-                    if (v.LoaiGiam == "PhanTram")
-                    {
-                        var giam = tienCocGoc * (v.GiaTriGiam / 100m);
-                        if (v.GiamToiDa.HasValue) giam = Math.Min(giam, v.GiamToiDa.Value);
-                        tienCocSauGiam = Math.Max(0, tienCocGoc - giam);
-                    }
-                    else // SoTien
-                    {
-                        tienCocSauGiam = Math.Max(0, tienCocGoc - v.GiaTriGiam);
-                    }
-                }
-            }
-
-            // Sinh mã xác nhận theo format XN-YYYYMMDD-XXXX
-            var maDatSan = $"XN-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
-
-            // ✅ FIX 3: Tính tổng tiền dịch vụ để cộng vào TongTien
+            // ── Tính tiền dịch vụ ──────────────────────────────
             decimal tongTienDichVu = 0;
             var dichVuList = new List<(int dvId, int sl, decimal gia)>();
             if (dichVuIds != null)
@@ -214,26 +176,78 @@ namespace Web_Stadium.Controllers
                 }
             }
 
-            // TongTien = tiền sân + dịch vụ (cọc tính % trên tiền sân)
-            var tongTienSan = khungGio.Gia + tongTienDichVu;
+            // voucher chỉ áp vào giá sân, dịch vụ tính riêng không giảm
+            decimal giaSan = khungGio.Gia;
+            decimal giaGoc = giaSan + tongTienDichVu;
+            decimal tienGiamSan = 0;
+            decimal tienGiamHeThong = 0;
+            int? voucherSanApDungId = null;
+            int? voucherHeThongApDungId = null;
+            var now = DateTime.Now;
 
-            // Tính lại cọc nếu cần (cọc tính trên tiền sân, không tính dịch vụ)
-            // tienCocSauGiam đã tính đúng rồi
+            if (voucherSanId.HasValue)
+            {
+                var v = await _context.Vouchers.FindAsync(voucherSanId.Value);
+                if (v != null && v.IsActive && v.LoaiVoucher == "Owner"
+                    && now >= v.NgayBatDau && now <= v.NgayHetHan
+                    && (v.SoLuong == 0 || v.DaDung < v.SoLuong)
+                    && giaSan >= v.DieuKienToiThieu)
+                {
+                    tienGiamSan = v.LoaiGiam == "PhanTram"
+                        ? giaSan * v.GiaTriGiam / 100m
+                        : Math.Min(v.GiaTriGiam, giaSan);
+                    if (v.LoaiGiam == "PhanTram" && v.GiamToiDa.HasValue)
+                        tienGiamSan = Math.Min(tienGiamSan, v.GiamToiDa.Value);
+                    v.DaDung++;
+                    voucherSanApDungId = v.Id;
+                }
+            }
+
+            // voucher hệ thống áp vào giá sân sau khi đã giảm voucher sân
+            decimal sanSauGiamSan = Math.Max(0, giaSan - tienGiamSan);
+            if (voucherHeThongId.HasValue)
+            {
+                var v = await _context.Vouchers.FindAsync(voucherHeThongId.Value);
+                if (v != null && v.IsActive && v.LoaiVoucher == "HeThong"
+                    && now >= v.NgayBatDau && now <= v.NgayHetHan
+                    && (v.SoLuong == 0 || v.DaDung < v.SoLuong)
+                    && sanSauGiamSan >= v.DieuKienToiThieu)
+                {
+                    tienGiamHeThong = v.LoaiGiam == "PhanTram"
+                        ? sanSauGiamSan * v.GiaTriGiam / 100m
+                        : Math.Min(v.GiaTriGiam, sanSauGiamSan);
+                    if (v.LoaiGiam == "PhanTram" && v.GiamToiDa.HasValue)
+                        tienGiamHeThong = Math.Min(tienGiamHeThong, v.GiamToiDa.Value);
+                    v.DaDung++;
+                    voucherHeThongApDungId = v.Id;
+                }
+            }
+
+            // tổng = sân sau giảm + dịch vụ (không giảm)
+            decimal tongSauGiam = Math.Max(0, giaSan - tienGiamSan - tienGiamHeThong) + tongTienDichVu;
+            var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
+            decimal tienCoc = tongSauGiam * tyLeCoc;
+
+            var maDatSan = $"XN-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
 
             var datSan = new DatSan
             {
                 UserId = userId!.Value,
                 KhungGioId = khungGioId,
                 NgayThiDau = ngayThiDau,
-                TienCoc = tienCocSauGiam,
-                TongTien = tongTienSan,   // ← FIX: bao gồm cả dịch vụ
+                TienGoc = giaGoc,
+                TienGiamSan = tienGiamSan,
+                TienGiamHeThong = tienGiamHeThong,
+                TienCoc = tienCoc,
+                TongTien = tongSauGiam,
+                VoucherSanId = voucherSanApDungId,
+                VoucherHeThongId = voucherHeThongApDungId,
                 MaXacNhan = maDatSan,
                 TrangThai = "ChoDuyet",
                 ThoiGianTao = DateTime.Now
             };
             await _datSanRepo.AddAsync(datSan);
 
-            // Thêm dịch vụ vào đơn (KHÔNG trừ kho — chỉ trừ khi Staff check-in)
             foreach (var (dvId, sl, gia) in dichVuList)
             {
                 _context.DatSanDichVus.Add(new DatSanDichVu
@@ -243,18 +257,8 @@ namespace Web_Stadium.Controllers
                     SoLuong = sl
                 });
             }
-            if (dichVuList.Any()) await _context.SaveChangesAsync();
-
-            // ── Đánh dấu voucher đã dùng ────────────────────────
-            if (uvDung != null)
-            {
-                uvDung.IsUsed = true;
-                uvDung.NgaySuDung = DateTime.Now;
-                uvDung.DatSanId = datSan.Id;
+            if (dichVuList.Any() || voucherSanApDungId.HasValue || voucherHeThongApDungId.HasValue)
                 await _context.SaveChangesAsync();
-
-                // Ghi log điểm (trừ điểm đã ghi khi đổi, ở đây chỉ ghi lại note dùng voucher)
-            }
 
             // Khoá slot
             khungGio.TrangThai = "DaDat";
@@ -263,8 +267,95 @@ namespace Web_Stadium.Controllers
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "DaDat" });
 
-            TempData["Success"] = $"Đặt sân thành công! Mã xác nhận: {maDatSan}. Vui lòng chờ Owner xác nhận.";
+            var tongGiam = tienGiamSan + tienGiamHeThong;
+            var msgGiam = tongGiam > 0 ? $" (Đã giảm {tongGiam:N0}đ từ voucher)" : "";
+            TempData["Success"] = $"Đặt sân thành công! Mã: {maDatSan}. Tiền cọc: {tienCoc:N0}đ{msgGiam}. Vui lòng chờ Owner xác nhận.";
             return RedirectToAction("MyBookings");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/LayVoucher?sanBongId=1&tongTien=200000
+        // ══════════════════════════════════════════════════════════
+        [HttpGet]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> LayVoucher(int sanBongId, decimal tongTien)
+        {
+            var now = DateTime.Now;
+
+            var rawSan = await _context.Vouchers
+                .Where(v => v.LoaiVoucher == "Owner"
+                         && v.SanBongId == sanBongId
+                         && v.IsActive
+                         && v.NgayBatDau <= now
+                         && v.NgayHetHan >= now
+                         && (v.SoLuong == 0 || v.DaDung < v.SoLuong)
+                         && tongTien >= v.DieuKienToiThieu)
+                .ToListAsync();
+
+            var rawHT = await _context.Vouchers
+                .Where(v => v.LoaiVoucher == "HeThong"
+                         && v.IsActive
+                         && v.NgayBatDau <= now
+                         && v.NgayHetHan >= now
+                         && (v.SoLuong == 0 || v.DaDung < v.SoLuong)
+                         && tongTien >= v.DieuKienToiThieu)
+                .ToListAsync();
+
+            decimal TinhGiam(Voucher v, decimal gia)
+            {
+                var g = v.LoaiGiam == "PhanTram" ? gia * v.GiaTriGiam / 100m : Math.Min(v.GiaTriGiam, gia);
+                if (v.LoaiGiam == "PhanTram" && v.GiamToiDa.HasValue) g = Math.Min(g, v.GiamToiDa.Value);
+                return g;
+            }
+
+            var voucherSan = rawSan
+                .Select(v => new
+                {
+                    v.Id, v.TenVoucher, v.MoTa, v.LoaiGiam,
+                    v.GiaTriGiam, v.GiamToiDa, v.NgayHetHan,
+                    v.DieuKienToiThieu,
+                    conLai = v.SoLuong == 0 ? -1 : v.SoLuong - v.DaDung,
+                    soTienGiam = TinhGiam(v, tongTien),
+                    conNgay = (int)(v.NgayHetHan - now).TotalDays
+                })
+                .OrderByDescending(x => x.soTienGiam)
+                .ToList();
+
+            var voucherHeThong = rawHT
+                .Select(v => new
+                {
+                    v.Id, v.TenVoucher, v.MoTa, v.LoaiGiam,
+                    v.GiaTriGiam, v.GiamToiDa, v.NgayHetHan,
+                    v.DieuKienToiThieu,
+                    conLai = v.SoLuong == 0 ? -1 : v.SoLuong - v.DaDung,
+                    soTienGiam = TinhGiam(v, tongTien),
+                    conNgay = (int)(v.NgayHetHan - now).TotalDays
+                })
+                .OrderByDescending(x => x.soTienGiam)
+                .ToList();
+
+            return Json(new { voucherSan, voucherHeThong });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/Details/{id}
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> Details(int id)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .AsNoTracking()
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong).ThenInclude(s => s.Owner)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
+                .Include(d => d.StaffCheckIn)
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            return View(don);
         }
 
         // ══════════════════════════════════════════════════════════
@@ -276,8 +367,11 @@ namespace Web_Stadium.Controllers
             var userId = TokenHelper.LayUserId(Request, _config);
 
             var query = _context.DatSans
+                .AsNoTracking()
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
                 .Where(d => d.UserId == userId);
 
             if (!string.IsNullOrEmpty(trangThai))
@@ -285,10 +379,12 @@ namespace Web_Stadium.Controllers
 
             var list = await query
                 .OrderByDescending(d => d.ThoiGianTao)
+                .Take(100)
                 .ToListAsync();
 
             // Đơn nào đã có đánh giá
             var daDanhGiaIds = await _context.DanhGias
+                .AsNoTracking()
                 .Where(dg => dg.UserId == userId)
                 .Select(dg => dg.DatSanId)
                 .ToListAsync();

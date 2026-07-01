@@ -195,6 +195,28 @@
                         <span class="side-badge">@soKhieuNai</span>
                     }
                 </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Voucher" ? "active" : "")"
+                   href="/Admin/Voucher">
+                    <div class="side-link-left"><i class="bi bi-ticket-perforated"></i> Voucher</div>
+                </a>
+
+                <div class="side-section-label">Yêu cầu</div>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "YeuCauDoiGio" ? "active" : "")"
+                   href="/Admin/YeuCauDoiGio">
+                    <div class="side-link-left"><i class="bi bi-clock-history"></i> Đổi giờ</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "YeuCauDoiSan" ? "active" : "")"
+                   href="/Admin/YeuCauDoiSan">
+                    <div class="side-link-left"><i class="bi bi-arrow-left-right"></i> Đổi sân</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "GhepTran" ? "active" : "")"
+                   href="/Admin/GhepTran">
+                    <div class="side-link-left"><i class="bi bi-people-fill"></i> Ghép trận</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ChuyenNhuong" ? "active" : "")"
+                   href="/Admin/ChuyenNhuong">
+                    <div class="side-link-left"><i class="bi bi-shuffle"></i> Chuyển nhượng</div>
+                </a>
 
                 <div class="side-section-label">Báo cáo</div>
                 <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "BaoCao" ? "active" : "")"

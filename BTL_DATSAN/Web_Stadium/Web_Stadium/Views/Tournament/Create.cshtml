@@ -217,7 +217,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="lbl">Hạn đóng đăng ký</label>
-                        <input type="date" name="thoiGianDongStr" class="inp"
+                        <input type="date" name="ThoiGianDong" class="inp"
                                id="thoiGianDong" />
                         <div class="inp-hint">Để trống = 1 ngày trước ngày bắt đầu</div>
                     </div>
@@ -291,14 +291,14 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="lbl">Ngày bắt đầu *</label>
-                        <input type="date" name="ngayBatDauStr" class="inp" required
+                        <input type="date" name="NgayBatDau" class="inp" required
                                id="ngayBD"
                                min="@DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")"
                                onchange="capNhatNgayKT()" />
                     </div>
                     <div class="col-md-6">
                         <label class="lbl">Ngày kết thúc *</label>
-                        <input type="date" name="ngayKetThucStr" class="inp" required
+                        <input type="date" name="NgayKetThuc" class="inp" required
                                id="ngayKT" />
                     </div>
                     <div class="col-12">

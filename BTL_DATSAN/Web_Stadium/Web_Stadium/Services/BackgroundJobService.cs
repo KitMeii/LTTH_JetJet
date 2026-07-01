@@ -27,6 +27,7 @@ namespace Web_Stadium.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("🔄 BackgroundJobService started");
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -110,7 +111,8 @@ namespace Web_Stadium.Services
             var donNoShow = await context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
-                .Where(d => d.TrangThai == "DaXacNhan")
+                .Where(d => d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau.Date == DateTime.Today)
                 .ToListAsync();
 
             foreach (var don in donNoShow)
@@ -151,7 +153,9 @@ namespace Web_Stadium.Services
             var donSapToi = await context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
-                .Where(d => d.TrangThai == "DaXacNhan")
+                .Where(d => d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau.Date >= tu24h.Date
+                         && d.NgayThiDau.Date <= den24h.Date)
                 .ToListAsync();
 
             foreach (var don in donSapToi)
@@ -206,7 +210,8 @@ namespace Web_Stadium.Services
             var donSapToi = await context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
-                .Where(d => d.TrangThai == "DaXacNhan")
+                .Where(d => d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau.Date == DateTime.Today)
                 .ToListAsync();
 
             foreach (var don in donSapToi)
@@ -256,10 +261,12 @@ namespace Web_Stadium.Services
         {
             var now = DateTime.Now;
 
+            var nguongHoanThanh = now.AddDays(-7);
             var donHoanThanh = await context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
-                .Where(d => d.TrangThai == "HoanThanh")
+                .Where(d => d.TrangThai == "HoanThanh"
+                         && d.NgayThiDau >= nguongHoanThanh)
                 .ToListAsync();
 
             foreach (var don in donHoanThanh)

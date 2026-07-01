@@ -3,8 +3,9 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var giaiDaus = ViewBag.GiaiDaus as List<Web_Stadium.EFCore.GiaiDau> ?? new();
     var tongGiai = (int)(ViewBag.TongGiai ?? giaiDaus.Count);
-    var choDuyet = (int)(ViewBag.ChoDuyet ?? giaiDaus.Count(g => g.TrangThai == "ChoDuyet"));
-    var dangDienRa = (int)(ViewBag.DangDienRa ?? giaiDaus.Count(g => g.TrangThai == "DangDienRa"));
+    var choDuyet   = (int)(ViewBag.ChoDuyet   ?? giaiDaus.Count(g => g.TrangThai == "Draft"));
+    var daDuyet    = (int)(ViewBag.DaDuyet    ?? giaiDaus.Count(g => g.TrangThai == "Approved"));
+    var dangDienRa = (int)(ViewBag.DangDienRa ?? giaiDaus.Count(g => g.TrangThai == "Active"));
     var tongLePhi = (decimal)(ViewBag.TongLePhi ?? giaiDaus.Sum(g => g.LePhiGiai));
     var filterTT = ViewBag.FilterTrangThai as string ?? "";
     var filterOwner = ViewBag.FilterOwner as string ?? "";
@@ -300,7 +301,7 @@
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
             @if (choDuyet > 0)
             {
-                <a href="?filterTT=ChoDuyet" style="background:rgba(246,170,56,.12);border:1px solid rgba(246,170,56,.3);color:var(--warn);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
+                <a href="?filterTT=Draft" style="background:rgba(246,170,56,.12);border:1px solid rgba(246,170,56,.3);color:var(--warn);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
                     ⏳ @choDuyet chờ duyệt
                 </a>
             }
@@ -327,7 +328,7 @@
         </div>
         <div class="gd-kpi" style="--kpi-accent:#00d47e;">
             <div class="gd-kpi-icon">📋</div>
-            <div class="gd-kpi-val" style="color:var(--green2);">@giaiDaus.Count(g => g.TrangThai == "DaDuyet")</div>
+            <div class="gd-kpi-val" style="color:var(--green2);">@daDuyet</div>
             <div class="gd-kpi-label">Đã duyệt</div>
         </div>
         <div class="gd-kpi" style="--kpi-accent:#00ff99;">
@@ -357,12 +358,12 @@
                 <label>📋 Trạng thái</label>
                 <select name="trangThai" class="form-select">
                     <option value="" selected="@(filterTT == "")">Tất cả</option>
-                    <option value="Draft" selected="@(filterTT == "Draft")">📝 Nháp</option>
-                    <option value="ChoDuyet" selected="@(filterTT == "ChoDuyet")">⏳ Chờ duyệt</option>
-                    <option value="DaDuyet" selected="@(filterTT == "DaDuyet")">✅ Đã duyệt</option>
-                    <option value="DangDienRa" selected="@(filterTT == "DangDienRa")">⚽ Đang diễn ra</option>
-                    <option value="KetThuc" selected="@(filterTT == "KetThuc")">🏁 Đã kết thúc</option>
-                    <option value="BiTuChoi" selected="@(filterTT == "BiTuChoi")">❌ Bị từ chối</option>
+                    <option value="Draft" selected="@(filterTT == "Draft")">📝 Chờ duyệt</option>
+                    <option value="Approved" selected="@(filterTT == "Approved")">✅ Đã duyệt</option>
+                    <option value="RegistrationOpen" selected="@(filterTT == "RegistrationOpen")">📋 Đang mở đăng ký</option>
+                    <option value="Active" selected="@(filterTT == "Active")">⚽ Đang diễn ra</option>
+                    <option value="Completed" selected="@(filterTT == "Completed")">🏁 Đã kết thúc</option>
+                    <option value="Cancelled" selected="@(filterTT == "Cancelled")">❌ Đã hủy</option>
                 </select>
             </div>
             <div class="gd-filter-group">
@@ -517,7 +518,7 @@
 
                     <!-- Actions -->
                     <div class="gd-actions">
-                        <a href="/AdminTournament/ChiTiet/@gd.Id"
+                        <a href="/AdminTournament/Details/@gd.Id"
                            class="btn btn-outline-success btn-sm rounded-pill"
                            style="white-space:nowrap;">
                             👁 Chi tiết

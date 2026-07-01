@@ -378,9 +378,9 @@
                             ? $"Giảm {v.GiaTriGiam:0}%{(v.GiamToiDa.HasValue ? $" (tối đa {v.GiamToiDa.Value:N0}đ)" : "")}"
                             : $"Giảm {v.GiaTriGiam:N0}đ";
                             decimal soTienGiam = v.LoaiGiam == "PhanTram"
-                            ? Math.Min(tienCocGoc * v.GiaTriGiam / 100m, v.GiamToiDa ?? decimal.MaxValue)
+                            ? Math.Min(khungGio.Gia * v.GiaTriGiam / 100m, v.GiamToiDa ?? decimal.MaxValue)
                             : v.GiaTriGiam;
-                            soTienGiam = Math.Min(soTienGiam, tienCocGoc);
+                            soTienGiam = Math.Min(soTienGiam, khungGio.Gia);
 
                             <label class="voucher-opt" id="vopt-@uv.Id" onclick="applyVoucher('@uv.MaSuDung', @soTienGiam, '@uv.Id')">
                                 <input type="radio" name="_vopt" value="@uv.MaSuDung" />
@@ -406,20 +406,20 @@
                     <span class="lbl">Giá thuê sân</span>
                     <span class="amt">@khungGio.Gia.ToString("N0")đ</span>
                 </div>
-                <div class="price-row">
-                    <span class="lbl">Tiền cọc (@tyLePct%)</span>
-                    <span class="amt">@tienCocGoc.ToString("N0")đ</span>
-                </div>
-                <div class="price-row giam" id="rowGiam" style="display:none;">
-                    <span class="lbl">🎁 Giảm voucher</span>
-                    <span class="amt" id="amtGiam">−0đ</span>
+                <div class="price-row" id="rowGiam" style="display:none;">
+                    <span class="lbl" style="color:#4ade80;">🎁 Voucher giảm</span>
+                    <span class="amt" id="amtGiam" style="color:#4ade80;">−0đ</span>
                 </div>
                 <div class="price-row" id="rowDv" style="display:none;">
                     <span class="lbl">Dịch vụ kèm</span>
                     <span class="amt" id="amtDv">0đ</span>
                 </div>
+                <div class="price-row" id="rowTong" style="display:none;border-top:1px dashed rgba(255,255,255,.1);margin-top:4px;padding-top:8px;">
+                    <span class="lbl" style="font-weight:600;">Tổng hoá đơn</span>
+                    <span class="amt" id="amtTong">@khungGio.Gia.ToString("N0")đ</span>
+                </div>
                 <div class="price-row total">
-                    <span class="lbl">💳 Thanh toán ngay (cọc)</span>
+                    <span class="lbl">💳 Tiền cọc (@tyLePct%) — trả ngay</span>
                     <span class="amt" id="amtTotal">@tienCocGoc.ToString("N0")đ</span>
                 </div>
                 <div class="price-row" style="border-bottom:none;">
@@ -442,7 +442,9 @@
 @section Scripts {
     <script>
         // ── Giá dịch vụ ───────────────────────────────────────────
-        var dichVuGia = [@Html.Raw(string.Join(",", dichVus.Select(d => d.Gia)))];
+        var dichVuGia  = [@Html.Raw(string.Join(",", dichVus.Select(d => d.Gia)))];
+        var giaSan     = @khungGio.Gia;
+        var tyLeCocJs  = @tyLeCoc;
         var tienCocGoc = @tienCocGoc;
         var soTienGiam = 0;
 
@@ -467,7 +469,7 @@
             updateTotal();
         }
 
-        // ── Tính tổng ─────────────────────────────────────────────
+        // ── Tính tổng — voucher chỉ giảm giá sân, dịch vụ giữ nguyên
         function updateTotal() {
             var dvSum = 0;
             dichVuGia.forEach(function(gia, i) {
@@ -475,29 +477,38 @@
                 dvSum += gia * q;
             });
 
-            var cocSauGiam = Math.max(0, tienCocGoc - soTienGiam);
-            var tongThanhToan = cocSauGiam + dvSum;
+            var giaSanSauGiam = Math.max(0, giaSan - soTienGiam);
+            var tongSauGiam   = giaSanSauGiam + dvSum;
+            var tienCocMoi    = Math.round(tongSauGiam * tyLeCocJs);
+            var conLai        = tongSauGiam - tienCocMoi;
 
-            // Hiện/ẩn dòng giảm
-            var rowGiam = document.getElementById('rowGiam');
+            // Dòng voucher
             if (soTienGiam > 0) {
-                rowGiam.style.display = 'flex';
+                document.getElementById('rowGiam').style.display = 'flex';
                 document.getElementById('amtGiam').textContent = '−' + soTienGiam.toLocaleString('vi-VN') + 'đ';
             } else {
-                rowGiam.style.display = 'none';
+                document.getElementById('rowGiam').style.display = 'none';
             }
 
-            // Dịch vụ
-            var rowDv = document.getElementById('rowDv');
+            // Dòng dịch vụ
             if (dvSum > 0) {
-                rowDv.style.display = 'flex';
+                document.getElementById('rowDv').style.display = 'flex';
                 document.getElementById('amtDv').textContent = dvSum.toLocaleString('vi-VN') + 'đ';
             } else {
-                rowDv.style.display = 'none';
+                document.getElementById('rowDv').style.display = 'none';
             }
 
-            document.getElementById('amtTotal').textContent = tongThanhToan.toLocaleString('vi-VN') + 'đ';
-            document.getElementById('lblTienCoc').textContent = cocSauGiam.toLocaleString('vi-VN') + 'đ';
+            // Dòng tổng hoá đơn (hiện khi có giảm giá hoặc dịch vụ)
+            if (soTienGiam > 0 || dvSum > 0) {
+                document.getElementById('rowTong').style.display = 'flex';
+                document.getElementById('amtTong').textContent = tongSauGiam.toLocaleString('vi-VN') + 'đ';
+            } else {
+                document.getElementById('rowTong').style.display = 'none';
+            }
+
+            document.getElementById('amtTotal').textContent   = tienCocMoi.toLocaleString('vi-VN') + 'đ';
+            document.getElementById('lblTienCoc').textContent = tienCocMoi.toLocaleString('vi-VN') + 'đ';
+            document.getElementById('amtConLai').textContent  = conLai.toLocaleString('vi-VN') + 'đ';
         }
 
         // ── Countdown 5 phút ──────────────────────────────────────

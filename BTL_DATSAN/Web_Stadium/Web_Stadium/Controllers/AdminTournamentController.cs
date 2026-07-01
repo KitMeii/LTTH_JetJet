@@ -80,12 +80,14 @@ namespace Web_Stadium.Controllers
 
             var giaiList = await query.ToListAsync();
 
-            // KPI tổng hợp
-            ViewBag.TongGiai = await _context.GiaiDaus.CountAsync();
-            ViewBag.GiaiChoDuyet = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Draft");
-            ViewBag.GiaiDangDienRa = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Active");
-            ViewBag.GiaiDangDangKy = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "RegistrationOpen");
-            ViewBag.TongDoanhThuLePhi = await _context.DoiBongs
+            // KPI tổng hợp — tên ViewBag khớp với Index.cshtml
+            ViewBag.GiaiDaus = giaiList;
+            ViewBag.TongGiai        = await _context.GiaiDaus.CountAsync();
+            ViewBag.ChoDuyet        = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Draft");
+            ViewBag.DaDuyet         = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Approved");
+            ViewBag.DangDienRa      = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Active");
+            ViewBag.DangDangKy      = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "RegistrationOpen");
+            ViewBag.TongLePhi       = await _context.DoiBongs
                 .Where(d => d.DaThanhToan)
                 .SumAsync(d => d.GiaiDau.LePhiGiai);
 
@@ -95,10 +97,11 @@ namespace Web_Stadium.Controllers
                 .OrderBy(u => u.HoTen)
                 .ToListAsync();
 
-            ViewBag.TrangThai = trangThai;
-            ViewBag.Keyword = keyword;
-            ViewBag.OwnerId = ownerId;
-            ViewBag.SapXep = sapXep;
+            // Filter state — tên khớp với View
+            ViewBag.FilterTrangThai = trangThai;
+            ViewBag.FilterSearch    = keyword;
+            ViewBag.FilterOwner     = ownerId?.ToString();
+            ViewBag.FilterSapXep    = sapXep;
 
             return View(giaiList);
         }
