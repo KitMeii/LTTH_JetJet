@@ -71,6 +71,19 @@ namespace Web_Stadium
             builder.Services.AddScoped<Web_Stadium.Services.TournamentExcelService>();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentService>();
 
+            // ── Giai doan 2: goi tournament-service (Java, port 8080) qua HttpClient ──
+            // Cac TournamentService/StandingService... C# o tren VAN GIU NGUYEN
+            // (khong xoa) de du phong fallback — 4 Tournament Controller hien tai
+            // da chuyen sang goi TournamentApiService thay vi dung SanBongContext truc tiep.
+            builder.Services.AddHttpClient("TournamentService", client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:8080/api/");
+                client.DefaultRequestHeaders.Add("Accept", "application/json");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentApiService>();
+
 
             var app = builder.Build();
 

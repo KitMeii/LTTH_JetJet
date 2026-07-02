@@ -1,69 +1,36 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using Web_Stadium.EFCore;
+using Microsoft.AspNetCore.Mvc;
 using Web_Stadium.Filters;
-using Web_Stadium.Hubs;
 using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
+    /// <summary>
+    /// Da bo phan SignalR broadcast (TournamentHub) theo yeu cau — chi con
+    /// REST qua TournamentApiService, khong con _context/DbContext truc tiep.
+    /// </summary>
     [YeuCauDangNhap("Staff")]
     public class TournamentStaffController : Controller
     {
-        private readonly SanBongContext _context;
         private readonly IConfiguration _config;
-        private readonly SuspensionService _suspensionService;
-        private readonly StandingService _standingService;
-        private readonly TournamentNotificationService _notifService;
-        private readonly IHubContext<TournamentHub> _hub;
+        private readonly TournamentApiService _apiService;
 
         public TournamentStaffController(
-            SanBongContext context,
             IConfiguration config,
-            SuspensionService suspensionService,
-            StandingService standingService,
-            TournamentNotificationService notifService,
-            IHubContext<TournamentHub> hub)
+            TournamentApiService apiService)
         {
-            _context = context;
             _config = config;
-            _suspensionService = suspensionService;
-            _standingService = standingService;
-            _notifService = notifService;
-            _hub = hub;
+            _apiService = apiService;
         }
 
-        private int StaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
-
-        // Lấy sân Staff được phân công
-        private async Task<List<int>> SanDuocGiao()
-            => await _context.StaffSanPhanCongs
-                .Where(p => p.StaffId == StaffId())
-                .Select(p => p.SanBongId)
-                .ToListAsync();
+        private string Jwt() => _apiService.GetJwtFromContext(HttpContext) ?? "";
 
         // ══════════════════════════════════════════════════════════
         // GET /TournamentStaff/TranDau/{id} — Chi tiết trận đấu
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> TranDau(int id)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau).ThenInclude(g => g.SanBong)
-                .Include(t => t.BangDau)
-                .Include(t => t.DoiNha).ThenInclude(d => d.ThanhViens)
-                .Include(t => t.DoiKhach).ThenInclude(d => d.ThanhViens)
-                .Include(t => t.SuKiens).ThenInclude(s => s.ThanhVien)
-                .Include(t => t.SuKiens).ThenInclude(s => s.Doi)
-                .Include(t => t.StaffPhuTrach)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var tran = await _apiService.GetChiTietTran(id, Jwt());
             if (tran == null) return NotFound();
-
-            var sanIds = await SanDuocGiao();
-            if (!sanIds.Contains(tran.GiaiDau.SanBongId))
-                return Forbid();
-
             return View(tran);
         }
 
@@ -73,52 +40,15 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> DanhSach(string? loc, string? trangThai)
         {
-            var sanIds = await SanDuocGiao();
-
-            // Tính trước các mốc thời gian — tránh EFCore không dịch được
-            var homNay = DateTime.Today;
-            var dauTuan = homNay.AddDays(-(int)homNay.DayOfWeek);
-            var cuoiTuan = dauTuan.AddDays(7);
-
-            var query = _context.TranDaus
-                .Include(t => t.GiaiDau).ThenInclude(g => g.SanBong)
-                .Include(t => t.DoiNha)
-                .Include(t => t.DoiKhach)
-                .Where(t => sanIds.Contains(t.GiaiDau.SanBongId)
-                         && t.GiaiDau.TrangThai == "Active");
-
-            // Lọc thời gian — dùng biến đã tính sẵn
-            query = loc switch
-            {
-                "hom_nay" => query.Where(t => t.NgayThiDau >= homNay
-                                            && t.NgayThiDau < homNay.AddDays(1)),
-                "tuan_nay" => query.Where(t => t.NgayThiDau >= dauTuan
-                                            && t.NgayThiDau < cuoiTuan),
-                _ => query
-            };
-
-            // Lọc trạng thái
-            if (!string.IsNullOrEmpty(trangThai))
-                query = query.Where(t => t.TrangThai == trangThai);
-
-            var tranList = await query
-                .OrderBy(t => t.NgayThiDau)
-                .ThenBy(t => t.TrangThai)
-                .ToListAsync();
+            var tranList = await _apiService.GetTranDauHomNay(loc, trangThai, Jwt());
 
             ViewBag.Loc = loc ?? "hom_nay";
             ViewBag.TrangThai = trangThai;
 
-            // KPI cho dashboard
-            ViewBag.SoTranHomNay = await _context.TranDaus
-                .CountAsync(t => sanIds.Contains(t.GiaiDau.SanBongId)
-                              && t.NgayThiDau.Date == DateTime.Today
-                              && t.GiaiDau.TrangThai == "Active");
-            ViewBag.SoTranChuaBatDau = await _context.TranDaus
-                .CountAsync(t => sanIds.Contains(t.GiaiDau.SanBongId)
-                              && t.NgayThiDau.Date == DateTime.Today
-                              && t.TrangThai == "Scheduled"
-                              && t.GiaiDau.TrangThai == "Active");
+            var homNay = DateTime.Today;
+            var tatCaHomNay = (await _apiService.GetTranDauHomNay("hom_nay", null, Jwt()));
+            ViewBag.SoTranHomNay = tatCaHomNay.Count;
+            ViewBag.SoTranChuaBatDau = tatCaHomNay.Count(t => t.TrangThai == "Scheduled");
 
             return View(tranList);
         }
@@ -129,37 +59,21 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> CheckIn(int id)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau).ThenInclude(g => g.SanBong)
-                .Include(t => t.DoiNha).ThenInclude(d => d.ThanhViens)
-                .Include(t => t.DoiKhach).ThenInclude(d => d.ThanhViens)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (tran == null) return NotFound();
-
-            // Validate Staff có được phân công sân này không
-            var sanIds = await SanDuocGiao();
-            if (!sanIds.Contains(tran.GiaiDau.SanBongId))
-                return Forbid();
+            var (ok, error, tran) = await _apiService.CheckIn(id, Jwt());
+            if (!ok || tran == null)
+            {
+                if (error != null)
+                {
+                    TempData["Error"] = error;
+                    return RedirectToAction("DanhSach");
+                }
+                return NotFound();
+            }
 
             if (tran.TrangThai == "Closed")
             {
                 TempData["Error"] = "Trận này đã kết thúc!";
                 return RedirectToAction("DanhSach");
-            }
-
-            // Gán Staff phụ trách nếu chưa có
-            if (tran.StaffPhuTrachId == null)
-            {
-                tran.StaffPhuTrachId = StaffId();
-                await _context.SaveChangesAsync();
-            }
-
-            // Đánh dấu InProgress nếu chưa
-            if (tran.TrangThai == "Scheduled")
-            {
-                tran.TrangThai = "InProgress";
-                await _context.SaveChangesAsync();
             }
 
             ViewBag.TranId = id;
@@ -172,14 +86,7 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> SuKien(int id)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau)
-                .Include(t => t.DoiNha).ThenInclude(d => d.ThanhViens)
-                .Include(t => t.DoiKhach).ThenInclude(d => d.ThanhViens)
-                .Include(t => t.SuKiens).ThenInclude(s => s.ThanhVien)
-                .Include(t => t.SuKiens).ThenInclude(s => s.Doi)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var tran = await _apiService.GetChiTietTran(id, Jwt());
             if (tran == null) return NotFound();
             if (tran.TrangThai != "InProgress")
             {
@@ -187,11 +94,8 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("DanhSach");
             }
 
-            // Tính tỷ số hiện tại từ SuKienTran
-            ViewBag.TysoNha = tran.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId);
-            ViewBag.TysoKhach = tran.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId);
+            ViewBag.TysoNha = tran.SuKiens.Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId);
+            ViewBag.TysoKhach = tran.SuKiens.Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId);
 
             return View(tran);
         }
@@ -204,67 +108,11 @@ namespace Web_Stadium.Controllers
             int tranDauId, int? thanhVienId, int doiId,
             string loaiSuKien, int phut, string? ghiChu)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau)
-                .Include(t => t.SuKiens)
-                .FirstOrDefaultAsync(t => t.Id == tranDauId);
+            var (ok, error, loaiThucTe, tysoNha, tysoKhach) = await _apiService.GhiSuKien(
+                tranDauId, thanhVienId, doiId, loaiSuKien, phut, ghiChu, Jwt());
 
-            if (tran == null)
-                return Json(new { ok = false, message = "Không tìm thấy trận!" });
-            if (tran.TrangThai != "InProgress")
-                return Json(new { ok = false, message = "Trận không đang diễn ra!" });
-
-            // Kiểm tra cầu thủ bị treo giò
-            if (thanhVienId.HasValue && loaiSuKien is "BanThang" or "TheVang" or "TheDo")
-            {
-                var tv = await _context.ThanhVienDois.FindAsync(thanhVienId.Value);
-                if (tv != null && tv.SoTranTreoGio > 0 && loaiSuKien != "BanThang")
-                    return Json(new { ok = false, message = $"{tv.HoTen} đang bị treo giò!" });
-            }
-
-            // Kiểm tra thẻ vàng lần 2 → tự động thêm thẻ đỏ
-            string loaiThucTe = loaiSuKien;
-            if (loaiSuKien == "TheVang" && thanhVienId.HasValue)
-            {
-                var soVangTranNay = tran.SuKiens.Count(s =>
-                    s.ThanhVienId == thanhVienId && s.LoaiSuKien == "TheVang");
-                if (soVangTranNay >= 1)
-                    loaiThucTe = "TheVangLan2"; // sẽ xử lý như thẻ đỏ
-            }
-
-            var sk = new SuKienTran
-            {
-                TranDauId = tranDauId,
-                ThanhVienId = thanhVienId,
-                DoiId = doiId,
-                LoaiSuKien = loaiThucTe,
-                Phut = phut,
-                GhiChu = ghiChu?.Trim(),
-                ThoiGianGhi = DateTime.Now
-            };
-            _context.SuKienTrans.Add(sk);
-
-            // Cập nhật thống kê cầu thủ ngay
-            if (thanhVienId.HasValue)
-            {
-                var tv = await _context.ThanhVienDois.FindAsync(thanhVienId.Value);
-                if (tv != null)
-                {
-                    if (loaiThucTe == "BanThang") tv.TongBanThang++;
-                    if (loaiThucTe == "TheVang") tv.TongTheVang++;
-                    if (loaiThucTe is "TheDo" or "TheVangLan2") tv.TongTheDo++;
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            // Tính lại tỷ số
-            var tysoNha = await _context.SuKienTrans.CountAsync(s =>
-                s.TranDauId == tranDauId && s.LoaiSuKien == "BanThang"
-                && s.DoiId == tran.DoiNhaId);
-            var tysoKhach = await _context.SuKienTrans.CountAsync(s =>
-                s.TranDauId == tranDauId && s.LoaiSuKien == "BanThang"
-                && s.DoiId == tran.DoiKhachId);
+            if (!ok)
+                return Json(new { ok = false, message = error ?? "Không ghi được sự kiện!" });
 
             return Json(new
             {
@@ -284,14 +132,7 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> KetThuc(int id)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau)
-                .Include(t => t.DoiNha)
-                .Include(t => t.DoiKhach)
-                .Include(t => t.SuKiens).ThenInclude(s => s.ThanhVien)
-                .Include(t => t.SuKiens).ThenInclude(s => s.Doi)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var tran = await _apiService.GetChiTietTran(id, Jwt());
             if (tran == null) return NotFound();
             if (tran.TrangThai != "InProgress")
             {
@@ -299,11 +140,8 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("DanhSach");
             }
 
-            // Tính tỷ số từ SuKienTran
-            ViewBag.TysoNha = tran.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId);
-            ViewBag.TysoKhach = tran.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId);
+            ViewBag.TysoNha = tran.SuKiens.Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId);
+            ViewBag.TysoKhach = tran.SuKiens.Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId);
 
             return View(tran);
         }
@@ -314,37 +152,15 @@ namespace Web_Stadium.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> XacNhanKetThuc(int tranDauId)
         {
-            var tran = await _context.TranDaus
-                .Include(t => t.GiaiDau)
-                .Include(t => t.SuKiens)
-                .FirstOrDefaultAsync(t => t.Id == tranDauId);
-
-            if (tran == null) return NotFound();
-            if (tran.TrangThai != "InProgress")
+            var (ok, error, banThangNha, banThangKhach) = await _apiService.XacNhanKetThuc(tranDauId, Jwt());
+            if (!ok)
             {
-                TempData["Error"] = "Trận không đang diễn ra!";
+                TempData["Error"] = error ?? "Trận không đang diễn ra!";
                 return RedirectToAction("DanhSach");
             }
 
-            // Tính tỷ số từ SuKienTran
-            tran.BanThangNha = tran.SuKiens
-                .Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId);
-            tran.BanThangKhach = tran.SuKiens
-                .Count(s => s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId);
-            tran.TrangThai = "Closed";
-
-            await _context.SaveChangesAsync();
-
-            // Tự động xử lý treo giò sau trận
-            await _suspensionService.XuLyTreoGio(tran.GiaiDauId);
-
-            // Broadcast realtime: BXH mới + thông báo trận kết thúc
-            var bxh = await _standingService.GetStandings(tran.GiaiDauId);
-            await TournamentHub.BroadcastBXH(_hub, tran.GiaiDauId, bxh);
-            await TournamentHub.BroadcastTranKetThuc(_hub, tran.GiaiDauId, tranDauId);
-
-            TempData["Success"] =
-                $"✅ Đã chốt trận! Kết quả: {tran.BanThangNha} – {tran.BanThangKhach}";
+            // Broadcast realtime (SignalR) da bo theo yeu cau — client tu polling neu can.
+            TempData["Success"] = $"✅ Đã chốt trận! Kết quả: {banThangNha} – {banThangKhach}";
             return RedirectToAction("DanhSach");
         }
 
@@ -354,30 +170,7 @@ namespace Web_Stadium.Controllers
         [HttpPost]
         public async Task<IActionResult> HuyBanThang(int suKienId, int tranDauId)
         {
-            var sk = await _context.SuKienTrans
-                .Include(s => s.ThanhVien)
-                .FirstOrDefaultAsync(s => s.Id == suKienId);
-
-            if (sk != null)
-            {
-                // Trừ lại thống kê cầu thủ
-                if (sk.ThanhVien != null && sk.LoaiSuKien == "BanThang")
-                    sk.ThanhVien.TongBanThang = Math.Max(0, sk.ThanhVien.TongBanThang - 1);
-
-                _context.SuKienTrans.Remove(sk);
-                await _context.SaveChangesAsync();
-            }
-
-            // Tính lại tỷ số
-            var tran = await _context.TranDaus
-                .Include(t => t.SuKiens)
-                .FirstOrDefaultAsync(t => t.Id == tranDauId);
-
-            var tysoNha = tran?.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiNhaId) ?? 0;
-            var tysoKhach = tran?.SuKiens.Count(s =>
-                s.LoaiSuKien == "BanThang" && s.DoiId == tran.DoiKhachId) ?? 0;
-
+            var (tysoNha, tysoKhach) = await _apiService.HuyBanThang(tranDauId, suKienId, Jwt());
             return Json(new { ok = true, tysoNha, tysoKhach });
         }
     }
