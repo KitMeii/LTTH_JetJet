@@ -17,6 +17,22 @@ public partial class DatSan
 
     public decimal TongTien { get; set; }
 
+    // ── Legacy voucher/discount fields (dùng trong Views/Owner/DuyetDon.cshtml, controller Booking) ──
+    // Giá gốc trước khi áp voucher
+    public decimal TienGoc { get; set; }
+
+    // Tiền giảm từ voucher Owner (sân)
+    public decimal TienGiamSan { get; set; }
+
+    // Tiền giảm từ voucher Hệ thống (Admin)
+    public decimal TienGiamHeThong { get; set; }
+
+    // FK → Voucher Owner (nullable)
+    public int? VoucherSanId { get; set; }
+
+    // FK → Voucher Hệ thống (nullable)
+    public int? VoucherHeThongId { get; set; }
+
     public string MaXacNhan { get; set; } = null!;
 
     public string TrangThai { get; set; } = null!;
@@ -67,4 +83,8 @@ public partial class DatSan
     public virtual User User { get; set; } = null!;
 
     public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
+
+    public virtual Voucher? VoucherSan { get; set; }
+
+    public virtual Voucher? VoucherHeThong { get; set; }
 }

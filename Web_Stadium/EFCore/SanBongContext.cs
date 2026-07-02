@@ -211,9 +211,15 @@ public partial class SanBongContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.TienCoc).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TongTien).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TienGoc).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TienGiamSan).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TienGiamHeThong).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TrangThai)
                 .HasMaxLength(20)
                 .HasDefaultValue("ChoDuyet");
+
+            entity.HasIndex(e => e.VoucherSanId, "IX_DatSans_VoucherSanId");
+            entity.HasIndex(e => e.VoucherHeThongId, "IX_DatSans_VoucherHeThongId");
 
             entity.HasOne(d => d.KhungGio).WithMany(p => p.DatSans)
                 .HasForeignKey(d => d.KhungGioId)
@@ -232,6 +238,17 @@ public partial class SanBongContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DatSans_User");
+
+            // Legacy voucher relationships (2 navigation cùng type Voucher → cần config thủ công)
+            entity.HasOne(d => d.VoucherSan).WithMany(p => p.DatSanAsSan)
+                .HasForeignKey(d => d.VoucherSanId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_DatSans_VoucherSan");
+
+            entity.HasOne(d => d.VoucherHeThong).WithMany(p => p.DatSanAsHeThong)
+                .HasForeignKey(d => d.VoucherHeThongId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_DatSans_VoucherHeThong");
         });
 
         modelBuilder.Entity<DatSanDichVu>(entity =>
@@ -598,8 +615,18 @@ public partial class SanBongContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("HeThong");
 
+            // Legacy voucher fields
+            entity.Property(e => e.LoaiVoucher)
+                .HasMaxLength(20)
+                .HasDefaultValue("HeThong");
+            entity.Property(e => e.DieuKienToiThieu).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.NgayBatDau).HasColumnType("datetime");
+            entity.Property(e => e.NgayHetHan).HasColumnType("datetime");
+
             entity.HasIndex(e => e.OwnerId, "IX_Vouchers_OwnerId");
             entity.HasIndex(e => e.SanBongId, "IX_Vouchers_SanBongId");
+            entity.HasIndex(e => e.LoaiVoucher, "IX_Vouchers_LoaiVoucher");
+            entity.HasIndex(e => e.NgayHetHan, "IX_Vouchers_NgayHetHan");
 
             entity.HasOne(d => d.Owner).WithMany()
                 .HasForeignKey(d => d.OwnerId)

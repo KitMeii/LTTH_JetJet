@@ -35,9 +35,29 @@ public partial class Voucher
 
     public int? SoLuotConLai { get; set; }
 
+    // ── Legacy fields (giữ để tương thích view Admin/Owner Voucher.cshtml và DuyetDon.cshtml) ──
+    // "HeThong" = Admin tạo, "Owner" = Owner tạo (bản cũ, song song với LoaiPhatHanh)
+    public string LoaiVoucher { get; set; } = "HeThong";
+
+    // 0 = không giới hạn
+    public int SoLuong { get; set; } = 0;
+
+    public int DaDung { get; set; } = 0;
+
+    public DateTime NgayBatDau { get; set; }
+
+    public DateTime NgayHetHan { get; set; }
+
+    // Đơn tối thiểu mới được áp dụng voucher
+    public decimal DieuKienToiThieu { get; set; } = 0;
+
     public virtual User? Owner { get; set; }
 
     public virtual SanBong? SanBong { get; set; }
 
     public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
+
+    public virtual ICollection<DatSan> DatSanAsSan { get; set; } = new List<DatSan>();
+
+    public virtual ICollection<DatSan> DatSanAsHeThong { get; set; } = new List<DatSan>();
 }
