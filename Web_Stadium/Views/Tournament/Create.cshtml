@@ -10,6 +10,83 @@
 @section Styles {
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
     <style>
+ 
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .table-wrapper { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; overflow: auto; }
+    .booking-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    .booking-table th {
+        background: var(--db-surface); font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.5px; color: var(--db-muted); padding: 14px 16px;
+        border-bottom: 1px solid var(--db-border); text-align: left; white-space: nowrap;
+    }
+    .booking-table td { padding: 14px 16px; border-bottom: 1px solid var(--db-border); font-size: 13px; vertical-align: middle; }
+    .booking-table tr:last-child td { border-bottom: none; }
+    .booking-table code { background: var(--db-bg); color: var(--db-green); padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .cell-sub { font-size: 12px; color: var(--db-muted); margin-top: 2px; }
+
+    .status-badge { border-radius: 40px; padding: 4px 10px; font-size: 11px; font-weight: 600; display: inline-block; background: var(--db-green-bg); color: var(--db-green); }
+    .status-badge-active { background: #e6f7e6; color: #0f6e4a; }
+    .status-badge-off { background: #f1f5f9; color: #64748b; }
+    .status-badge-info { background: #eff6ff; color: #1d4ed8; }
+    .status-badge-warning { background: #fffbeb; color: #b45309; }
+
+    .btn-sm-outline {
+        background: transparent; border: 1px solid var(--db-border); border-radius: 30px;
+        padding: 4px 12px; font-size: 11px; font-weight: 500; transition: 0.15s;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    }
+    .btn-sm-outline:hover { background: var(--db-green-bg); border-color: var(--db-green-border); color: var(--db-green); }
+    .btn-sm-success { border-color: var(--db-green-border); color: var(--db-green); }
+    .btn-sm-success:hover { background: var(--db-green-bg); color: var(--db-green); }
+    .btn-sm-secondary { border-color: #cbd5e1; color: #475569; }
+    .btn-sm-secondary:hover { background: #f1f5f9; color: #0f172a; }
+
+    .btn-primary-pill {
+        background: var(--db-green); border: none; color: white; border-radius: 40px;
+        padding: 8px 20px; font-size: 13px; font-weight: 500; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.15s;
+    }
+    .btn-primary-pill:hover { background: #0a5338; color: white; transform: translateY(-1px); }
+
+    .empty-state { text-align: center; padding: 60px 0; color: var(--db-muted); }
+
+    /* Modal form styles */
+    .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
+    .form-control, .form-select {
+        background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 12px;
+        padding: 8px 12px; font-size: 14px; color: var(--db-text);
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
+    }
+
         .form-wrap { max-width: 980px; margin: 0 auto; }
 
         .radio-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }

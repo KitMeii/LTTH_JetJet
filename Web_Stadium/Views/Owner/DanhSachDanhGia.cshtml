@@ -166,7 +166,15 @@
                             <form method="post" action="/Owner/PhanHoiDanhGia">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@dg.Id" />
-                                <textarea name="phanHoi" class="reply-textarea" rows="2" placeholder="Nhập phản hồi của bạn..."></textarea>
+                                @if (selectedSanId.HasValue)
+                                {
+                                    <input type="hidden" name="sanId" value="@selectedSanId" />
+                                }
+                                @if (selectedSoSao.HasValue)
+                                {
+                                    <input type="hidden" name="soSao" value="@selectedSoSao" />
+                                }
+                                <textarea name="phanHoi" class="reply-textarea" rows="2" placeholder="Nhập phản hồi của bạn..." required></textarea>
                                 <div style="margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end;">
                                     <button type="button" class="reply-btn cancel-reply" data-id="@dg.Id">Hủy</button>
                                     <button type="submit" class="reply-btn" style="background: var(--db-green); color: white; border: none;">Gửi phản hồi</button>

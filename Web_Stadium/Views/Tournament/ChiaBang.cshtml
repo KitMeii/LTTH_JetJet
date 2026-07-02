@@ -55,7 +55,7 @@
                     ⚠️ Còn <span id="soConLai">@doiChuaBang.Count</span> đội chưa xếp
                 </span>
                 <button id="btnKhoiTao" class="tour-btn tour-btn--primary" onclick="khoiTaoGiai()" style="display:none">
-                    🚀 Khởi tạo giải — Sinh lịch tự động
+                    🧠 Xếp lịch tối ưu (Java CSP)
                 </button>
             </div>
         </div>
@@ -148,9 +148,7 @@
     </div>
 </div>
 
-<form method="post" action="/Tournament/KhoiTao/@Model.Id" id="formKhoiTao">
-    @Html.AntiForgeryToken()
-</form>
+<form method="get" action="/Tournament/XemTruocLich/@Model.Id" id="formKhoiTao"></form>
 
 @section Scripts {
     <script>
@@ -211,7 +209,7 @@
         }
 
         function khoiTaoGiai() {
-            if (!confirm('Khởi tạo giải?\n\nHệ thống sẽ:\n• Sinh lịch đấu tự động (Berger Algorithm)\n• Khóa slot sân cho toàn bộ ngày thi đấu\n• Gửi email lịch đấu cho các đội trưởng\n\nThao tác này không thể hoàn tác!')) return;
+            if (!confirm('Chuyển sang màn "Xem trước lịch"?\n\nHệ thống sẽ:\n• Sinh cặp đấu bằng Berger Algorithm\n• Gọi Java CSP solver để tự xếp trận vào slot đã block\n• Cho phép bạn kéo thả tinh chỉnh trước khi chốt\n\nKhông ghi DB ở bước này — có thể quay lại.')) return;
             document.getElementById('formKhoiTao').submit();
         }
 

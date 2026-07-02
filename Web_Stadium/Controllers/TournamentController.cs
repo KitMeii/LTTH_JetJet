@@ -4,6 +4,7 @@ using System.Text.Json;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Services;
+using Web_Stadium.Services.JavaClient;
 
 namespace Web_Stadium.Controllers
 {
@@ -15,19 +16,22 @@ namespace Web_Stadium.Controllers
         private readonly TournamentService _tournamentService;
         private readonly StandingService _standingService;
         private readonly TournamentExcelService _excelService;
+        private readonly TournamentSchedulerClient _schedulerClient;
 
         public TournamentController(
             SanBongContext context,
             IConfiguration config,
             TournamentService tournamentService,
             StandingService standingService,
-            TournamentExcelService excelService)
+            TournamentExcelService excelService,
+            TournamentSchedulerClient schedulerClient)
         {
             _context = context;
             _config = config;
             _tournamentService = tournamentService;
             _standingService = standingService;
             _excelService = excelService;
+            _schedulerClient = schedulerClient;
         }
 
         private int OwnerId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -243,15 +247,66 @@ namespace Web_Stadium.Controllers
             return Json(new { ok = true, tenDoi = doi?.TenDoi, tenBang = bang?.TenBang });
         }
 
-        // ── POST /Tournament/KhoiTao ─────────────────────────────
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> KhoiTao(int id)
+        // ── GET /Tournament/XemTruocLich/5 ───────────────────────
+        // Sinh Berger + gọi Java CSP solver → render màn xem trước + kéo thả.
+        // KHÔNG ghi DB (owner tinh chỉnh xong bấm "Chốt lịch" mới commit).
+        public async Task<IActionResult> XemTruocLich(int id)
         {
-            var (ok, error) = await _tournamentService.KhoiTaoGiai(id, OwnerId());
-            if (!ok) { TempData["Error"] = error; return RedirectToAction("ChiaBang", new { id }); }
+            var (ok, error, preview) = await _tournamentService.XemTruocLichAsync(id, OwnerId());
+            if (!ok || preview == null)
+            {
+                TempData["Error"] = error;
+                return RedirectToAction("ChiaBang", new { id });
+            }
+            return View(preview);
+        }
 
-            await GhiLog("KhoiTaoGiai", "GiaiDau", id, "Khởi tạo giải và sinh lịch thi đấu");
-            TempData["Success"] = "Khởi tạo thành công! Email lịch đấu đã gửi cho các đội.";
+        // ── POST /Tournament/ValidateSlot ─────────────────────────
+        // AJAX từ view XemTruocLich mỗi lần owner kéo 1 trận vào slot.
+        // Proxy sang Java để giữ toàn bộ logic ràng buộc ở 1 chỗ.
+        [HttpPost]
+        public async Task<IActionResult> ValidateSlot([FromBody] ValidateRequest req)
+        {
+            try
+            {
+                var resp = await _schedulerClient.ValidateAsync(req);
+                return Json(new { ok = resp.Ok, reason = resp.Reason });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { ok = false, reason = "Không kết nối Java: " + ex.Message });
+            }
+        }
+
+        // ── POST /Tournament/ChotLich/5 ──────────────────────────
+        // Nhận assignments cuối cùng từ view → commit (TranDau + DummyBooking).
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChotLich(int id, [FromForm] string finalAssignmentsJson)
+        {
+            List<ChotLichAssignmentDto>? finals = null;
+            try
+            {
+                finals = JsonSerializer.Deserialize<List<ChotLichAssignmentDto>>(
+                    finalAssignmentsJson ?? "[]",
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { }
+
+            if (finals == null || finals.Count == 0)
+            {
+                TempData["Error"] = "Không có trận nào được xếp — không thể chốt lịch!";
+                return RedirectToAction("XemTruocLich", new { id });
+            }
+
+            var (ok, error) = await _tournamentService.ChotLichAsync(id, OwnerId(), finals);
+            if (!ok)
+            {
+                TempData["Error"] = error;
+                return RedirectToAction("XemTruocLich", new { id });
+            }
+
+            await GhiLog("ChotLichGiai", "GiaiDau", id, "Chốt lịch giải đấu (Java CSP scheduler)");
+            TempData["Success"] = "Đã chốt lịch! Email lịch đấu đã gửi cho các đội.";
             return RedirectToAction("Details", new { id });
         }
 

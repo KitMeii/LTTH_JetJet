@@ -498,6 +498,7 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
 
             return View();
         }
+
         // ══════════════════════════════════════════════════════════
         // 6. QUẢN LÝ STAFF
         // ══════════════════════════════════════════════════════════
@@ -728,7 +729,7 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
         // POST: /Owner/PhanHoiDanhGia
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> PhanHoiDanhGia(int id, string phanHoi)
+        public async Task<IActionResult> PhanHoiDanhGia(int id, string phanHoi, int? sanId = null, int? soSao = null)
         {
             var danhGia = await _context.DanhGias
                 .Include(d => d.SanBong)
@@ -740,15 +741,22 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
             if (danhGia.SanBong.OwnerId != ownerId)
                 return Unauthorized();
 
+            if (string.IsNullOrWhiteSpace(phanHoi))
+            {
+                TempData["Error"] = "Phản hồi không được để trống.";
+                return RedirectToAction("DanhSachDanhGia", new { sanId, soSao });
+            }
+
             // Lưu phản hồi (cần thêm cột PhanHoiOwner trong bảng DanhGias nếu chưa có)
             // Nếu chưa có cột, thêm migration hoặc dùng NotMapped + lưu riêng bảng PhanHoiDanhGia
             // Ở đây giả sử bạn đã có cột PhanHoiOwner (nvarchar(max)) trong bảng DanhGias
-            danhGia.PhanHoiOwner = phanHoi;
+            danhGia.PhanHoiOwner = phanHoi.Trim();
             danhGia.NgayPhanHoi = DateTime.Now;
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Đã gửi phản hồi đến khách hàng.";
-            return RedirectToAction("DanhSachDanhGia", new { sanId = ViewBag.SelectedSanId, soSao = ViewBag.SelectedSoSao });
+            // Trả về đúng filter đang xem — nhận từ query/form thay vì ViewBag rỗng
+            return RedirectToAction("DanhSachDanhGia", new { sanId, soSao });
         }
         [HttpPost]
         public async Task<IActionResult> XemHopDongPreview(
@@ -1800,20 +1808,30 @@ public async Task<IActionResult> UploadAnhFile(int sanId, List<IFormFile> files)
         {
             var ownerId = GetOwnerId();
             var user = await _context.Users.FindAsync(ownerId);
-            var sanList = await SanCuaToi().ToListAsync();
+            // Include KhungGios để tính tỷ lệ lấp đầy (lapDayData) — nếu không include thì
+            // navigation collection sẽ null và bảng lấp đầy luôn hiển thị 0
+            var sanList = await SanCuaToi().Include(s => s.KhungGios).ToListAsync();
             var sanIds = sanList.Select(s => s.Id).ToList();
 
-            // Doanh thu thực từ DB
+            // Doanh thu thực từ DB — chỉ tính đơn đã xác nhận / đang sử dụng / hoàn thành
+            // (không cộng đơn DaHuy vì đã hoàn cọc)
             var allDon = await _context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
                 .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
-                         && (d.TrangThai == "HoanThanh" || d.TrangThai == "DaHuy"
-                          || d.TrangThai == "DaXacNhan" || d.TrangThai == "DangSuDung"))
+                         && (d.TrangThai == "HoanThanh"
+                          || d.TrangThai == "DaXacNhan"
+                          || d.TrangThai == "DangSuDung"))
                 .ToListAsync();
 
+            var tyLeMapHoSo = await LayTyLeMapAsync();
             decimal tongDT = allDon.Sum(d => d.TongTien > 0 ? d.TongTien : d.TienCoc);
-            decimal tongPhi = 0; // Tính theo tỷ lệ hoa hồng nếu cần
+            // Phí hoa hồng theo tỷ lệ vùng của quận sân
+            decimal tongPhi = allDon.Sum(d =>
+            {
+                var tyLe = LayTyLe(tyLeMapHoSo, d.KhungGio?.SanBong?.Quan);
+                return (d.TongTien > 0 ? d.TongTien : d.TienCoc) * tyLe;
+            });
 
             // Lấp đầy sân
             var lapDayData = sanList.Select(s => new {

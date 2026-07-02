@@ -17,11 +17,13 @@
         --db-green-bg: rgba(15,110,74,0.08);
         --db-green-border: rgba(15,110,74,0.2);
     }
+
     body {
         background: var(--db-bg);
         color: var(--db-text);
         font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     }
+
     .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
     .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
     .nav-btn {
@@ -32,13 +34,45 @@
     .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
     .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
 
-    .breadcrumb-back {
-        display: inline-flex; align-items: center; gap: 6px;
-        font-size: 12px; color: var(--db-muted); text-decoration: none; margin-bottom: 8px;
+    .table-wrapper { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; overflow: auto; }
+    .booking-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    .booking-table th {
+        background: var(--db-surface); font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.5px; color: var(--db-muted); padding: 14px 16px;
+        border-bottom: 1px solid var(--db-border); text-align: left; white-space: nowrap;
     }
-        .breadcrumb-back:hover { color: var(--db-green); }
+    .booking-table td { padding: 14px 16px; border-bottom: 1px solid var(--db-border); font-size: 13px; vertical-align: middle; }
+    .booking-table tr:last-child td { border-bottom: none; }
+    .booking-table code { background: var(--db-bg); color: var(--db-green); padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .cell-sub { font-size: 12px; color: var(--db-muted); margin-top: 2px; }
 
-    .form-card { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; padding: 28px; max-width: 800px; margin: 0 auto; }
+    .status-badge { border-radius: 40px; padding: 4px 10px; font-size: 11px; font-weight: 600; display: inline-block; background: var(--db-green-bg); color: var(--db-green); }
+    .status-badge-active { background: #e6f7e6; color: #0f6e4a; }
+    .status-badge-off { background: #f1f5f9; color: #64748b; }
+    .status-badge-info { background: #eff6ff; color: #1d4ed8; }
+    .status-badge-warning { background: #fffbeb; color: #b45309; }
+
+    .btn-sm-outline {
+        background: transparent; border: 1px solid var(--db-border); border-radius: 30px;
+        padding: 4px 12px; font-size: 11px; font-weight: 500; transition: 0.15s;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    }
+    .btn-sm-outline:hover { background: var(--db-green-bg); border-color: var(--db-green-border); color: var(--db-green); }
+    .btn-sm-success { border-color: var(--db-green-border); color: var(--db-green); }
+    .btn-sm-success:hover { background: var(--db-green-bg); color: var(--db-green); }
+    .btn-sm-secondary { border-color: #cbd5e1; color: #475569; }
+    .btn-sm-secondary:hover { background: #f1f5f9; color: #0f172a; }
+
+    .btn-primary-pill {
+        background: var(--db-green); border: none; color: white; border-radius: 40px;
+        padding: 8px 20px; font-size: 13px; font-weight: 500; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.15s;
+    }
+    .btn-primary-pill:hover { background: #0a5338; color: white; transform: translateY(-1px); }
+
+    .empty-state { text-align: center; padding: 60px 0; color: var(--db-muted); }
+
+    /* Modal form styles */
     .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
     .form-control, .form-select {
         background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 12px;
@@ -47,84 +81,107 @@
     .form-control:focus, .form-select:focus {
         border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
     }
-
-    .btn-save { background: var(--db-green); border: none; border-radius: 40px; padding: 8px 28px; color: white; font-weight: 500; }
-    .btn-save:hover { background: #0a5338; transform: translateY(-1px); }
-    .info-note { background: #eff6ff; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-top: 20px; }
 </style>
 
 <div class="page-header">
     <div class="container">
         <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
             <div>
-                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">Owner · Quản lý Vouchers</div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER · QUẢN LÝ VOUCHERS</div>
                 <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">vouchers</span></h1>
-                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật thông tin và cấu hình từng voucher</p>
+                <p class="text-muted mt-2 mb-0">Tạo và quản lý voucher giảm giá riêng cho các sân của bạn</p>
             </div>
+            <button class="btn-primary-pill" data-bs-toggle="modal" data-bs-target="#modalTaoVoucher">
+                <i class="fas fa-plus"></i> Tạo voucher mới
+            </button>
         </div>
     </div>
 </div>
 
 @await Html.PartialAsync("_OwnerNav")
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">🎟️ Voucher sân của tôi</h3>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTaoVoucher">
-            <i class="bi bi-plus-lg"></i> Tạo voucher mới
-        </button>
-    </div>
 
+<div class="container py-5">
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success">@TempData["Success"]</div>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger">@TempData["Error"]</div>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-exclamation-triangle me-2"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="table-light">
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div style="font-size: 4rem; opacity: 0.4;">🎟️</div>
+            <h4 class="fw-semibold">Chưa có voucher nào</h4>
+            <p class="text-muted">Hãy tạo voucher đầu tiên để thu hút khách hàng đặt sân!</p>
+            <button class="btn-primary-pill mt-3" data-bs-toggle="modal" data-bs-target="#modalTaoVoucher">
+                <i class="fas fa-plus"></i> Tạo voucher đầu tiên
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="booking-table">
+                <thead>
                     <tr>
                         <th>Mã</th>
-                        <th>Tên</th>
+                        <th>Tên voucher</th>
                         <th>Loại phát hành</th>
-                        <th>Giảm</th>
+                        <th>Mức giảm</th>
                         <th>Áp dụng sân</th>
                         <th>Số lượt còn</th>
                         <th>Điểm đổi</th>
                         <th>Hiệu lực</th>
                         <th>Trạng thái</th>
-                        <th></th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model.Count == 0)
-                    {
-                        <tr><td colspan="10" class="text-center text-muted py-4">Chưa có voucher nào. Hãy tạo voucher đầu tiên!</td></tr>
-                    }
                     @foreach (var v in Model)
                     {
                         <tr>
                             <td><code>@v.MaVoucher</code></td>
-                            <td>@v.TenVoucher</td>
+                            <td>
+                                <div class="fw-semibold">@v.TenVoucher</div>
+                                @if (!string.IsNullOrEmpty(v.MoTa))
+                                { <div class="cell-sub">@v.MoTa</div> }
+                            </td>
                             <td>
                                 @if (v.LoaiPhatHanh == "CongKhai")
-                                { <span class="badge bg-info">Công khai (nhập mã)</span> }
+                                {
+                                    <span class="status-badge status-badge-info">Công khai (nhập mã)</span>
+                                }
                                 else if (v.LoaiPhatHanh == "DoiDiem")
-                                { <span class="badge bg-warning text-dark">Đổi điểm</span> }
+                                {
+                                    <span class="status-badge status-badge-warning">Đổi bằng điểm</span>
+                                }
                                 else
-                                { <span class="badge bg-secondary">@v.LoaiPhatHanh</span> }
+                                {
+                                    <span class="status-badge status-badge-off">@v.LoaiPhatHanh</span>
+                                }
                             </td>
                             <td>
                                 @if (v.LoaiGiam == "PhanTram")
-                                { <text>@v.GiaTriGiam.ToString("0.##")%</text> }
+                                {
+                                    <strong style="color: var(--db-green);">@v.GiaTriGiam.ToString("0.##")%</strong>
+                                }
                                 else
-                                { <text>@v.GiaTriGiam.ToString("N0") đ</text> }
+                                {
+                                    <strong style="color: var(--db-green);">@v.GiaTriGiam.ToString("N0") đ</strong>
+                                }
                                 @if (v.GiamToiDa.HasValue)
-                                { <small class="text-muted d-block">tối đa @v.GiamToiDa.Value.ToString("N0")đ</small> }
+                                {
+                                    <div class="cell-sub">tối đa @v.GiamToiDa.Value.ToString("N0")đ</div>
+                                }
                             </td>
                             <td>@(v.SanBong?.TenSan ?? "Mọi sân của tôi")</td>
                             <td>@(v.SoLuotConLai?.ToString() ?? "—")</td>
@@ -132,16 +189,29 @@
                             <td>@v.SoNgayHieuLuc ngày</td>
                             <td>
                                 @if (v.IsActive)
-                                { <span class="badge bg-success">Đang bật</span> }
+                                {
+                                    <span class="status-badge status-badge-active">● Đang bật</span>
+                                }
                                 else
-                                { <span class="badge bg-secondary">Đã tắt</span> }
+                                {
+                                    <span class="status-badge status-badge-off">○ Đã tắt</span>
+                                }
                             </td>
                             <td>
-                                <form asp-action="ToggleVoucher" method="post" class="d-inline">
+                                <form asp-action="ToggleVoucher" method="post" style="display: inline;">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@v.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-@(v.IsActive ? "secondary" : "success")">
-                                        @(v.IsActive ? "Tắt" : "Bật")
+                                    <button type="submit" class="btn-sm-outline @(v.IsActive ? "btn-sm-secondary" : "btn-sm-success")">
+                                        @if (v.IsActive)
+                                        {
+                                            <i class="fas fa-toggle-off"></i>
+                                            <span>Tắt</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-toggle-on"></i>
+                                            <span>Bật</span>
+                                        }
                                     </button>
                                 </form>
                             </td>
@@ -150,26 +220,26 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    }
 </div>
 
 <!-- Modal tạo voucher -->
-<div class="modal fade" id="modalTaoVoucher" tabindex="-1">
+<div class="modal fade" id="modalTaoVoucher" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <form asp-action="TaoVoucherSan" method="post" class="modal-content">
+        <form asp-action="TaoVoucherSan" method="post" class="modal-content" style="border-radius: 20px;">
             @Html.AntiForgeryToken()
             <div class="modal-header">
-                <h5 class="modal-title">Tạo voucher sân</h5>
+                <h5 class="modal-title"><i class="fas fa-ticket text-success me-2"></i>Tạo voucher sân</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label">Tên voucher *</label>
+                        <label class="form-label">Tên voucher <span class="text-danger">*</span></label>
                         <input name="tenVoucher" class="form-control" required maxlength="200" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Mã voucher *</label>
+                        <label class="form-label">Mã voucher <span class="text-danger">*</span></label>
                         <input name="maVoucher" class="form-control text-uppercase" required maxlength="50" placeholder="VD: GIAM20" />
                     </div>
                     <div class="col-12">
@@ -177,14 +247,14 @@
                         <textarea name="moTa" class="form-control" rows="2" maxlength="500"></textarea>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Loại giảm *</label>
+                        <label class="form-label">Loại giảm <span class="text-danger">*</span></label>
                         <select name="loaiGiam" class="form-select" required>
                             <option value="PhanTram">Phần trăm (%)</option>
                             <option value="SoTien">Số tiền (đ)</option>
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Giá trị giảm *</label>
+                        <label class="form-label">Giá trị giảm <span class="text-danger">*</span></label>
                         <input name="giaTriGiam" type="number" step="0.01" min="0.01" class="form-control" required />
                     </div>
                     <div class="col-md-4">
@@ -192,11 +262,11 @@
                         <input name="giamToiDa" type="number" min="0" class="form-control" placeholder="(để trống = không giới hạn)" />
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Hiệu lực (ngày) *</label>
+                        <label class="form-label">Hiệu lực (ngày) <span class="text-danger">*</span></label>
                         <input name="soNgayHieuLuc" type="number" min="1" max="365" value="30" class="form-control" required />
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Loại phát hành *</label>
+                        <label class="form-label">Loại phát hành <span class="text-danger">*</span></label>
                         <select name="loaiPhatHanh" class="form-select" required id="ddlLoaiPhatHanh">
                             <option value="CongKhai">Công khai (nhập mã khi đặt)</option>
                             <option value="DoiDiem">Đổi bằng điểm thưởng</option>
@@ -217,21 +287,25 @@
                         <input name="soLuotConLai" type="number" min="1" class="form-control" placeholder="(để trống = không giới hạn)" />
                     </div>
                     <div class="col-md-6" id="rowDiemCanDoi" style="display:none;">
-                        <label class="form-label">Điểm cần đổi *</label>
+                        <label class="form-label">Điểm cần đổi <span class="text-danger">*</span></label>
                         <input name="diemCanDoi" type="number" min="0" value="0" class="form-control" />
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="submit" class="btn btn-success">Tạo voucher</button>
+                <button type="button" class="btn-sm-outline" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn-primary-pill">
+                    <i class="fas fa-check"></i> Tạo voucher
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<script>
-    document.getElementById('ddlLoaiPhatHanh').addEventListener('change', function () {
-        document.getElementById('rowDiemCanDoi').style.display = (this.value === 'DoiDiem') ? '' : 'none';
-    });
-</script>
+@section Scripts {
+    <script>
+        document.getElementById('ddlLoaiPhatHanh').addEventListener('change', function () {
+            document.getElementById('rowDiemCanDoi').style.display = (this.value === 'DoiDiem') ? '' : 'none';
+        });
+    </script>
+}

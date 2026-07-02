@@ -90,6 +90,14 @@ namespace Web_Stadium
             });
 
             builder.Services.AddHttpClient();
+
+            // Typed HttpClient tới Java tournament scheduler
+            builder.Services.AddHttpClient<Web_Stadium.Services.JavaClient.TournamentSchedulerClient>(c =>
+            {
+                var baseUrl = builder.Configuration["Java:BaseUrl"] ?? "http://localhost:8080/";
+                c.BaseAddress = new Uri(baseUrl);
+            });
+
             // Đăng ký IConfiguration để dùng được trong _Layout.cshtml
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 

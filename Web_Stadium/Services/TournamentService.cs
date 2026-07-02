@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
+using Web_Stadium.Services.JavaClient;
 
 namespace Web_Stadium.Services
 {
@@ -19,6 +20,7 @@ namespace Web_Stadium.Services
         private readonly TournamentNotificationService _notificationService;
         private readonly KnockOutService _knockOutService;
         private readonly IHubContext<TournamentHub> _hubContext;
+        private readonly TournamentSchedulerClient _schedulerClient;
 
         public TournamentService(
             SanBongContext context,
@@ -27,7 +29,8 @@ namespace Web_Stadium.Services
             SuspensionService suspensionService,
             TournamentNotificationService notificationService,
             KnockOutService knockOutService,
-            IHubContext<TournamentHub> hubContext)
+            IHubContext<TournamentHub> hubContext,
+            TournamentSchedulerClient schedulerClient)
         {
             _context = context;
             _scheduleService = scheduleService;
@@ -36,6 +39,7 @@ namespace Web_Stadium.Services
             _notificationService = notificationService;
             _knockOutService = knockOutService;
             _hubContext = hubContext;
+            _schedulerClient = schedulerClient;
         }
 
         // ══════════════════════════════════════════════════════════
@@ -257,10 +261,13 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
-        // Khởi tạo giải: sinh lịch + map slot + dummy booking + email
-        // RegistrationClosed → Active
+        // CHỐT LỊCH — commit sau khi owner tinh chỉnh ở màn XemTruocLich.
+        // finalAssignments: virtual matchId → {khungGioId, ngay yyyy-MM-dd}.
+        // Optimistic concurrency: re-check DatSans hiện tại; nếu slot đã có
+        // booking khác chèn vào trong lúc owner ngồi kéo thả → báo lỗi.
         // ══════════════════════════════════════════════════════════
-        public async Task<(bool ok, string error)> KhoiTaoGiai(int giaiId, int ownerId)
+        public async Task<(bool ok, string error)> ChotLichAsync(
+            int giaiId, int ownerId, List<ChotLichAssignmentDto> finalAssignments)
         {
             var giai = await _context.GiaiDaus
                 .Include(g => g.BangDaus)
@@ -271,52 +278,76 @@ namespace Web_Stadium.Services
 
             if (giai == null) return (false, "Không tìm thấy giải!");
             if (giai.TrangThai != "RegistrationClosed")
-                return (false, "Chỉ khởi tạo sau khi đóng đăng ký!");
+                return (false, "Chỉ chốt lịch khi giải ở trạng thái Đóng đăng ký!");
 
             var doiChuaBang = giai.DoiBongs.Where(d => d.BangId == null && d.DaThanhToan).ToList();
             if (doiChuaBang.Any())
                 return (false, $"Còn {doiChuaBang.Count} đội chưa được xếp bảng!");
 
-            // Đọc lịch block đã lưu (nếu có)
-            List<ScheduleService.SlotKhungGio>? lichBlock = null;
-            if (!string.IsNullOrEmpty(giai.LichBlockJson))
+            // 1) Sinh trận Berger (cùng logic như XemTruocLich để giữ mapping matchId virtual)
+            var tranDaus = _scheduleService.SinhLichVongTron(giai, lichBlock: null);
+            if (tranDaus.Count == 0)
+                return (false, "Không sinh được trận đấu!");
+
+            // 2) Map assignments client-side → gán vào TranDau
+            var assignMap = finalAssignments.ToDictionary(a => a.MatchId);
+            for (int i = 0; i < tranDaus.Count; i++)
             {
-                try
-                {
-                    lichBlock = JsonSerializer.Deserialize<List<ScheduleService.SlotKhungGio>>(giai.LichBlockJson, _jsonOpts);
-                }
-                catch { lichBlock = null; }
+                if (!assignMap.TryGetValue(i, out var a))
+                    return (false, $"Trận #{i + 1} chưa được gán slot — hãy xếp đủ trước khi chốt!");
+
+                if (!DateTime.TryParse(a.Ngay, out var ngay))
+                    return (false, $"Ngày không hợp lệ ở trận #{i + 1}!");
+
+                tranDaus[i].KhungGioId = a.KhungGioId;
+                tranDaus[i].NgayThiDau = ngay.Date;
             }
 
-            var tranDaus = _scheduleService.SinhLichVongTron(giai, lichBlock);
+            // 3) Optimistic concurrency: verify slot chưa bị chiếm bởi booking khác
+            var khungIds = tranDaus.Select(t => t.KhungGioId!.Value).ToList();
+            var ngayBD = giai.NgayBatDau.Date;
+            var ngayKT = giai.NgayKetThuc.Date;
+            var busySlots = await _context.DatSans
+                .Where(d => d.NgayThiDau >= ngayBD && d.NgayThiDau <= ngayKT
+                         && d.TrangThai != "DaHuy"
+                         && d.GiaiDauId != giaiId
+                         && khungIds.Contains(d.KhungGioId))
+                .Select(d => new { d.KhungGioId, d.NgayThiDau })
+                .ToListAsync();
 
-            if (lichBlock != null && lichBlock.Count < tranDaus.Count)
-                return (false, $"Lịch block chưa đủ slot ({lichBlock.Count}/{tranDaus.Count} trận)! Vào Lịch Block để bổ sung trước khi khởi tạo.");
+            foreach (var t in tranDaus)
+            {
+                if (busySlots.Any(b => b.KhungGioId == t.KhungGioId
+                                    && b.NgayThiDau.Date == t.NgayThiDau.Date))
+                    return (false, "Có slot vừa bị khách đặt trong lúc bạn xếp lịch! Hãy tải lại trang và xếp lại.");
+            }
 
+            // 4) Commit: TranDau + DummyBooking (mỗi slot đúng 1 dummy, dedup theo (khungGio, ngày))
             _context.TranDaus.AddRange(tranDaus);
             await _context.SaveChangesAsync();
 
-            // Tạo Dummy Booking để khóa slot khỏi khách vãng lai
-            if (lichBlock != null)
+            var dedupSlots = tranDaus
+                .GroupBy(t => new { t.KhungGioId, t.NgayThiDau.Date })
+                .Select(g => new { g.Key.KhungGioId, Ngay = g.Key.Date })
+                .ToList();
+
+            foreach (var s in dedupSlots)
             {
-                foreach (var slot in lichBlock)
+                _context.DatSans.Add(new DatSan
                 {
-                    _context.DatSans.Add(new DatSan
-                    {
-                        UserId = ownerId,
-                        KhungGioId = slot.KhungGioId,
-                        NgayThiDau = slot.Ngay.Date,
-                        TienCoc = 0,
-                        TongTien = 0,
-                        MaXacNhan = $"GIAI-{giai.Id}-{Guid.NewGuid():N}".Substring(0, 16),
-                        TrangThai = "DaXacNhan",
-                        ThoiGianTao = DateTime.Now,
-                        GiaiDauId = giai.Id,
-                        LaDummyBooking = true
-                    });
-                }
-                await _context.SaveChangesAsync();
+                    UserId = ownerId,
+                    KhungGioId = s.KhungGioId!.Value,
+                    NgayThiDau = s.Ngay,
+                    TienCoc = 0,
+                    TongTien = 0,
+                    MaXacNhan = $"GIAI-{giai.Id}-{Guid.NewGuid():N}".Substring(0, 16),
+                    TrangThai = "DaXacNhan",
+                    ThoiGianTao = DateTime.Now,
+                    GiaiDauId = giai.Id,
+                    LaDummyBooking = true
+                });
             }
+            await _context.SaveChangesAsync();
 
             giai.TrangThai = "Active";
             await _context.SaveChangesAsync();
@@ -333,6 +364,131 @@ namespace Web_Stadium.Services
             catch { }
 
             return (true, "");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // XEM TRƯỚC LỊCH — sinh trận (Berger) + gọi Java CSP solver,
+        // KHÔNG ghi DB. Owner sẽ tinh chỉnh và bấm Chốt.
+        // ══════════════════════════════════════════════════════════
+        public async Task<(bool ok, string error, PreviewLichResult? preview)>
+            XemTruocLichAsync(int giaiId, int ownerId)
+        {
+            var giai = await _context.GiaiDaus
+                .Include(g => g.BangDaus)
+                .Include(g => g.DoiBongs).ThenInclude(d => d.Bang)
+                .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
+                .FirstOrDefaultAsync(g => g.Id == giaiId && g.OwnerId == ownerId);
+
+            if (giai == null) return (false, "Không tìm thấy giải!", null);
+            if (giai.TrangThai != "RegistrationClosed")
+                return (false, "Chỉ xem trước lịch sau khi đóng đăng ký!", null);
+
+            var doiChuaBang = giai.DoiBongs.Where(d => d.BangId == null && d.DaThanhToan).ToList();
+            if (doiChuaBang.Any())
+                return (false, $"Còn {doiChuaBang.Count} đội chưa được xếp bảng!", null);
+
+            // 1) Berger sinh cặp đấu — KHÔNG gán slot
+            var tranRaw = _scheduleService.SinhLichVongTron(giai, lichBlock: null);
+            if (tranRaw.Count == 0)
+                return (false, "Không sinh được trận đấu (bảng đấu thiếu đội)!", null);
+
+            // Virtual matchId = index trong list (chưa lưu DB nên chưa có Id thật)
+            var matchesById = new Dictionary<int, TranDau>();
+            for (int i = 0; i < tranRaw.Count; i++) matchesById[i] = tranRaw[i];
+
+            // 2) Available slots từ LichBlockJson × KhungGio
+            List<ScheduleService.SlotKhungGio> lichBlock = new();
+            if (!string.IsNullOrEmpty(giai.LichBlockJson))
+            {
+                try
+                {
+                    lichBlock = JsonSerializer.Deserialize<List<ScheduleService.SlotKhungGio>>(
+                        giai.LichBlockJson, _jsonOpts) ?? new();
+                }
+                catch { lichBlock = new(); }
+            }
+            if (lichBlock.Count == 0)
+                return (false, "Chưa có slot block! Vào 'Lịch block' chọn slot trước.", null);
+
+            var khungGioMap = giai.SanBong!.KhungGios.ToDictionary(k => k.Id);
+            var availableSlots = lichBlock
+                .Where(s => khungGioMap.ContainsKey(s.KhungGioId))
+                .Select(s => new SlotDto
+                {
+                    KhungGioId = s.KhungGioId,
+                    Ngay = s.Ngay.ToString("yyyy-MM-dd"),
+                    GioBatDau = khungGioMap[s.KhungGioId].GioBatDau.ToString(@"hh\:mm"),
+                    GioKetThuc = khungGioMap[s.KhungGioId].GioKetThuc.ToString(@"hh\:mm")
+                })
+                .ToList();
+
+            // 3) Booking thường trong khoảng giải, tại khung giờ của sân (không tính chính giải này)
+            var khungIds = khungGioMap.Keys.ToList();
+            var ngayBD = giai.NgayBatDau.Date;
+            var ngayKT = giai.NgayKetThuc.Date;
+            var bookingConflicts = await _context.DatSans
+                .Where(d => d.NgayThiDau >= ngayBD && d.NgayThiDau <= ngayKT
+                         && d.TrangThai != "DaHuy"
+                         && d.GiaiDauId != giai.Id
+                         && khungIds.Contains(d.KhungGioId))
+                .Select(d => new BookingConflictDto
+                {
+                    KhungGioId = d.KhungGioId,
+                    Ngay = d.NgayThiDau.ToString("yyyy-MM-dd")
+                })
+                .ToListAsync();
+
+            // 4) DTO trận cho Java (kèm tên đội để build cảnh báo)
+            var doiMap = giai.DoiBongs.ToDictionary(d => d.Id);
+            var bangMap = giai.BangDaus.ToDictionary(b => b.Id);
+
+            var matchesDto = matchesById.Select(kv =>
+            {
+                var t = kv.Value;
+                var bang = t.BangId.HasValue && bangMap.ContainsKey(t.BangId.Value)
+                    ? bangMap[t.BangId.Value] : null;
+                return new MatchDto
+                {
+                    MatchId = kv.Key,
+                    TeamA = t.DoiNhaId,
+                    TeamB = t.DoiKhachId,
+                    TeamAName = doiMap.TryGetValue(t.DoiNhaId, out var da) ? da.TenDoi : "?",
+                    TeamBName = doiMap.TryGetValue(t.DoiKhachId, out var db) ? db.TenDoi : "?",
+                    Round = t.VongDau,
+                    GroupId = t.BangId ?? 0,
+                    GroupName = bang?.TenBang ?? "-"
+                };
+            }).ToList();
+
+            // 5) Gọi Java solver
+            ScheduleResponse resp;
+            try
+            {
+                resp = await _schedulerClient.SolveAsync(new ScheduleRequest
+                {
+                    GiaiId = giaiId,
+                    Matches = matchesDto,
+                    AvailableSlots = availableSlots,
+                    Bookings = bookingConflicts,
+                    Constraints = new ConstraintsDto() // default: minRest=1, forbidSame=true, preferWeekend=true
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, "Không kết nối được Java scheduler: " + ex.Message, null);
+            }
+
+            return (true, "", new PreviewLichResult
+            {
+                Giai = giai,
+                MatchesRaw = matchesById,
+                MatchesDto = matchesDto,
+                AvailableSlots = availableSlots,
+                Bookings = bookingConflicts,
+                Assignments = resp.Assignments,
+                Unassigned = resp.Unassigned,
+                Warnings = resp.Warnings
+            });
         }
 
         // ══════════════════════════════════════════════════════════

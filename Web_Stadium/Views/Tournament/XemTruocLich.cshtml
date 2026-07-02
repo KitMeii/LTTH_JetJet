@@ -1,0 +1,438 @@
+@using Web_Stadium.Services.JavaClient
+@model Web_Stadium.Services.PreviewLichResult
+@{
+    ViewData["Title"] = "Xem trước lịch — " + Model.Giai.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+
+    // Group slot theo (ngày, khungGioId) → dùng làm key ô grid
+    var slotsByDate = Model.AvailableSlots
+        .GroupBy(s => s.Ngay)
+        .OrderBy(g => g.Key)
+        .ToList();
+
+    var khungGios = Model.AvailableSlots
+        .GroupBy(s => new { s.KhungGioId, s.GioBatDau, s.GioKetThuc })
+        .Select(g => g.Key)
+        .OrderBy(k => k.GioBatDau)
+        .ToList();
+
+    // Set slot bị booking thường chiếm (để render disabled)
+    var blockedSet = new HashSet<string>(
+        Model.Bookings.Select(b => b.Ngay + "_" + b.KhungGioId));
+
+    // Ban đầu: assignments Java gợi ý
+    var assignBy = Model.Assignments.ToDictionary(a => a.MatchId);
+
+    // Trận nào Java xếp được → đưa vào grid; còn lại → panel "chưa xếp"
+    var unassignedIds = new HashSet<int>(Model.Unassigned);
+}
+
+@await Html.PartialAsync("_TournamentStyle")
+
+@section Styles {
+    <style>
+        .grid-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--db-border);
+                     border-radius: 14px; padding: 10px; }
+        table.sched-grid { border-collapse: separate; border-spacing: 6px; min-width: 100%; }
+        table.sched-grid th, table.sched-grid td { vertical-align: top; }
+        table.sched-grid th {
+            font-size: 11px; font-weight: 700; letter-spacing: .5px; color: var(--db-muted);
+            text-align: center; padding: 8px 6px; background: var(--db-bg);
+            border-radius: 8px; min-width: 130px;
+        }
+        table.sched-grid th.kg-head {
+            text-align: left; min-width: 80px; padding: 8px 10px;
+        }
+        .sched-cell {
+            min-height: 76px; min-width: 130px; border: 2px dashed var(--db-border);
+            border-radius: 10px; padding: 6px; background: #fafbfc;
+            transition: .15s;
+        }
+        .sched-cell.drop-hover { border-color: var(--db-green); background: var(--db-green-bg); }
+        .sched-cell.busy {
+            background: #fee2e2; border: 1px solid #fecaca;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: #b91c1c; font-weight: 600;
+        }
+        .match-card {
+            background: #fff; border: 1px solid var(--db-green-border);
+            border-radius: 8px; padding: 6px 8px; font-size: 12px;
+            cursor: grab; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+            border-left: 3px solid var(--db-green);
+        }
+        .match-card:active { cursor: grabbing; opacity: .7; }
+        .match-card .teams  { font-weight: 700; color: var(--db-text); }
+        .match-card .meta   { font-size: 10px; color: var(--db-muted); margin-top: 2px; }
+        .match-card.in-panel { border-left-color: #f59e0b; background: #fffbeb; }
+
+        .side-panel { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 14px; }
+        .panel-card {
+            background: #fff; border: 1px solid var(--db-border);
+            border-radius: 14px; padding: 14px;
+        }
+        .panel-title {
+            font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+            color: var(--db-muted); font-weight: 700; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-title .cnt {
+            background: var(--db-bg); color: var(--db-muted); padding: 2px 10px;
+            border-radius: 20px; font-size: 11px;
+        }
+        #panelUnassigned { min-height: 60px; display: flex; flex-direction: column; gap: 6px; }
+        #panelUnassigned.drop-hover { background: var(--db-green-bg); border-radius: 8px; }
+
+        .warn-item {
+            font-size: 12px; color: #b45309; padding: 6px 8px;
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; margin-bottom: 4px;
+        }
+
+        .toast-box {
+            position: fixed; top: 90px; right: 20px; z-index: 999;
+            display: flex; flex-direction: column; gap: 8px; max-width: 320px;
+        }
+        .toast {
+            padding: 10px 14px; border-radius: 10px; font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.12); animation: slide-in .2s;
+        }
+        .toast.ok    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .toast.err   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        @@keyframes slide-in { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+        .btn-outline-green {
+            background: #fff; border: 1px solid var(--db-green); color: var(--db-green);
+            border-radius: 999px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: .15s;
+        }
+        .btn-outline-green:hover { background: var(--db-green-bg); }
+    </style>
+}
+
+<!-- HERO -->
+<div class="tour-hero">
+    <div class="container">
+        <a href="/Tournament/ChiaBang/@Model.Giai.Id"
+           style="color:#000;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">
+            ← Quay lại chia bảng
+        </a>
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Xếp lịch tối ưu (Java CSP)</div>
+                <h1 class="tour-hero__title">XEM TRƯỚC LỊCH — @Model.Giai.TenGiai.ToUpper()</h1>
+                <div class="tour-hero__sub">
+                    @Model.MatchesDto.Count trận · @Model.AvailableSlots.Count slot khả dụng ·
+                    @Model.Assignments.Count đã xếp · @Model.Unassigned.Count chưa xếp
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <button class="btn-outline-green" onclick="location.reload()">🔄 Xếp lại tự động</button>
+                <form method="post" action="/Tournament/ChotLich/@Model.Giai.Id" id="formChot" style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="finalAssignmentsJson" id="finalPayload" />
+                    <button type="button" class="tour-btn tour-btn--primary" id="btnChot" onclick="chotLich()">✅ Chốt lịch</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
+    @if (TempData["Error"] != null)
+    {
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
+    }
+
+    <div class="row g-4">
+        <!-- LEFT: GRID -->
+        <div class="col-lg-9">
+            <div class="grid-wrap">
+                <table class="sched-grid">
+                    <thead>
+                        <tr>
+                            <th class="kg-head">Khung giờ</th>
+                            @foreach (var day in slotsByDate)
+                            {
+                                var d = DateTime.Parse(day.Key);
+                                <th>@d.ToString("dd/MM") <br /><span style="font-weight:400;color:var(--db-muted);font-size:10px">@d.ToString("dddd", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))</span></th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kg in khungGios)
+                        {
+                            <tr>
+                                <th class="kg-head">
+                                    @kg.GioBatDau<br />
+                                    <span style="font-weight:400;font-size:10px;color:var(--db-muted)">– @kg.GioKetThuc</span>
+                                </th>
+                                @foreach (var day in slotsByDate)
+                                {
+                                    var hasSlot = day.Any(s => s.KhungGioId == kg.KhungGioId);
+                                    var cellKey = day.Key + "_" + kg.KhungGioId;
+                                    var isBlocked = blockedSet.Contains(cellKey);
+
+                                    if (!hasSlot)
+                                    {
+                                        <td><div style="min-height:76px;min-width:130px"></div></td>
+                                    }
+                                    else if (isBlocked)
+                                    {
+                                        <td><div class="sched-cell busy">🔴 Booking khác</div></td>
+                                    }
+                                    else
+                                    {
+                                        var matchInCell = Model.Assignments.FirstOrDefault(a =>
+                                            a.KhungGioId == kg.KhungGioId && a.Ngay == day.Key);
+
+                                        <td>
+                                            <div class="sched-cell"
+                                                 data-ngay="@day.Key"
+                                                 data-kg="@kg.KhungGioId"
+                                                 ondragover="onDragOver(event)"
+                                                 ondragleave="onDragLeave(event)"
+                                                 ondrop="onDrop(event)">
+                                                @if (matchInCell != null)
+                                                {
+                                                    var m = Model.MatchesDto.First(x => x.MatchId == matchInCell.MatchId);
+                                                    <div class="match-card" draggable="true"
+                                                         id="match-@m.MatchId"
+                                                         data-match-id="@m.MatchId"
+                                                         data-team-a="@m.TeamA"
+                                                         data-team-b="@m.TeamB"
+                                                         data-team-a-name="@m.TeamAName"
+                                                         data-team-b-name="@m.TeamBName"
+                                                         ondragstart="onDragStart(event)">
+                                                        <div class="teams">@m.TeamAName vs @m.TeamBName</div>
+                                                        <div class="meta">V.@m.Round · @m.GroupName</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RIGHT: PANEL -->
+        <div class="col-lg-3">
+            <div class="side-panel">
+                <div class="panel-card">
+                    <div class="panel-title">
+                        📋 Trận chưa xếp
+                        <span class="cnt" id="cntUnassigned">@Model.Unassigned.Count</span>
+                    </div>
+                    <div id="panelUnassigned"
+                         ondragover="onDragOverPanel(event)"
+                         ondragleave="onDragLeavePanel(event)"
+                         ondrop="onDropPanel(event)">
+                        @foreach (var mid in Model.Unassigned)
+                        {
+                            var m = Model.MatchesDto.First(x => x.MatchId == mid);
+                            <div class="match-card in-panel" draggable="true"
+                                 id="match-@m.MatchId"
+                                 data-match-id="@m.MatchId"
+                                 data-team-a="@m.TeamA"
+                                 data-team-b="@m.TeamB"
+                                 data-team-a-name="@m.TeamAName"
+                                 data-team-b-name="@m.TeamBName"
+                                 ondragstart="onDragStart(event)">
+                                <div class="teams">@m.TeamAName vs @m.TeamBName</div>
+                                <div class="meta">V.@m.Round · @m.GroupName</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.Warnings.Any())
+                {
+                    <div class="panel-card">
+                        <div class="panel-title">
+                            ⚠️ Cảnh báo
+                            <span class="cnt">@Model.Warnings.Count</span>
+                        </div>
+                        @foreach (var w in Model.Warnings)
+                        {
+                            <div class="warn-item">@w</div>
+                        }
+                    </div>
+                }
+
+                <div class="panel-card" style="font-size:11px;color:var(--db-muted);line-height:1.6">
+                    <div style="font-weight:700;color:var(--db-text);margin-bottom:6px">Chú thích</div>
+                    🟢 Ô trắng: có thể thả trận<br />
+                    🔴 Ô đỏ: đã có booking thường<br />
+                    🟠 Card cam: trận chưa xếp (kéo vào ô trống)<br />
+                    ⚙️ Ràng buộc: 1 đội không đá 2 trận/ngày, nghỉ tối thiểu 1 ngày.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-box" id="toastBox"></div>
+
+@section Scripts {
+    <script>
+    (function(){
+        // ─────────── STATE ───────────
+        // matchId → {khungGioId, ngay}
+        var draft = {};
+        @foreach (var a in Model.Assignments)
+        {
+            @:draft[@a.MatchId] = { khungGioId: @a.KhungGioId, ngay: "@a.Ngay" };
+        }
+
+        // Cache toàn bộ matches (cho ValidateSlot payload)
+        var allMatches = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MatchesDto.Select(m => new {
+            matchId = m.MatchId, teamA = m.TeamA, teamB = m.TeamB,
+            teamAName = m.TeamAName, teamBName = m.TeamBName,
+            round = m.Round, groupId = m.GroupId, groupName = m.GroupName
+        })));
+
+        var bookings = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Bookings.Select(b => new {
+            khungGioId = b.KhungGioId, ngay = b.Ngay
+        })));
+
+        var giaiId = @Model.Giai.Id;
+
+        // ─────────── UI HELPERS ───────────
+        function toast(kind, msg) {
+            var box = document.getElementById('toastBox');
+            var el = document.createElement('div');
+            el.className = 'toast ' + kind;
+            el.textContent = msg;
+            box.appendChild(el);
+            setTimeout(function(){ el.remove(); }, 3000);
+        }
+
+        function updateCounter() {
+            document.getElementById('cntUnassigned').textContent =
+                document.getElementById('panelUnassigned').querySelectorAll('.match-card').length;
+        }
+
+        // ─────────── DRAG STATE ───────────
+        var dragMatchId = null;
+
+        window.onDragStart = function(e) {
+            dragMatchId = parseInt(e.currentTarget.dataset.matchId, 10);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragMatchId);
+        };
+
+        window.onDragOver = function(e) { e.preventDefault(); e.currentTarget.classList.add('drop-hover'); };
+        window.onDragLeave = function(e) { e.currentTarget.classList.remove('drop-hover'); };
+        window.onDragOverPanel = function(e) { e.preventDefault(); e.currentTarget.classList.add('drop-hover'); };
+        window.onDragLeavePanel = function(e) { e.currentTarget.classList.remove('drop-hover'); };
+
+        // Drop vào panel "Chưa xếp" — luôn cho phép
+        window.onDropPanel = function(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drop-hover');
+            if (dragMatchId == null) return;
+            var card = document.getElementById('match-' + dragMatchId);
+            if (!card) return;
+
+            card.classList.add('in-panel');
+            e.currentTarget.appendChild(card);
+            delete draft[dragMatchId];
+            updateCounter();
+            toast('ok', 'Đã đưa trận về danh sách chưa xếp.');
+            dragMatchId = null;
+        };
+
+        // Drop vào cell grid — validate với Java trước
+        window.onDrop = async function(e) {
+            e.preventDefault();
+            var cell = e.currentTarget;
+            cell.classList.remove('drop-hover');
+            if (dragMatchId == null) return;
+
+            // Cell đã có match khác → không cho (chỉ 1 trận / slot)
+            if (cell.querySelector('.match-card')) {
+                toast('err', 'Ô này đã có trận khác. Kéo trận đó đi trước.');
+                dragMatchId = null;
+                return;
+            }
+
+            var khungGioId = parseInt(cell.dataset.kg, 10);
+            var ngay = cell.dataset.ngay;
+
+            var card = document.getElementById('match-' + dragMatchId);
+            if (!card) return;
+
+            var teamA = parseInt(card.dataset.teamA, 10);
+            var teamB = parseInt(card.dataset.teamB, 10);
+
+            // Build existingAssignments (không tính chính nó)
+            var existing = Object.keys(draft)
+                .filter(function(k){ return parseInt(k,10) !== dragMatchId; })
+                .map(function(k){
+                    return { matchId: parseInt(k,10), khungGioId: draft[k].khungGioId, ngay: draft[k].ngay };
+                });
+
+            var payload = {
+                matchId: dragMatchId,
+                teamA: teamA, teamB: teamB,
+                khungGioId: khungGioId, ngay: ngay,
+                existingAssignments: existing,
+                bookings: bookings,
+                allMatches: allMatches,
+                constraints: { minRestDays: 1, forbidSameDay: true, preferWeekend: true }
+            };
+
+            var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            try {
+                var res = await fetch('/Tournament/ValidateSlot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify(payload)
+                });
+                var j = await res.json();
+                if (!j.ok) {
+                    toast('err', j.reason || 'Không hợp lệ.');
+                    dragMatchId = null;
+                    return;
+                }
+            } catch (ex) {
+                toast('err', 'Lỗi kết nối: ' + ex.message);
+                dragMatchId = null;
+                return;
+            }
+
+            // OK — cập nhật DOM + draft
+            card.classList.remove('in-panel');
+            cell.appendChild(card);
+            draft[dragMatchId] = { khungGioId: khungGioId, ngay: ngay };
+            updateCounter();
+            toast('ok', 'Đã xếp: ' + card.querySelector('.teams').textContent);
+            dragMatchId = null;
+        };
+
+        // ─────────── CHỐT LỊCH ───────────
+        window.chotLich = function() {
+            var unassignedCount = document.getElementById('panelUnassigned').querySelectorAll('.match-card').length;
+            if (unassignedCount > 0) {
+                if (!confirm('Còn ' + unassignedCount + ' trận chưa xếp. Không thể chốt.\n\nHãy xếp đủ hoặc bấm "Xếp lại tự động".')) return;
+                return;
+            }
+            if (!confirm('Chốt lịch giải?\n\nHệ thống sẽ:\n• Lưu ' + Object.keys(draft).length + ' trận vào DB\n• Tạo dummy booking khoá slot\n• Chuyển giải sang Active + gửi email lịch cho các đội\n\nKhông thể hoàn tác!')) return;
+
+            var payload = Object.keys(draft).map(function(k){
+                return { matchId: parseInt(k,10), khungGioId: draft[k].khungGioId, ngay: draft[k].ngay };
+            });
+            document.getElementById('finalPayload').value = JSON.stringify(payload);
+            document.getElementById('btnChot').disabled = true;
+            document.getElementById('formChot').submit();
+        };
+
+        updateCounter();
+    })();
+    </script>
+}
