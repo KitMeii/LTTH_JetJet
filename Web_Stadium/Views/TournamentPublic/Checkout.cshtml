@@ -1,0 +1,367 @@
+﻿@model Web_Stadium.EFCore.DoiBong
+@{
+    ViewData["Title"] = "Chờ xác nhận — " + Model.GiaiDau?.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tongTT = (Model.GiaiDau?.LePhiGiai ?? 0) + (Model.GiaiDau?.TienKyQuy ?? 0);
+    var conLaiGiay = (int)(ViewBag.ConLaiGiay ?? 900);
+    var noiDung = $"{Model.TenDoi}-G{Model.GiaiDauId}";
+}
+
+@section Styles {
+    <style>
+        .co-wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 0 16px 60px;
+        }
+
+        .co-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .co-header {
+            background: linear-gradient(135deg,#0a2a1a,#0EA86A);
+            padding: 24px 28px;
+            text-align: center;
+        }
+
+        .countdown-ring {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            position: relative;
+        }
+
+            .countdown-ring svg {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                transform: rotate(-90deg);
+            }
+
+        .cd-num {
+            font-family: var(--ff-h);
+            font-size: 1.6rem;
+            color: #fff;
+            font-weight: 800;
+            position: relative;
+            z-index: 1;
+            line-height: 1;
+        }
+
+        .cd-lbl {
+            font-size: 9px;
+            color: rgba(255,255,255,.6);
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .co-body {
+            padding: 24px 28px;
+        }
+
+        /* Info chuyển khoản */
+        .ck-box {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+
+        .ck-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+            .ck-row:last-child {
+                border-bottom: none;
+            }
+
+        .ck-lbl {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .ck-val {
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .copy-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: var(--r);
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .copy-btn:hover {
+                border-color: var(--green);
+                color: var(--green);
+            }
+
+            .copy-btn.copied {
+                background: var(--green);
+                color: #fff;
+                border-color: var(--green);
+            }
+
+        /* Tổng tiền */
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-top: 2px solid var(--border);
+            margin-top: 6px;
+        }
+
+        /* Trạng thái chờ */
+        .wait-box {
+            background: rgba(14,168,106,.06);
+            border: 1px solid rgba(14,168,106,.2);
+            border-radius: var(--r);
+            padding: 16px 18px;
+            text-align: center;
+        }
+
+        .wait-steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+            .wait-steps li {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 0;
+                border-bottom: 1px solid var(--border);
+                font-size: 13px;
+                color: var(--muted);
+            }
+
+                .wait-steps li:last-child {
+                    border-bottom: none;
+                }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--green);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+    </style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 32px;border-bottom:1px solid var(--border)">
+    <div class="container text-center">
+        <div class="section-label">Hoàn tất đăng ký</div>
+        <h1 style="font-style:italic;line-height:.9;margin:0">
+            ĐĂNG KÝ<br><span class="text-green">THÀNH CÔNG</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="co-wrap">
+        <div class="co-card">
+
+            <!-- Countdown header -->
+            <div class="co-header">
+                <div style="color:rgba(255,255,255,.6);font-size:10px;
+                            letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">
+                    SLOT GIỮ CHỖ
+                </div>
+                <div class="countdown-ring" id="cdRing">
+                    <svg viewBox="0 0 90 90">
+                        <circle cx="45" cy="45" r="40" fill="none"
+                                stroke="rgba(255,255,255,.15)" stroke-width="4" />
+                        <circle cx="45" cy="45" r="40" fill="none"
+                                stroke="#1ed760" stroke-width="4"
+                                stroke-dasharray="251" stroke-dashoffset="0"
+                                id="cdArc" stroke-linecap="round" />
+                    </svg>
+                    <div class="cd-num" id="cdNum">15:00</div>
+                    <div class="cd-lbl">phút</div>
+                </div>
+                <div style="color:rgba(255,255,255,.75);font-size:13px">
+                    Slot giữ cho đội
+                    <strong style="color:#fff">@Model.TenDoi</strong>
+                </div>
+                <div style="color:rgba(255,255,255,.5);font-size:11px;margin-top:4px">
+                    Quá giờ slot tự động hủy
+                </div>
+            </div>
+
+            <div class="co-body">
+
+                <!-- THÔNG TIN CHUYỂN KHOẢN -->
+                <div style="font-family:var(--ff-h);font-size:11px;letter-spacing:2px;
+                            text-transform:uppercase;color:var(--green);margin-bottom:12px">
+                    💳 THÔNG TIN CHUYỂN KHOẢN
+                </div>
+
+                <div class="ck-box">
+                    @{
+                        var owner = Model.GiaiDau?.Owner;
+                    }
+                    @foreach (var (lbl, val, canCopy) in new[]{
+                                        ("Ngân hàng",   owner?.NganHang      ?? "VCB",        false),
+                                        ("Số tài khoản",owner?.SoTaiKhoan    ?? "—",          true),
+                                        ("Tên tài khoản",owner?.TenTaiKhoan  ?? owner?.HoTen ?? "—", false),
+                                        ("Số tiền",     tongTT.ToString("N0") + "đ",          true),
+                                        ("Nội dung CK", noiDung,                               true),
+                                        })
+                    {
+                        <div class="ck-row">
+                            <span class="ck-lbl">@lbl</span>
+                            <span class="ck-val">
+                                <span id="val-@lbl.Replace(" ", "")">@val</span>
+                                @if (canCopy)
+                                {
+                                    <button class="copy-btn"
+                                            onclick="copyText('@val', this)">
+                                        Copy
+                                    </button>
+                                }
+                            </span>
+                        </div>
+                    }
+                    <div class="total-row">
+                        <span style="font-weight:700">Tổng cần chuyển</span>
+                        <span style="font-family:var(--ff-h);font-size:1.4rem;color:var(--green)">
+                            @tongTT.ToString("N0")đ
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Chi tiết tiền -->
+                <div style="font-size:12px;color:var(--muted);margin-bottom:18px;
+                            background:var(--bg3);border-radius:var(--r);padding:12px 16px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                        <span>Lệ phí tham dự</span>
+                        <strong>@Model.GiaiDau?.LePhiGiai.ToString("N0")đ</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span>Tiền ký quỹ hành vi</span>
+                        <strong>@Model.GiaiDau?.TienKyQuy.ToString("N0")đ</strong>
+                    </div>
+                    <div style="font-size:11px;color:var(--muted2);margin-top:8px;
+                                padding-top:8px;border-top:1px solid var(--border)">
+                        ⚠️ Lệ phí và ký quỹ <strong>không hoàn lại</strong> sau khi
+                        được xác nhận. Tiền phạt thẻ (nếu có) sẽ được trừ vào
+                        quỹ ký quỹ và nộp cho ban tổ chức.
+                    </div>
+                </div>
+
+                <!-- Các bước tiếp theo -->
+                <div style="font-family:var(--ff-h);font-size:11px;letter-spacing:2px;
+                            text-transform:uppercase;color:var(--muted);margin-bottom:10px">
+                    📋 CÁC BƯỚC TIẾP THEO
+                </div>
+                <ul class="wait-steps" style="margin-bottom:18px">
+                    <li>
+                        <div class="step-num">1</div>
+                        <span>
+                            Chuyển khoản đúng <strong style="color:var(--text)">
+                                nội dung "@noiDung"
+                            </strong>
+                        </span>
+                    </li>
+                    <li>
+                        <div class="step-num">2</div>
+                        <span>
+                            Liên hệ Owner xác nhận
+                            <strong style="color:var(--text)">@owner?.HoTen</strong>
+                            @if (!string.IsNullOrEmpty(owner?.SoDienThoai))
+                            {
+                                <span> — @owner.SoDienThoai</span>
+                            }
+                        </span>
+                    </li>
+                    <li>
+                        <div class="step-num">3</div>
+                        <span>Chờ Owner xác nhận (trong vòng 24h) → nộp danh sách cầu thủ</span>
+                    </li>
+                </ul>
+
+                <div style="text-align:center;margin-top:14px">
+                    <a href="/TournamentPublic/Details/@Model.GiaiDauId"
+                       style="font-size:13px;color:var(--muted);text-decoration:none">
+                        ← Quay lại trang giải đấu
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var conLai = @conLaiGiay;
+        var total  = 900;
+        var arc    = document.getElementById('cdArc');
+        var arcLen = 251;
+
+        function tick() {
+            if (conLai <= 0) {
+                document.getElementById('cdNum').textContent = '00:00';
+                arc.style.stroke = 'var(--danger)';
+                setTimeout(() => window.location.href =
+                    '/TournamentPublic/Details/@Model.GiaiDauId', 1500);
+                return;
+            }
+            var m = Math.floor(conLai / 60);
+            var s = conLai % 60;
+            document.getElementById('cdNum').textContent =
+                String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+            arc.style.strokeDashoffset = arcLen * (1 - conLai / total);
+            if (conLai < 180) arc.style.stroke = 'var(--danger)';
+            else if (conLai < 300) arc.style.stroke = '#f59e0b';
+            conLai--;
+        }
+        tick();
+        setInterval(tick, 1000);
+
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = '✓ Đã copy';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+}

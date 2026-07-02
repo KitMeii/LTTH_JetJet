@@ -1,97 +1,314 @@
-﻿@{
+@{
     ViewData["Title"] = "Hoàn cọc chủ động";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DonDat";
     var donCoThe = ViewBag.DonCoThe as List<Web_Stadium.EFCore.DatSan> ?? new();
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+        --db-amber: #f59e0b;
+        --db-amber-dark: #d97706;
+        --db-amber-bg: rgba(245,158,11,0.08);
+        --db-amber-border: rgba(245,158,11,0.3);
+        --db-blue: #2563eb;
+        --db-blue-dark: #1d4ed8;
+        --db-blue-bg: rgba(37,99,235,0.08);
+        --db-blue-border: rgba(37,99,235,0.25);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .warning-box {
+        background: var(--db-amber-bg);
+        border: 1px solid var(--db-amber-border);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: #b45309;
+    }
+
+    .refund-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .refund-card__header {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .refund-card__info {
+        padding: 12px 18px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--db-border);
+        color: var(--db-text);
+    }
+
+    .tab-bar {
+        display: flex;
+        border-bottom: 1px solid var(--db-border);
+        background: #f8fafc;
+    }
+    .tab-btn {
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--db-muted);
+        cursor: pointer;
+        transition: 0.15s;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .tab-btn:hover { background: rgba(0,0,0,0.02); color: var(--db-text); }
+    .tab-btn.active.tab-suco {
+        color: var(--db-amber-dark);
+        border-bottom-color: var(--db-amber);
+        background: var(--db-amber-bg);
+    }
+    .tab-btn.active.tab-khieunai {
+        color: var(--db-blue-dark);
+        border-bottom-color: var(--db-blue);
+        background: var(--db-blue-bg);
+    }
+
+    .tab-panel { display: none; padding: 14px 18px; }
+    .tab-panel.active { display: block; }
+
+    .panel-hint {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-bottom: 10px;
+        line-height: 1.5;
+    }
+
+    .form-row {
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+
+    .form-control-light {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        color: var(--db-text);
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-size: 13px;
+        flex: 1;
+        min-width: 200px;
+    }
+    .form-control-light:focus {
+        border-color: var(--db-green);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
+    }
+
+    .input-amount {
+        max-width: 200px;
+        flex: none;
+    }
+
+    .btn-pill {
+        border: none;
+        color: white;
+        border-radius: 40px;
+        padding: 8px 20px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    .btn-warning-pill { background: var(--db-amber); }
+    .btn-warning-pill:hover { background: var(--db-amber-dark); }
+    .btn-info-pill { background: var(--db-blue); }
+    .btn-info-pill:hover { background: var(--db-blue-dark); }
+
+    .badge-confirmed {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border: 1px solid var(--db-green-border);
+        padding: 4px 12px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 0;
+        color: var(--db-muted);
+    }
+</style>
+
+<div class="page-header">
     <div class="container">
-        <div class="section-label">Owner — Xử lý sự cố</div>
-        <h1 style="font-style:italic;line-height:0.9">HOÀN CỌC<br><span class="text-green">CHỦ ĐỘNG</span></h1>
-        <p style="color:var(--muted);margin-top:8px;font-size:14px;">
-            Chỉ dùng khi sân có sự cố bất ngờ: ngập nước, mất điện, hỏng hóc nặng.
-            Các trường hợp khác do hệ thống tự xử lý đúng chính sách.
-        </p>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / XỬ LÝ HOÀN CỌC</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Hoàn cọc <span style="color: var(--db-green);">chủ động</span></h1>
+                <p class="text-muted mt-2 mb-0">Xử lý sự cố bất khả kháng hoặc khiếu nại của khách trên đơn đã xác nhận</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Owner/DuyetDon" class="btn btn-sm btn-outline-success rounded-pill">✅ Duyệt đơn</a>
-        <a href="/Owner/HoanCoc" class="btn btn-sm btn-warning rounded-pill">💰 Hoàn cọc</a>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
-    <div style="max-width:700px;margin:0 auto;">
+    <div style="max-width: 820px; margin: 0 auto;">
 
         @if (TempData["Success"] != null)
         {
-            <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+                <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         }
         @if (TempData["Error"] != null)
         {
-            <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+                <i class="fas fa-exclamation-triangle me-2"></i> @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         }
 
-        <!-- Cảnh báo -->
-        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);
-                    border-radius:12px;padding:16px 18px;margin-bottom:24px;font-size:13px;color:#f59e0b;">
-            <strong>⚠️ Lưu ý quan trọng:</strong><br>
-            Chức năng này chỉ dùng khi <strong>sân có sự cố từ phía Owner</strong> như ngập nước, mất điện, hỏng hóc.
-            Hủy đơn ở đây sẽ hoàn <strong>100% tiền cọc</strong> cho khách bất kể thời điểm.
-            Không dùng thay cho chính sách hủy thông thường của khách — hệ thống đã tự xử lý đúng.
+        <div class="warning-box">
+            <strong>⚠️ Lưu ý quan trọng:</strong><br />
+            Trang này chỉ dùng cho đơn <strong>đã xác nhận</strong>. Hai luồng độc lập:<br />
+            <strong>• Sự cố Owner:</strong> ngập, mất điện, hỏng sân — hoàn <strong>100% cọc</strong>.<br />
+            <strong>• Khiếu nại khách:</strong> hoàn <strong>số tiền tuỳ chọn</strong> (≤ tiền cọc) kèm ghi chú lý do.<br />
+            Không dùng thay cho chính sách hủy thông thường — hệ thống đã tự xử lý đúng.
         </div>
 
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:14px;">
-            ĐƠN ĐÃ XÁC NHẬN — CÓ THỂ HOÀN CỌC CHỦ ĐỘNG (@donCoThe.Count)
+        <div style="font-size: 11px; color: var(--db-muted); letter-spacing: 1px; margin-bottom: 14px; text-transform: uppercase; font-weight: 600;">
+            Đơn đã xác nhận — có thể hoàn cọc chủ động (@donCoThe.Count)
         </div>
 
         @if (!donCoThe.Any())
         {
-            <div class="section-card p-5 text-center" style="color:var(--muted)">
-                <div style="font-size:3rem;margin-bottom:12px;">✅</div>
+            <div class="empty-state">
+                <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.4;">✅</div>
                 <div>Không có đơn nào cần xử lý hoàn cọc chủ động.</div>
             </div>
         }
 
         @foreach (var don in donCoThe)
         {
-            <div class="section-card p-0 overflow-hidden mb-3"
-                 style="border:1px solid rgba(245,158,11,.3);">
-                <div style="padding:14px 18px;border-bottom:1px solid var(--border);
-                                display:flex;justify-content:space-between;align-items:center;">
+            var cardId = $"card-{don.Id}";
+            <div class="refund-card" id="@cardId">
+                <div class="refund-card__header">
                     <div>
                         <strong>@don.KhungGio?.SanBong?.TenSan</strong>
-                        <span style="color:var(--muted);font-size:13px;margin-left:8px;">
-                            @don.KhungGio?.GioBatDau.ToString("HH:mm")–@don.KhungGio?.GioKetThuc.ToString("HH:mm")
-                            | @don.NgayThiDau.ToString("dd/MM/yyyy")
+                        <span style="color: var(--db-muted); font-size: 13px; margin-left: 8px;">
+                            @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                            · @don.NgayThiDau.ToString("dd/MM/yyyy")
                         </span>
                     </div>
-                    <span style="color:var(--green);font-size:12px;font-weight:700;">Đã xác nhận</span>
+                    <span class="badge-confirmed">✓ Đã xác nhận</span>
                 </div>
-                <div style="padding:12px 18px;font-size:13px;border-bottom:1px solid var(--border);">
-                    <span style="color:var(--muted);">Khách: </span>
+                <div class="refund-card__info">
+                    <span style="color: var(--db-muted);">Khách:</span>
                     <strong>@don.User?.HoTen</strong>
-                    <span style="color:var(--muted);margin-left:12px;">SĐT: @don.User?.SoDienThoai</span>
-                    <span style="color:var(--muted);margin-left:12px;">Cọc: </span>
-                    <strong style="color:var(--green);">@don.TienCoc.ToString("N0")đ</strong>
+                    <span style="color: var(--db-muted); margin-left: 12px;">SĐT: @don.User?.SoDienThoai</span>
+                    <span style="color: var(--db-muted); margin-left: 12px;">Cọc:</span>
+                    <strong style="color: var(--db-green);">@don.TienCoc.ToString("N0")đ</strong>
                 </div>
-                <form method="post" action="/Owner/ThucHienHoanCoc"
-                      style="padding:14px 18px;display:flex;gap:10px;align-items:center;">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="datSanId" value="@don.Id" />
-                    <input type="text" name="lyDo" class="form-control form-control-sm"
-                           placeholder="Lý do hoàn cọc (ngập nước, mất điện...)"
-                           required
-                           style="background:var(--bg3);border-color:var(--border);color:#fff;font-size:13px;flex:1;" />
-                    <button type="submit" class="btn btn-warning rounded-pill btn-sm"
-                            style="font-size:13px;white-space:nowrap;font-weight:700;"
-                            onclick="return confirm('Xác nhận hoàn 100% cọc (@don.TienCoc.ToString("N0")đ) cho khách?')">
-                        💰 Hoàn 100% cọc
+
+                <div class="tab-bar" role="tablist">
+                    <button type="button"
+                            class="tab-btn tab-suco active"
+                            data-target="#@cardId .panel-suco"
+                            data-card="#@cardId">
+                        ⚠️ Sự cố Owner (100%)
                     </button>
-                </form>
+                    <button type="button"
+                            class="tab-btn tab-khieunai"
+                            data-target="#@cardId .panel-khieunai"
+                            data-card="#@cardId">
+                        💬 Khiếu nại khách (tuỳ chọn)
+                    </button>
+                </div>
+
+                <div class="tab-panel panel-suco active">
+                    <div class="panel-hint">
+                        Dùng khi sân có sự cố từ phía Owner: ngập nước, mất điện, hỏng hóc nặng.
+                        Khách sẽ được hoàn <strong>toàn bộ @don.TienCoc.ToString("N0")đ</strong>.
+                    </div>
+                    <form method="post" action="/Owner/ThucHienHoanCocSuCo" class="form-row">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="datSanId" value="@don.Id" />
+                        <input type="text" name="lyDo" class="form-control-light"
+                               placeholder="Lý do sự cố (ngập nước, mất điện…)"
+                               required />
+                        <button type="submit" class="btn-pill btn-warning-pill"
+                                onclick="return confirm('Xác nhận hoàn 100% cọc (@don.TienCoc.ToString("N0")đ) cho khách?')">
+                            💰 Hoàn 100% cọc
+                        </button>
+                    </form>
+                </div>
+
+                <div class="tab-panel panel-khieunai">
+                    <div class="panel-hint">
+                        Dùng khi xử lý khiếu nại của khách: dịch vụ không đạt, sai khung giờ…
+                        Số tiền hoàn tối đa <strong>@don.TienCoc.ToString("N0")đ</strong> (bằng tiền cọc).
+                    </div>
+                    <form method="post" action="/Owner/ThucHienHoanCocKhieuNai" class="form-row">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="datSanId" value="@don.Id" />
+                        <input type="number" name="soTienHoan" class="form-control-light input-amount"
+                               placeholder="Số tiền hoàn (VNĐ)"
+                               min="0" max="@don.TienCoc" step="1000"
+                               required />
+                        <input type="text" name="ghiChu" class="form-control-light"
+                               placeholder="Ghi chú lý do khiếu nại"
+                               required />
+                        <button type="submit" class="btn-pill btn-info-pill"
+                                onclick="return confirm('Xác nhận hoàn số tiền đã nhập cho khách?')">
+                            💸 Hoàn theo khiếu nại
+                        </button>
+                    </form>
+                </div>
             </div>
         }
     </div>
 </div>
+
+<script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const cardSel = this.dataset.card;
+            const targetSel = this.dataset.target;
+            document.querySelectorAll(cardSel + ' .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll(cardSel + ' .tab-panel').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelector(targetSel).classList.add('active');
+        });
+    });
+</script>

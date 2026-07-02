@@ -1,0 +1,588 @@
+<!-- Real-time status indicator (bottom-left) -->
+<div id="rt-status-mini" style="position:fixed;bottom:30px;left:24px;z-index:9997;
+                                background:rgba(15,23,42,0.85);color:#9ca3af;padding:5px 12px;border-radius:16px;
+                                font-size:11px;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)">
+    <span id="rt-dot-mini" style="width:8px;height:8px;border-radius:50%;background:#888;transition:all .3s"></span>
+    <span id="rt-label-mini">Đang kết nối...</span>
+</div>
+
+<!-- Dark/Light toggle -->
+<button id="theme-toggle" onclick="toggleTheme()" title="Chuyển giao diện sáng/tối"
+        style="position:fixed;bottom:70px;left:24px;z-index:9997;
+               background:rgba(15,23,42,0.85);color:#9ca3af;padding:4px 10px;border-radius:14px;
+               font-size:12px;border:1px solid rgba(255,255,255,.1);cursor:pointer;
+               backdrop-filter:blur(6px);transition:all .2s">
+    🌙
+</button>
+
+<!-- Floating mic button -->
+<button id="voice-mic" onclick="toggleVoice()" title="Lệnh giọng nói (Ctrl+Space)"
+        style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;
+               background:linear-gradient(135deg,#16C47F 0%,#0fa968 100%);border:none;color:white;
+               font-size:24px;cursor:pointer;z-index:9998;
+               box-shadow:0 8px 24px rgba(22,196,127,0.4);transition:all .25s">
+    🎤
+</button>
+
+<!-- Voice toast -->
+<div id="voice-toast" style="display:none;position:fixed;bottom:100px;right:30px;z-index:9998;
+                             background:#0f172a;color:white;padding:14px 18px;border-radius:12px;
+                             border:1px solid #16C47F;min-width:280px;max-width:340px;
+                             box-shadow:0 10px 30px rgba(0,0,0,0.5)">
+    <div id="voice-status" style="font-size:13px;color:#16C47F;font-weight:700;margin-bottom:6px">
+        🎤 Đang nghe...
+    </div>
+    <div id="voice-text" style="font-size:14px;color:#e5e7eb;font-style:italic;min-height:20px"></div>
+    <div id="voice-help" style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.6"></div>
+</div>
+
+<style>
+    #rt-dot-mini.online { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.15) }
+    #rt-dot-mini.offline { background:#ef4444 }
+
+    #voice-mic.listening {
+        animation:micPulse 1.2s infinite;
+        background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);
+    }
+    @@keyframes micPulse {
+        0%   { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0.6); }
+        70%  { transform:scale(1.08);box-shadow:0 0 0 18px rgba(239,68,68,0); }
+        100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0); }
+    }
+    .voice-flash { animation:vFlash .8s ease }
+    @@keyframes vFlash {
+        0%   { box-shadow:0 0 0 0 rgba(22,196,127,0.8) }
+        50%  { box-shadow:0 0 0 14px rgba(22,196,127,0.15) }
+        100% { box-shadow:0 0 0 0 rgba(22,196,127,0) }
+    }
+
+    .rt-event-toast {
+        position:fixed; top:60px; right:24px; z-index:9999;
+        min-width:280px; padding:14px 18px; border-radius:10px;
+        background:#1f2937; color:white; border-left:4px solid #22c55e;
+        box-shadow:0 12px 28px rgba(0,0,0,0.4);
+        transform:translateX(120%); transition:transform .4s cubic-bezier(.3,1.3,.5,1);
+        font-size:13px;
+    }
+    .rt-event-toast.show { transform:translateX(0) }
+    .rt-event-toast.checkin  { border-left-color:#f59e0b }
+    .rt-event-toast.checkout { border-left-color:#22c55e }
+    .rt-event-toast.suco     { border-left-color:#ef4444 }
+    .rt-event-toast .rt-title { font-weight:700; margin-bottom:4px }
+    .rt-event-toast .rt-time  { color:#9ca3af; font-size:11px; margin-top:6px }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+<script>
+    // ═══ SignalR Status ═══
+    const rtDotMini   = document.getElementById('rt-dot-mini');
+    const rtLabelMini = document.getElementById('rt-label-mini');
+    function setRTStatus(online) {
+        rtDotMini.className = online ? 'online' : 'offline';
+        rtLabelMini.textContent = online ? 'Real-time hoạt động' : 'Mất kết nối';
+    }
+
+    function dingTone(freq) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination);
+            osc.type = 'sine'; osc.frequency.value = freq || 880;
+            g.gain.setValueAtTime(0.15, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc.start(); osc.stop(ctx.currentTime + 0.4);
+        } catch (e) {}
+    }
+
+    function showRTToast(loai, payload, thoiGian) {
+        const cfg = {
+            CheckIn:  { icon:'✅', title:`Đơn ${payload.maXacNhan} vừa check-in`, cls:'checkin',  freq:880 },
+            CheckOut: { icon:'💰', title:`Đơn ${payload.maXacNhan} đã thanh toán — ${(payload.tongTien||0).toLocaleString()}đ`, cls:'checkout', freq:660 },
+            SuCo:     { icon:'⚠️', title:`Sự cố ${payload.loaiSuCo} — đơn ${payload.maXacNhan}`, cls:'suco',     freq:440 }
+        }[loai] || { icon:'🔔', title:'Sự kiện: ' + loai, cls:'', freq:600 };
+
+        const t = document.createElement('div');
+        t.className = 'rt-event-toast ' + cfg.cls;
+        t.innerHTML = `<div class="rt-title">${cfg.icon} ${cfg.title}</div>
+                       <div class="rt-time">⏱ ${thoiGian || ''}</div>`;
+        document.body.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        dingTone(cfg.freq);
+        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 4000);
+    }
+
+    // ═══ Kết nối SignalR ═══
+    const __sanIdsTheoDoi = window.__STAFF_SAN_IDS || [];
+    let rtConn = null;
+    if (typeof signalR !== 'undefined') {
+        rtConn = new signalR.HubConnectionBuilder()
+            .withUrl('/sanBongHub')
+            .withAutomaticReconnect()
+            .build();
+
+        rtConn.on('StaffSuKien', function(ev) {
+            showRTToast(ev.loai, ev.data || {}, ev.thoiGian);
+            if (typeof window.onStaffSuKien === 'function') window.onStaffSuKien(ev);
+        });
+        rtConn.onreconnecting(() => setRTStatus(false));
+        rtConn.onreconnected(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        });
+        rtConn.onclose(() => setRTStatus(false));
+        rtConn.start().then(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        }).catch(() => setRTStatus(false));
+    } else {
+        setRTStatus(false);
+        console.warn('[Staff] SignalR không load được — real-time tắt, giọng nói vẫn hoạt động');
+    }
+
+    // ═══════════════════════════════════════
+    // VOICE ENGINE v3 — nhạy hơn, đa phương án, liên tục
+    // ═══════════════════════════════════════
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const $mic    = document.getElementById('voice-mic');
+    const $vToast = document.getElementById('voice-toast');
+    const $vStatus= document.getElementById('voice-status');
+    const $vText  = document.getElementById('voice-text');
+    const $vHelp  = document.getElementById('voice-help');
+    let recognition = null, isListening = false;
+    let _pendingConfirm = null;
+    let _autoRestart    = false; // chế độ liên tục (nói "liên tục bật")
+
+    if (!SR) {
+        $mic.style.opacity = '0.4';
+        $mic.title = 'Trình duyệt không hỗ trợ Web Speech API';
+        $mic.onclick = () => alert('Dùng Chrome/Edge để dùng tính năng giọng nói.');
+    }
+
+    // ── Chuẩn hóa: bỏ dấu + lowercase ──────────────────────────────
+    // Giúp "nô sô" khớp với pattern "no show", "trê hẹn" khớp "tre hen", v.v.
+    function norm(t) {
+        return (t || '').toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+    }
+
+    const __wnum = { 'một':1,'mot':1,'hai':2,'ba':3,'bốn':4,'bon':4,
+                     'năm':5,'nam':5,'sáu':6,'sau':6,'bảy':7,'bay':7,
+                     'tám':8,'tam':8,'chín':9,'chin':9,'mười':10,'muoi':10,'mươi':10 };
+    window.extractNum = function(t) {
+        const m = t.match(/\b(\d+)\b/); if (m) return parseInt(m[1]);
+        const n = norm(t);
+        const m2 = n.match(/\b(\d+)\b/); if (m2) return parseInt(m2[1]);
+        for (const w in __wnum) if (t.includes(w) || n.includes(norm(w))) return __wnum[w];
+        return null;
+    };
+
+    // ── Tìm đơn theo tên/số sân (thử cả bản gốc lẫn bản đã norm) ──
+    function _matchSan(list, text, num) {
+        if (!list || !list.length) return null;
+        const t  = (text || '').toLowerCase();
+        const tn = norm(text);
+        const byId = {};
+        list.forEach(d => { byId[d.sanId] = d; });
+        const sanList = (window.voiceContext || {}).sanList || [];
+
+        for (const san of sanList) {
+            if (!(san.id in byId)) continue;
+            const tenLow  = (san.ten || '').toLowerCase();
+            const tenNorm = norm(san.ten);
+            const soStr   = tenLow.replace(/^sân\s*/i, '').trim();
+            const soNorm  = norm(soStr);
+            const soNum   = parseInt(soStr);
+            if (num !== null && !isNaN(soNum) && soNum === num) return byId[san.id];
+            if (t.includes(tenLow) || tn.includes(tenNorm))   return byId[san.id];
+            if (soStr && (t.includes(soStr) || tn.includes(soNorm))) return byId[san.id];
+        }
+        if (num !== null) {
+            const d = list.find(d => (d.tenSan||'').includes(String(num)));
+            if (d) return d;
+        }
+        for (const d of list) {
+            const tl = (d.tenSan||'').toLowerCase();
+            if (t.includes(tl) || tn.includes(norm(tl))) return d;
+        }
+        return list.length === 1 ? list[0] : null;
+    }
+
+    // ── AJAX check-in ──
+    async function _ajaxCheckIn(donId) {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        const fd = new FormData();
+        fd.append('datSanId', donId);
+        fd.append('__RequestVerificationToken', token);
+        const r = await fetch('/Staff/ThucHienCheckIn', { method:'POST', body:fd });
+        if (r.ok || r.redirected) {
+            $vStatus.textContent = '✅ Check-in thành công!';
+            dingTone(880);
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            $vStatus.textContent = '❌ Check-in thất bại — thử lại';
+        }
+    }
+
+    // ── 2-bước xác nhận ──
+    function _confirmThen(msg, fn) {
+        _pendingConfirm = { fn, label: msg };
+        $vStatus.textContent = '❓ ' + msg;
+        $vHelp.innerHTML = 'Nói <em>"xác nhận"</em> để tiếp tục &nbsp;|&nbsp; <em>"hủy"</em> để bỏ qua';
+        setTimeout(() => { if (_pendingConfirm && !isListening) toggleVoice(); }, 700);
+    }
+
+    // ── Help overlay ──
+    function showVoiceHelp() {
+        const ctx = window.voiceContext || {};
+        const ci  = ctx.checkIns  || [];
+        const co  = ctx.checkOuts || [];
+        const r   = (cmd, desc) =>
+            `<div style="display:flex;justify-content:space-between;padding:5px 0;
+                         border-bottom:1px solid rgba(255,255,255,.06);font-size:12px">
+                <span style="color:#e5e7eb">${cmd}</span>
+                <span style="color:#6b7280;font-size:11px">${desc}</span></div>`;
+        const sect = (label) =>
+            `<div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin:12px 0 6px">${label}</div>`;
+
+        const html = `<div onclick="this.remove()" style="position:fixed;inset:0;z-index:10001;
+                        background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px">
+            <div onclick="event.stopPropagation()" style="max-width:500px;width:100%;background:#0f172a;
+                    border:1px solid #16C47F;border-radius:16px;padding:24px;color:white;max-height:90vh;overflow-y:auto">
+                <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#16C47F">🎤 Lệnh giọng nói</div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:14px">
+                    Nói tự nhiên — hệ thống tự hiểu biến thể phát âm
+                </div>
+
+                ${sect('ĐIỀU HƯỚNG')}
+                ${r('"ca trực"','Dashboard')}${r('"mở check-in"','Trang Check-in')}
+                ${r('"mở sự cố"','Trang Sự cố')}${r('"vãng lai"','Trang Vãng lai')}
+                ${r('"báo cáo ca"','Modal báo cáo')}${r('"làm mới"','Reload')}
+                ${r('"đăng xuất"','')}${r('"chế độ sáng / tối"','')}
+                ${r('"liên tục bật"','Mic luôn bật sau mỗi lệnh')}
+
+                ${ci.length ? sect(`CHECK-IN — ${ci.length} đơn chờ`) +
+                  ci.map(d => r(`"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('') +
+                  r('"check-in mã [ABC123]"','Theo mã xác nhận') : ''}
+
+                ${co.length ? sect(`CHECK-OUT / POS — ${co.length} sân đang dùng`) +
+                  co.map(d => r(`"check-out sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('') +
+                  co.map(d => r(`"POS sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,'')).join('') : ''}
+
+                ${sect('BÁO SỰ CỐ (nhận mọi biến thể phát âm)')}
+                ${r('"no-show sân 2"','Khách không đến · cũng: "khách không tới", "vắng mặt"')}
+                ${r('"hỏng hóc sân 1"','Hỏng cơ sở · cũng: "hư hỏng", "bị hỏng"')}
+                ${r('"trễ hẹn sân 3"','Khách đến muộn · cũng: "khách muộn", "đến trễ"')}
+                ${r('"về sớm sân 2"','Khách về sớm · cũng: "kết thúc sớm"')}
+
+                <button onclick="this.closest('[onclick]').remove()"
+                    style="width:100%;margin-top:16px;padding:9px;border:1px solid #374151;
+                           background:transparent;color:#9ca3af;border-radius:8px;cursor:pointer;font-size:12px">
+                    Đóng
+                </button>
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    // ── Xử lý lệnh chính — trả về true nếu đã khớp ──────────────────
+    function executeVoice(text, confidence) {
+        text = (text || '').trim();
+        const t  = text.toLowerCase();
+        const tn = norm(text);  // bản không dấu để khớp biến thể phát âm
+        $vText.textContent = '🗣️ "' + text + '"' + (confidence != null ? ` (${Math.round(confidence * 100)}%)` : '');
+
+        // ── Bước xác nhận 2 bước ──
+        if (_pendingConfirm) {
+            const { fn } = _pendingConfirm;
+            _pendingConfirm = null;
+            $vHelp.innerHTML = '';
+            const YES = /^(xac nhan|dong y|co|ok|oke|duoc|yes|u|uh|yeah|roi|r)$/;
+            if (YES.test(tn) || /^(xác nhận|đồng ý|có|được|ừ|rồi)$/.test(t)) {
+                $vStatus.textContent = '⏳ Đang thực hiện...';
+                setTimeout(() => { try { fn(); } catch(e) { $vStatus.textContent = '❌ ' + e.message; } }, 200);
+            } else {
+                $vStatus.textContent = '↩️ Đã hủy';
+            }
+            return true;
+        }
+
+        const ctx = window.voiceContext || {};
+        const num = window.extractNum(t);
+        const ci  = ctx.checkIns  || [];
+        const co  = ctx.checkOuts || [];
+        const sc  = ctx.suCoList  || co;
+
+        // ── Page-specific commands (ưu tiên cao nhất) ──
+        for (const c of (window.voiceCommands || [])) {
+            if (c.re.test(t) || c.re.test(tn)) {
+                $vStatus.textContent = '✅ ' + (c.label || 'OK');
+                try { c.action(t, num); } catch(e) { console.error(e); }
+                return true;
+            }
+        }
+
+        // ── Check-in ──
+        if (/check.?in|checkin|vao san|khach vao/.test(tn)
+            || /check.?in|checkin|vào sân|khách vào/.test(t)) {
+            const maM = t.match(/mã[\s:]*([a-z0-9]{4,})/i) || tn.match(/ma[\s:]*([a-z0-9]{4,})/i);
+            if (maM) {
+                const ma  = maM[1].toUpperCase();
+                const don = ci.find(d => (d.maXacNhan||'').toUpperCase() === ma);
+                if (don) _confirmThen(`Check-in ${don.tenKhach} (${don.tenSan})?`, () => _ajaxCheckIn(don.id));
+                else     $vStatus.textContent = `❓ Không có đơn mã "${ma}" chờ check-in`;
+                return true;
+            }
+            const don = _matchSan(ci, t, num) || _matchSan(ci, tn, num);
+            if (don) {
+                _confirmThen(`Check-in ${don.tenKhach} — ${don.tenSan}?`, () => _ajaxCheckIn(don.id));
+            } else if (!ci.length) {
+                $vStatus.textContent = '❓ Không có đơn nào chờ check-in lúc này';
+            } else if (ci.length > 1 && num === null) {
+                $vStatus.textContent = `❓ Nói rõ sân: ${ci.map(d=>d.tenSan).join(', ')}`;
+                $vHelp.innerHTML = ci.map(d=>`<em>"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"</em>`).join(' | ');
+            } else {
+                $vStatus.textContent = '❓ Không tìm thấy đơn chờ check-in phù hợp';
+            }
+            return true;
+        }
+
+        // ── Check-out ──
+        if (/check.?out|checkout|thanh toan|thu tien|dong san/.test(tn)
+            || /check.?out|checkout|thanh toán|thu tiền|đóng sân/.test(t)) {
+            const maM = t.match(/mã[\s:]*([a-z0-9]{4,})/i) || tn.match(/ma[\s:]*([a-z0-9]{4,})/i);
+            if (maM) {
+                const ma  = maM[1].toUpperCase();
+                const don = co.find(d => (d.maXacNhan||'').toUpperCase() === ma);
+                if (don) { $vStatus.textContent = `✅ Check-out ${don.tenKhach}`; setTimeout(()=>location.href='/Staff/CheckOut/'+don.id,600); }
+                else     $vStatus.textContent = `❓ Không có đơn mã "${ma}" đang sử dụng`;
+                return true;
+            }
+            const don = _matchSan(co, t, num) || _matchSan(co, tn, num);
+            if (don) {
+                $vStatus.textContent = `✅ Check-out ${don.tenSan} — ${don.tenKhach}`;
+                setTimeout(() => location.href = '/Staff/CheckOut/' + don.id, 600);
+            } else if (!co.length) {
+                $vStatus.textContent = '❓ Không có sân nào đang sử dụng';
+            } else if (co.length > 1 && num === null) {
+                $vStatus.textContent = `❓ Nói rõ sân: ${co.map(d=>d.tenSan).join(', ')}`;
+            } else {
+                $vStatus.textContent = '❓ Không tìm thấy sân phù hợp';
+            }
+            return true;
+        }
+
+        // ── POS ──
+        if (/^pos$|them dich vu|mua them|dich vu/.test(tn)
+            || /\bpos\b|thêm dịch vụ|mua thêm/.test(t)) {
+            const don = _matchSan(co, t, num) || _matchSan(co, tn, num) || (co.length===1 ? co[0] : null);
+            if (don) { $vStatus.textContent = `✅ Mở POS ${don.tenSan}`; setTimeout(()=>location.href='/Staff/POS/'+don.id,600); }
+            else if (!co.length) $vStatus.textContent = '❓ Không có sân nào đang sử dụng';
+            else $vStatus.textContent = `❓ Nói rõ sân: ${co.map(d=>d.tenSan).join(', ')}`;
+            return true;
+        }
+
+        // ── Sự cố — regex rộng nhất, bao mọi biến thể phát âm ──────────
+        // "no show" → STT thường ra: "nô sô", "no sô", "nô show", "nô shô", "no so"
+        const SC_TRIGGER = /su.?co|bao.?su|no.?s[ho]|no.?so|no.?show|no.?sho|khong.?den|khong.?toi|vang.?mat|hong.?hoc|hu.?hong|tre.?hen|ve.?som|ket.?thuc.?som|muon|khach.?khong|khach.?vang/;
+        const SC_TRIGGER_RAW = /sự cố|báo sự|no.?show|không đến|không tới|vắng mặt|hỏng hóc|hư hỏng|trễ hẹn|về sớm|kết thúc sớm|muộn|khách không/;
+        if (SC_TRIGGER.test(tn) || SC_TRIGGER_RAW.test(t)) {
+            const loaiMap = [
+                // NoShow: nhận hết biến thể "no show", "nô sô", "khách không đến"
+                { re: /no.?s[ho]|no.?so|no.?show|no.?sho|khong.?den|khong.?toi|vang.?mat|khach.?khong|khach.?vang/, raw: /no.?show|không đến|không tới|vắng mặt|khách không/ , val:'NoShow' },
+                // HongHoc
+                { re: /hong.?hoc|hu.?hong|hu.?hoa|co.?so.?vc|co.?so.?vc|co.?so|vat.?chat/, raw: /hỏng hóc|hư hỏng|cơ sở|vật chất/, val:'HongHoc' },
+                // TreHen
+                { re: /tre.?hen|den.?tre|muon|khach.?muon|khach.?tre/, raw: /trễ hẹn|đến trễ|muộn/, val:'TreHen' },
+                // VeSom
+                { re: /ve.?som|ket.?thuc.?som|ra.?som|di.?som/, raw: /về sớm|kết thúc sớm|ra sớm/, val:'VeSom' },
+            ];
+            let loai = '';
+            for (const l of loaiMap) {
+                if (l.re.test(tn) || l.raw.test(t)) { loai = l.val; break; }
+            }
+
+            const don = _matchSan(sc, t, num) || _matchSan(sc, tn, num);
+            if (don) {
+                const loaiLabel = { NoShow:'No-show', HongHoc:'Hỏng hóc', TreHen:'Trễ hẹn', VeSom:'Về sớm' }[loai] || 'Sự cố';
+                $vStatus.textContent = `✅ Báo ${loaiLabel} | ${don.tenSan}`;
+                setTimeout(() => location.href = '/Staff/SuCo?prefill=' + don.id + (loai ? '&loai=' + loai : ''), 600);
+            } else {
+                $vStatus.textContent = '↪️ Mở trang Sự cố';
+                setTimeout(() => location.href = '/Staff/SuCo', 600);
+            }
+            return true;
+        }
+
+        // ── Điều hướng và lệnh toàn cục ──────────────────────────────────
+        const globalCmds = [
+            { rn:/ca truc|dashboard|trang chu|staff home/, raw:/ca trực|trang chủ/,          label:'Về Ca trực',       url:'/Staff' },
+            { rn:/mo check.?in|open checkin|quet|qr.?scan/, raw:/mở check.?in|quét/,         label:'Mở Check-in',      url:'/Staff/CheckIn' },
+            { rn:/mo su.?co|bao cao su.?co/,               raw:/mở sự cố|báo cáo sự cố/,     label:'Mở Sự cố',         url:'/Staff/SuCo' },
+            { rn:/vang lai|ban le/,                        raw:/vãng lai|bán lẻ/,             label:'Vãng lai',         url:'/Staff/VangLai' },
+            { rn:/lam moi|reload|refresh|cap nhat/,        raw:/làm mới|cập nhật/,            label:'Làm mới',          fn:()=>location.reload() },
+            { rn:/dang xuat|logout|thoat/,                 raw:/đăng xuất|thoát/,             label:'Đăng xuất',        url:'/Auth/Logout' },
+            { rn:/bao cao ca|in ca|xem bao cao/,           raw:/báo cáo ca|xem báo cáo/,      label:'Báo cáo ca',
+              fn:()=>{ const m=document.getElementById('printModal'); if(m) m.style.display='flex'; } },
+            { rn:/che do sang|sang len|ban ngay/,          raw:/chế độ sáng|ban ngày/,        label:'Giao diện sáng',
+              fn:()=>{ if(document.documentElement.dataset.theme!=='light') toggleTheme(); } },
+            { rn:/che do toi|toi lai|ban dem/,             raw:/chế độ tối|ban đêm/,          label:'Giao diện tối',
+              fn:()=>{ if(document.documentElement.dataset.theme==='light') toggleTheme(); } },
+            { rn:/tro giup|help|huong dan|xem lenh|cau lenh/, raw:/trợ giúp|hướng dẫn|câu lệnh/, label:'Trợ giúp',   fn:()=>showVoiceHelp() },
+            { rn:/lien tuc bat|always on|luon bat/,        raw:/liên tục bật|luôn bật/,       label:'Chế độ liên tục BẬT',
+              fn:()=>{ _autoRestart=true; $vStatus.textContent='🔁 Liên tục BẬT — nói "liên tục tắt" để dừng'; } },
+            { rn:/lien tuc tat|always off|luon tat/,       raw:/liên tục tắt|luôn tắt/,       label:'Chế độ liên tục TẮT',
+              fn:()=>{ _autoRestart=false; $vStatus.textContent='⏹ Liên tục TẮT'; } },
+        ];
+        for (const c of globalCmds) {
+            if (c.rn.test(tn) || c.raw.test(t)) {
+                $vStatus.textContent = '✅ ' + c.label;
+                setTimeout(() => { if (c.url) location.href = c.url; if (c.fn) c.fn(); }, 600);
+                return true;
+            }
+        }
+
+        $vStatus.textContent = '❓ Không hiểu — nói "trợ giúp" để xem danh sách lệnh';
+        return false;
+    }
+
+    // ── Khởi động nhận dạng — thử tất cả alternatives đến khi khớp ──
+    function toggleVoice() {
+        if (!SR) return;
+        if (isListening) { recognition.stop(); _autoRestart = false; return; }
+        recognition = new SR();
+        recognition.lang = 'vi-VN';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 5; // tăng từ 3 lên 5
+
+        recognition.onstart = () => {
+            isListening = true;
+            $mic.classList.add('listening');
+            $vToast.style.display = 'block';
+            if (!_pendingConfirm) {
+                $vStatus.textContent = _autoRestart ? '🔁 Đang nghe (liên tục)...' : '🎤 Đang nghe...';
+                $vText.textContent   = '';
+                const ctx = window.voiceContext || {};
+                const ci  = ctx.checkIns  || [];
+                const co  = ctx.checkOuts || [];
+                const hint = ci.length ? `✅ ${ci.length} chờ check-in` :
+                             co.length ? `🟣 ${co.length} đang đánh` : '';
+                $vHelp.innerHTML = (window.voiceHelpHTML || '')
+                    + (hint ? `<span style="color:#16C47F">${hint}</span><br>` : '')
+                    + 'Nói <em>"trợ giúp"</em> để xem tất cả lệnh';
+            }
+        };
+
+        recognition.onresult = (e) => {
+            const results = e.results[e.results.length - 1];
+            $vText.textContent = '🗣️ "' + results[0].transcript + '"';
+            if (results.isFinal) {
+                // Thử từng alternative cho đến khi một lệnh được khớp
+                let handled = false;
+                for (let i = 0; i < results.length && !handled; i++) {
+                    const alt = results[i];
+                    if (i === 0 || alt.confidence > 0.05) {
+                        handled = executeVoice(alt.transcript, alt.confidence);
+                    }
+                }
+                if (!handled) {
+                    $vStatus.textContent = '❓ Không hiểu — nói "trợ giúp" để xem danh sách lệnh';
+                }
+            }
+        };
+
+        recognition.onerror = (e) => {
+            const _errMsg = {
+                'no-speech'           : '🔇 Không nghe thấy — nhấn mic và thử lại',
+                'network'             : '🌐 Lỗi mạng Speech API — cần Internet & HTTPS. Chạy qua localhost hoặc cài HTTPS.',
+                'not-allowed'         : '🔒 Trình duyệt chặn mic — vào Settings → cho phép Microphone rồi thử lại.',
+                'service-not-allowed' : '🔒 Dịch vụ giọng nói bị chặn — dùng Chrome/Edge, chạy qua localhost.',
+                'audio-capture'       : '🎙️ Không tìm thấy microphone — kiểm tra thiết bị.',
+                'aborted'             : '',
+            };
+            const msg = _errMsg[e.error];
+            if (msg !== undefined) {
+                if (msg) $vStatus.textContent = msg;
+            } else {
+                $vStatus.textContent = '❌ Lỗi giọng nói: ' + e.error;
+            }
+            if (e.error !== 'no-speech' && e.error !== 'aborted') _autoRestart = false;
+            _pendingConfirm = null;
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            $mic.classList.remove('listening');
+            if (_pendingConfirm) {
+                setTimeout(() => { if (_pendingConfirm) toggleVoice(); }, 600);
+                return;
+            }
+            if (_autoRestart) {
+                setTimeout(() => { if (_autoRestart) toggleVoice(); }, 800);
+                return;
+            }
+            setTimeout(() => { if (!isListening) $vToast.style.display = 'none'; }, 3500);
+        };
+
+        recognition.start();
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && e.ctrlKey) { e.preventDefault(); toggleVoice(); }
+        if (e.code === 'Escape' && _pendingConfirm) {
+            _pendingConfirm = null; $vStatus.textContent = '↩️ Đã hủy';
+        }
+        if (e.code === 'Escape' && _autoRestart) {
+            _autoRestart = false;
+            if (isListening) recognition.stop();
+        }
+    });
+
+    // ═══ Dark / Light Toggle ═══
+    function toggleTheme() {
+        const html   = document.documentElement;
+        const isLight = html.dataset.theme === 'light';
+        html.dataset.theme = isLight ? 'dark' : 'light';
+        document.getElementById('theme-toggle').textContent = isLight ? '🌙' : '☀️';
+        localStorage.setItem('pitchhub-theme', html.dataset.theme);
+    }
+    (function applyTheme() {
+        const saved = localStorage.getItem('pitchhub-theme');
+        if (saved === 'light') {
+            document.documentElement.dataset.theme = 'light';
+            document.addEventListener('DOMContentLoaded', () => {
+                const btn = document.getElementById('theme-toggle');
+                if (btn) btn.textContent = '☀️';
+            });
+        }
+    })();
+</script>
+
+<style>
+    /* ─── Light mode overrides ─── */
+    [data-theme="light"] {
+        --bg:      #f1f5f9;
+        --bg2:     #e2e8f0;
+        --bg3:     #ffffff;
+        --border:  rgba(0,0,0,.1);
+        --border2: rgba(0,0,0,.15);
+        --text:    #0f172a;
+        --txt:     #0f172a;
+        --muted:   #475569;
+        --muted2:  #94a3b8;
+        --shadow:  0 4px 24px rgba(0,0,0,.12);
+        --green:   #16a34a;
+        --line:    rgba(0,0,0,.07);
+    }
+    [data-theme="light"] .section-card        { background: #ffffff; }
+    [data-theme="light"] nav,
+    [data-theme="light"] .navbar              { background: #ffffff !important; border-bottom: 1px solid rgba(0,0,0,.1) !important; }
+    [data-theme="light"] .btn-outline-secondary { color: #475569 !important; border-color: #cbd5e1 !important; }
+    [data-theme="light"] .btn-outline-secondary:hover { background: #f1f5f9 !important; }
+    [data-theme="light"] #rt-status-mini,
+    [data-theme="light"] #theme-toggle        { background: rgba(241,245,249,0.9); color: #475569; border-color: rgba(0,0,0,.1); }
+    [data-theme="light"] #voice-mic           { box-shadow: 0 8px 24px rgba(22,196,127,.3); }
+    [data-theme="light"] .form-control,
+    [data-theme="light"] .form-select         { background: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+</style>

@@ -1,0 +1,91 @@
+@{
+    ViewData["Title"] = "Yêu cầu đổi sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var don = (Web_Stadium.EFCore.DatSan)ViewBag.Don;
+    var sanKhac = (IEnumerable<dynamic>)ViewBag.SanKhac;
+}
+
+<div class="container py-4">
+    <h3>🔁 Yêu cầu đổi sân</h3>
+
+    @if (TempData["Error"] != null)
+    { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <strong>Đơn:</strong> @don.MaXacNhan<br />
+            <strong>Sân hiện tại:</strong> @don.KhungGio.SanBong.TenSan<br />
+            <strong>Khung giờ:</strong> @don.KhungGio.GioBatDau – @don.KhungGio.GioKetThuc, ngày @don.NgayThiDau.ToString("dd/MM/yyyy")
+        </div>
+    </div>
+
+    @if (!sanKhac.Any())
+    {
+        <div class="alert alert-warning">
+            Chủ sân hiện chưa có sân nào khác đã duyệt để chuyển sang. Bạn không thể đổi sân.
+            <a href="/User/HoSo?tab=lichsu" class="btn btn-secondary btn-sm ms-2">Quay lại</a>
+        </div>
+    }
+    else
+    {
+        <form asp-action="TaoYeuCauDoiSan" method="post" class="card">
+            <div class="card-body">
+                <input type="hidden" name="datSanId" value="@don.Id" />
+
+                <div class="mb-3">
+                    <label class="form-label">Sân mới *</label>
+                    <select id="ddlSan" class="form-select" required>
+                        <option value="">-- Chọn sân --</option>
+                        @foreach (var s in sanKhac)
+                        {
+                            <option value="@s.Id">@s.TenSan</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Khung giờ mới *</label>
+                    <select id="ddlKhung" name="khungGioMoiId" class="form-select" required disabled>
+                        <option value="">-- Chọn sân trước --</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Ngày thi đấu mới *</label>
+                    <input type="date" name="ngayThiDauMoi" class="form-control" required
+                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                           value="@don.NgayThiDau.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Lý do *</label>
+                    <textarea name="lyDo" class="form-control" rows="3" maxlength="500" required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success">Gửi yêu cầu</button>
+                <a href="/User/HoSo?tab=lichsu" class="btn btn-secondary">Hủy</a>
+            </div>
+        </form>
+    }
+</div>
+
+<script>
+    document.getElementById('ddlSan')?.addEventListener('change', async function () {
+        var sanId = this.value;
+        var ddlKhung = document.getElementById('ddlKhung');
+        ddlKhung.innerHTML = '<option value="">-- Đang tải... --</option>';
+        ddlKhung.disabled = true;
+        if (!sanId) { ddlKhung.innerHTML = '<option value="">-- Chọn sân trước --</option>'; return; }
+        var res = await fetch('/User/KhungTrongTheoSan?sanBongId=' + sanId);
+        var list = await res.json();
+        if (list.length === 0) {
+            ddlKhung.innerHTML = '<option value="">Sân này không còn khung trống</option>';
+            return;
+        }
+        ddlKhung.innerHTML = '<option value="">-- Chọn khung --</option>' +
+            list.map(function (k) {
+                return '<option value="' + k.id + '">' + k.gioBatDau + ' – ' + k.gioKetThuc + ' (' + Number(k.gia).toLocaleString('vi-VN') + 'đ)</option>';
+            }).join('');
+        ddlKhung.disabled = false;
+    });
+</script>

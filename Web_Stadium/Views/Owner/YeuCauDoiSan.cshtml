@@ -1,0 +1,183 @@
+@model List<Web_Stadium.EFCore.YeuCauDoiSan>
+@{
+    ViewData["Title"] = "Yêu cầu đổi sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DoiSan";
+    var tab = ViewBag.Tab as string ?? "ChoPheDuyet";
+    var soChoDuyet = (int)(ViewBag.SoChoDuyet ?? 0);
+}
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .breadcrumb-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--db-muted); text-decoration: none; margin-bottom: 8px;
+    }
+        .breadcrumb-back:hover { color: var(--db-green); }
+
+    .form-card { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; padding: 28px; max-width: 800px; margin: 0 auto; }
+    .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
+    .form-control, .form-select {
+        background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 12px;
+        padding: 8px 12px; font-size: 14px; color: var(--db-text);
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
+    }
+
+    .btn-save { background: var(--db-green); border: none; border-radius: 40px; padding: 8px 28px; color: white; font-weight: 500; }
+    .btn-save:hover { background: #0a5338; transform: translateY(-1px); }
+    .info-note { background: #eff6ff; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-top: 20px; }
+</style>
+
+
+
+</div><div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">Owner · Quản lý đổi sân</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">yêu cầu đổi sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật thông tin và cấu hình từng yêu cầu đổi sân</p>
+            </div>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-4">
+    <h3 class="mb-3">🔁 Yêu cầu đổi sân</h3>
+
+    @if (TempData["Success"] != null)
+    { <div class="alert alert-success">@TempData["Success"]</div> }
+    @if (TempData["Error"] != null)
+    { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link @(tab == "ChoPheDuyet" ? "active" : "")" href="?tab=ChoPheDuyet">
+                Chờ duyệt @if (soChoDuyet > 0) { <span class="badge bg-warning text-dark">@soChoDuyet</span> }
+            </a>
+        </li>
+        <li class="nav-item"><a class="nav-link @(tab == "DaDuyet" ? "active" : "")" href="?tab=DaDuyet">Đã duyệt</a></li>
+        <li class="nav-item"><a class="nav-link @(tab == "TuChoi" ? "active" : "")" href="?tab=TuChoi">Đã từ chối</a></li>
+    </ul>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Khách</th>
+                        <th>Sân hiện tại</th>
+                        <th>Sân mới yêu cầu</th>
+                        <th>Khung mới</th>
+                        <th>Lý do</th>
+                        <th>Gửi lúc</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-4">Không có yêu cầu nào.</td></tr>
+                    }
+                    @foreach (var y in Model)
+                    {
+                        <tr>
+                            <td><code>@y.DatSan.MaXacNhan</code></td>
+                            <td>
+                                @y.DatSan.User.HoTen<br />
+                                <small class="text-muted">@y.DatSan.User.Email</small>
+                            </td>
+                            <td>
+                                @y.DatSan.KhungGio.SanBong.TenSan<br />
+                                <small class="text-muted">@y.DatSan.KhungGio.GioBatDau – @y.DatSan.KhungGio.GioKetThuc, @y.DatSan.NgayThiDau.ToString("dd/MM/yyyy")</small>
+                            </td>
+                            <td>@y.KhungGioMoi.SanBong.TenSan</td>
+                            <td>
+                                @y.KhungGioMoi.GioBatDau – @y.KhungGioMoi.GioKetThuc<br />
+                                <small class="text-muted">@y.NgayThiDauMoi.ToString("dd/MM/yyyy")</small>
+                            </td>
+                            <td><small>@y.LyDo</small></td>
+                            <td><small>@y.NgayTao.ToString("dd/MM HH:mm")</small></td>
+                            <td>
+                                @if (y.TrangThai == "ChoPheDuyet")
+                                {
+                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                            data-bs-target="#modalXuLy" data-id="@y.Id" data-quyetdinh="Duyet">Duyệt</button>
+                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                                            data-bs-target="#modalXuLy" data-id="@y.Id" data-quyetdinh="TuChoi">Từ chối</button>
+                                }
+                                else if (y.TrangThai == "DaDuyet")
+                                { <span class="badge bg-success">Đã duyệt</span> }
+                                else
+                                { <span class="badge bg-danger">Từ chối</span><br /><small class="text-muted">@y.GhiChuXuLy</small> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalXuLy" tabindex="-1">
+    <div class="modal-dialog">
+        <form asp-action="XuLyDoiSan" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="xlId" />
+            <input type="hidden" name="quyetDinh" id="xlQuyetDinh" />
+            <div class="modal-header">
+                <h5 class="modal-title" id="xlTitle">Xử lý yêu cầu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Ghi chú / Lý do</label>
+                <textarea name="ghiChu" class="form-control" rows="3" maxlength="500"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="submit" class="btn btn-primary" id="xlSubmit">Xác nhận</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('modalXuLy').addEventListener('show.bs.modal', function (e) {
+        var btn = e.relatedTarget;
+        var qd = btn.getAttribute('data-quyetdinh');
+        document.getElementById('xlId').value = btn.getAttribute('data-id');
+        document.getElementById('xlQuyetDinh').value = qd;
+        document.getElementById('xlTitle').innerText = qd === 'Duyet' ? '✅ Duyệt yêu cầu đổi sân' : '❌ Từ chối yêu cầu đổi sân';
+        var btnSubmit = document.getElementById('xlSubmit');
+        btnSubmit.className = qd === 'Duyet' ? 'btn btn-success' : 'btn btn-danger';
+        btnSubmit.innerText = qd === 'Duyet' ? 'Duyệt' : 'Từ chối';
+    });
+</script>

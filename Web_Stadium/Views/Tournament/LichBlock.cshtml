@@ -1,0 +1,176 @@
+@model Web_Stadium.EFCore.GiaiDau
+@{
+    ViewData["Title"] = "Lịch block — " + Model.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+    var khungGios = (Model.SanBong?.KhungGios ?? new List<Web_Stadium.EFCore.KhungGio>())
+                    .OrderBy(k => k.GioBatDau).ToList();
+}
+
+@await Html.PartialAsync("_TournamentStyle")
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+    <style>
+        .kg-chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .kg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+                   background: #fff; border: 1.5px solid var(--db-border); border-radius: 999px;
+                   cursor: pointer; font-size: 12px; transition: .15s; user-select: none; color: var(--db-text); }
+        .kg-chip:hover { border-color: var(--db-green); }
+        .kg-chip.active { background: var(--db-green-bg); border-color: var(--db-green);
+                          color: var(--db-green); font-weight: 700; }
+        #calendar { background: #fff; border-radius: 12px; padding: 14px; border: 1px solid var(--db-border); }
+        .slot-block { background: var(--db-green-bg) !important; color: var(--db-green) !important;
+                      border: 1px solid var(--db-green) !important; font-weight: 700; cursor: pointer; }
+    </style>
+}
+
+<!-- HERO -->
+<div class="tour-hero">
+    <div class="container">
+        <a href="/Tournament/Details/@Model.Id"
+           style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;
+                  display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">
+            ← Quay lại chi tiết giải
+        </a>
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Lịch block</div>
+                <h1 class="tour-hero__title">LỊCH BLOCK — @Model.TenGiai.ToUpper()</h1>
+                <div class="tour-hero__sub">
+                    Chọn khung giờ rồi click ngày để block slot sân. Lưu lại trước khi khởi tạo giải.
+                </div>
+            </div>
+            <button class="tour-btn tour-btn--primary" onclick="luuLich()" id="btnLuu">💾 Lưu lịch block</button>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="tour-alert tour-alert--success">✅ @TempData["Success"]</div>
+    }
+
+    <div class="tour-card">
+        <div class="tour-card__header">
+            <div>
+                <div class="tour-card__title">📅 Khung giờ &amp; lịch block</div>
+                <div class="tour-card__sub">
+                    Khoảng giải: @Model.NgayBatDau.ToString("dd/MM/yyyy") → @Model.NgayKetThuc.ToString("dd/MM/yyyy")
+                </div>
+            </div>
+            <span class="tour-pill tp-active">
+                📅 <span id="slotCount">0</span> slot
+            </span>
+        </div>
+
+        <div id="kgPicker" class="kg-chip-row">
+            @if (!khungGios.Any())
+            {
+                <span style="font-size:12px;color:#b91c1c">⚠️ Sân chưa có khung giờ. Hãy vào <a href="/Owner/KhungGio" style="color:var(--db-green)">/Owner/KhungGio</a> tạo trước.</span>
+            }
+            else
+            {
+                foreach (var kg in khungGios)
+                {
+                    <span class="kg-chip" data-kg-id="@kg.Id" onclick="chonKg(@kg.Id)">
+                        ⏰ @kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")
+                    </span>
+                }
+            }
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script>
+        var calendar = null;
+        var kgActiveId = null;
+        var ngayBD = '@Model.NgayBatDau.ToString("yyyy-MM-dd")';
+        var ngayKT = '@Model.NgayKetThuc.ToString("yyyy-MM-dd")';
+        var khungGios = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            khungGios.Select(k => new {
+                id = k.Id,
+                gioBatDau = k.GioBatDau.ToString(@"hh\:mm"),
+                gioKetThuc = k.GioKetThuc.ToString(@"hh\:mm")
+            })
+        ));
+        var lichBlock = [];
+
+        try {
+            var raw = @Html.Raw(string.IsNullOrEmpty(Model.LichBlockJson) ? "null" : "'" + Model.LichBlockJson.Replace("'", "\\'") + "'");
+            if (raw) {
+                var arr = JSON.parse(raw);
+                lichBlock = (arr || []).map(function (s) {
+                    var d = (s.Ngay || s.ngay || '').toString().slice(0, 10);
+                    return { khungGioId: s.KhungGioId || s.khungGioId, ngay: d };
+                });
+            }
+        } catch (e) { lichBlock = []; }
+
+        function chonKg(id) {
+            kgActiveId = id;
+            document.querySelectorAll('.kg-chip').forEach(function (el) {
+                el.classList.toggle('active', parseInt(el.dataset.kgId) === id);
+            });
+        }
+        function renderEvents() {
+            calendar.removeAllEvents();
+            lichBlock.forEach(function (s) {
+                var kg = khungGios.find(k => k.id === s.khungGioId);
+                if (!kg) return;
+                calendar.addEvent({
+                    id: s.ngay + '_' + s.khungGioId,
+                    title: '🔒 ' + kg.gioBatDau + '–' + kg.gioKetThuc,
+                    start: s.ngay, allDay: true, classNames: ['slot-block']
+                });
+            });
+            document.getElementById('slotCount').textContent = lichBlock.length;
+        }
+        function onDateClick(info) {
+            if (!kgActiveId) { alert('Hãy chọn khung giờ trước!'); return; }
+            if (info.dateStr < ngayBD || info.dateStr > ngayKT) {
+                alert('Slot phải nằm trong khoảng ' + ngayBD + ' → ' + ngayKT); return;
+            }
+            var idx = lichBlock.findIndex(s => s.ngay === info.dateStr && s.khungGioId === kgActiveId);
+            if (idx >= 0) lichBlock.splice(idx, 1);
+            else lichBlock.push({ khungGioId: kgActiveId, ngay: info.dateStr });
+            renderEvents();
+        }
+        function onEventClick(info) {
+            var idx = lichBlock.findIndex(s => (s.ngay + '_' + s.khungGioId) === info.event.id);
+            if (idx >= 0) { lichBlock.splice(idx, 1); renderEvents(); }
+        }
+        async function luuLich() {
+            var btn = document.getElementById('btnLuu');
+            btn.disabled = true; btn.textContent = '⏳ Đang lưu...';
+            var fd = new FormData();
+            fd.append('giaiId', @Model.Id);
+            fd.append('lichBlockJson', JSON.stringify(
+                lichBlock.map(s => ({ khungGioId: s.khungGioId, ngay: s.ngay + 'T00:00:00' }))
+            ));
+            try {
+                var res = await fetch('/Tournament/LuuLichBlock', { method: 'POST', body: fd });
+                var data = await res.json();
+                if (!data.ok) alert(data.message || 'Lỗi không xác định!');
+                else alert('✅ Đã lưu ' + data.soSlot + ' slot block.');
+            } catch (e) { alert('Lỗi kết nối!'); }
+            btn.disabled = false; btn.textContent = '💾 Lưu lịch block';
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'dayGridMonth', locale: 'vi', initialDate: ngayBD, height: 600,
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                dateClick: onDateClick, eventClick: onEventClick
+            });
+            calendar.render(); renderEvents();
+        });
+    </script>
+}

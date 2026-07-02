@@ -1,0 +1,349 @@
+﻿@model Web_Stadium.EFCore.TranDau
+@{
+    ViewData["Title"] = "Check-in cầu thủ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <style>
+        .ci-wrap {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 16px 60px;
+        }
+
+        .doi-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .doi-section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doi-section-title {
+            font-family: var(--ff-h);
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--green);
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+            cursor: pointer;
+        }
+
+            .player-row:last-child {
+                border-bottom: none;
+            }
+
+            .player-row:hover {
+                background: rgba(14,168,106,.03);
+            }
+
+            .player-row.checked-in {
+                background: rgba(14,168,106,.06);
+            }
+
+        .player-num {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg3);
+            border: 1.5px solid var(--border);
+            font-family: var(--ff-h);
+            font-size: 14px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all .2s;
+        }
+
+        .player-row.checked-in .player-num {
+            background: var(--green);
+            color: #fff;
+            border-color: var(--green);
+        }
+
+        .check-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+            .check-btn:hover {
+                border-color: var(--green);
+                background: rgba(14,168,106,.08);
+            }
+
+            .check-btn.active {
+                background: var(--green);
+                border-color: var(--green);
+                color: #fff;
+            }
+
+        .sus-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(239,68,68,.1);
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .count-badge {
+            font-size: 12px;
+            background: rgba(14,168,106,.12);
+            color: var(--green);
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+    </style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 32px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Staff — Check-in cầu thủ</div>
+        <h1 style="font-style:italic;line-height:.9;margin:0">
+            CHECK-IN<br><span class="text-green">CẦU THỦ</span>
+        </h1>
+        <p style="color:var(--muted);margin-top:8px">
+            @Model.DoiNha?.TenDoi vs @Model.DoiKhach?.TenDoi &nbsp;·&nbsp;
+            Vòng @Model.VongDau &nbsp;·&nbsp; @Model.GiaiDau?.TenGiai
+        </p>
+    </div>
+</div>
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);
+            padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-between align-items-center">
+        <a href="/TournamentStaff/DanhSach" class="btn btn-outline-secondary rounded-pill">
+            ← Danh sách trận
+        </a>
+        <div id="progressBar" style="font-size:13px;color:var(--muted)">
+            Đã check-in: <strong id="ciCount" style="color:var(--green)">0</strong>
+            / <span id="ciTotal">0</span>
+        </div>
+        <a href="/TournamentStaff/SuKien/@Model.Id"
+           class="btn btn-success rounded-pill">
+            ⚽ Bắt đầu ghi sự kiện →
+        </a>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="ci-wrap">
+
+        <!-- Match summary -->
+        <div style="background:var(--card);border:1px solid var(--border);
+                    border-radius:var(--r-lg);padding:20px;margin-bottom:24px;
+                    background:linear-gradient(135deg,rgba(14,168,106,.05),transparent)">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <div style="flex:1;text-align:center">
+                    <div style="font-family:var(--ff-h);font-size:1.1rem;
+                                text-transform:uppercase;color:var(--text)">
+                        @Model.DoiNha?.TenDoi
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                        @Model.DoiNha?.ThanhViens?.Count thành viên
+                    </div>
+                </div>
+                <div style="text-align:center;min-width:80px">
+                    <div style="font-family:var(--ff-h);font-size:1.5rem;color:var(--green)">VS</div>
+                    <div style="font-size:11px;color:var(--muted)">
+                        @Model.NgayThiDau.ToString("dd/MM HH:mm")
+                    </div>
+                </div>
+                <div style="flex:1;text-align:center">
+                    <div style="font-family:var(--ff-h);font-size:1.1rem;
+                                text-transform:uppercase;color:var(--text)">
+                        @Model.DoiKhach?.TenDoi
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                        @Model.DoiKhach?.ThanhViens?.Count thành viên
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Đội nhà -->
+        <div class="doi-section">
+            <div class="doi-section-header">
+                <span class="doi-section-title">⚽ @Model.DoiNha?.TenDoi</span>
+                <span class="count-badge" id="count-nha">0 / @Model.DoiNha?.ThanhViens?.Count</span>
+            </div>
+            @foreach (var tv in (Model.DoiNha?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+            {
+                <div class="player-row" id="row-@tv.Id" onclick="toggleCheckIn(@tv.Id, 'nha')">
+                    @if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                    {
+                        <img src="@tv.AnhDaiDien" alt="@tv.HoTen"
+                             id="num-@tv.Id"
+                             style="width:42px;height:42px;border-radius:50%;
+                                                        object-fit:cover;flex-shrink:0;
+                                                        border:2px solid var(--border);
+                                                        transition:border-color .2s;" />
+                    }
+                    else
+                    {
+                        <div class="player-num" id="num-@tv.Id">@tv.SoAo</div>
+                    }
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:14px;color:var(--text)">@tv.HoTen</div>
+                        @if (tv.SoTranTreoGio > 0)
+                        {
+                            <div><span class="sus-badge">⛔ Treo @tv.SoTranTreoGio trận</span></div>
+                        }
+                        else
+                        {
+                            <div style="font-size:12px;color:var(--muted)">
+                                ⚽ @tv.TongBanThang bàn &nbsp;·&nbsp;
+                                💛 @tv.TongTheVang &nbsp;·&nbsp;
+                                🟥 @tv.TongTheDo
+                            </div>
+                        }
+                    </div>
+                    <div class="check-btn" id="btn-@tv.Id">✓</div>
+                </div>
+            }
+        </div>
+
+        <!-- Đội khách -->
+        <div class="doi-section">
+            <div class="doi-section-header">
+                <span class="doi-section-title">⚽ @Model.DoiKhach?.TenDoi</span>
+                <span class="count-badge" id="count-khach">0 / @Model.DoiKhach?.ThanhViens?.Count</span>
+            </div>
+            @foreach (var tv in (Model.DoiKhach?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+            {
+                <div class="player-row" id="row-@tv.Id" onclick="toggleCheckIn(@tv.Id, 'khach')">
+                    @if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                    {
+                        <img src="@tv.AnhDaiDien" alt="@tv.HoTen"
+                             id="num-@tv.Id"
+                             style="width:42px;height:42px;border-radius:50%;
+                                                        object-fit:cover;flex-shrink:0;
+                                                        border:2px solid var(--border);
+                                                        transition:border-color .2s;" />
+                    }
+                    else
+                    {
+                        <div class="player-num" id="num-@tv.Id">@tv.SoAo</div>
+                    }
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:14px;color:var(--text)">@tv.HoTen</div>
+                        @if (tv.SoTranTreoGio > 0)
+                        {
+                            <div><span class="sus-badge">⛔ Treo @tv.SoTranTreoGio trận</span></div>
+                        }
+                        else
+                        {
+                            <div style="font-size:12px;color:var(--muted)">
+                                ⚽ @tv.TongBanThang bàn &nbsp;·&nbsp;
+                                💛 @tv.TongTheVang &nbsp;·&nbsp;
+                                🟥 @tv.TongTheDo
+                            </div>
+                        }
+                    </div>
+                    <div class="check-btn" id="btn-@tv.Id">✓</div>
+                </div>
+            }
+        </div>
+
+        <!-- Cảnh báo cầu thủ bị treo -->
+        @{
+            var susTv = (Model.DoiNha?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>())
+            .Concat(Model.DoiKhach?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>())
+            .Where(t => t.SoTranTreoGio > 0).ToList();
+        }
+        @if (susTv.Any())
+        {
+            <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);
+                                border-radius:var(--r);padding:14px 18px;margin-top:16px">
+                <div style="font-weight:700;color:var(--danger);margin-bottom:8px">
+                    ⛔ Cầu thủ bị treo giò — KHÔNG được thi đấu
+                </div>
+                @foreach (var tv in susTv)
+                {
+                    <div style="font-size:13px;color:var(--muted);margin-top:4px">
+                        • <strong>@tv.HoTen</strong> (số @tv.SoAo) — còn bị cấm @tv.SoTranTreoGio trận
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var ciNha   = new Set();
+        var ciKhach = new Set();
+        var totalNha   = @(Model.DoiNha?.ThanhViens?.Count ?? 0);
+        var totalKhach = @(Model.DoiKhach?.ThanhViens?.Count ?? 0);
+
+        function toggleCheckIn(id, doi) {
+            var set   = doi === 'nha' ? ciNha : ciKhach;
+            var row   = document.getElementById('row-' + id);
+            var btn   = document.getElementById('btn-' + id);
+            var num   = document.getElementById('num-' + id);
+            var count = document.getElementById('count-' + doi);
+
+            if (!row) return;
+
+            if (set.has(id)) {
+                set.delete(id);
+                row.classList.remove('checked-in');
+                if (btn) { btn.classList.remove('active'); btn.textContent = '✓'; }
+                // Reset border ảnh
+                var img = row.querySelector('img');
+                if (img) img.style.borderColor = 'var(--border)';
+            } else {
+                set.add(id);
+                row.classList.add('checked-in');
+                if (btn) { btn.classList.add('active'); btn.textContent = '✓'; }
+                // Border xanh khi check-in
+                var img = row.querySelector('img');
+                if (img) img.style.borderColor = 'var(--green)';
+            }
+
+            // Cập nhật bộ đếm
+            if (count) count.textContent =
+                (doi === 'nha' ? ciNha.size : ciKhach.size)
+                + ' / ' + (doi === 'nha' ? totalNha : totalKhach);
+
+            var total = ciNha.size + ciKhach.size;
+            var el    = document.getElementById('ciCount');
+            var elT   = document.getElementById('ciTotal');
+            if (el)  el.textContent  = total;
+            if (elT) elT.textContent = totalNha + totalKhach;
+        }
+
+        // Khởi tạo bộ đếm
+        document.getElementById('ciTotal').textContent = totalNha + totalKhach;
+    </script>
+}

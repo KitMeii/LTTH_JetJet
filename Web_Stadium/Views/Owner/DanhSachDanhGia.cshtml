@@ -1,0 +1,203 @@
+﻿@model List<Web_Stadium.EFCore.DanhGia>
+@{
+    ViewData["Title"] = "Quản lý đánh giá";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DanhGia";
+    var dsSan = ViewBag.DanhSachSan as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    int? selectedSanId = ViewBag.SelectedSanId;
+    int? selectedSoSao = ViewBag.SelectedSoSao;
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+        transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+    .filter-bar {
+        display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+        background: var(--db-card); padding: 16px 20px; border-radius: 20px; border: 1px solid var(--db-border);
+    }
+    .filter-select {
+        background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 30px;
+        padding: 6px 16px; font-size: 13px; color: var(--db-text);
+    }
+    .review-card {
+        background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px;
+        padding: 20px; margin-bottom: 20px;
+    }
+    .review-header {
+        display: flex; justify-content: space-between; flex-wrap: wrap; align-items: flex-start;
+        margin-bottom: 12px;
+    }
+    .reviewer-info { font-weight: 600; }
+    .review-date { font-size: 12px; color: var(--db-muted); }
+    .stars {
+        color: #f59e0b; font-size: 14px; letter-spacing: 2px;
+    }
+    .review-content { margin: 12px 0; color: var(--db-text); line-height: 1.5; }
+    .review-soccer-field {
+        font-size: 12px; background: var(--db-bg); padding: 6px 12px; border-radius: 30px; display: inline-block;
+    }
+    .owner-reply {
+        background: var(--db-green-bg); border-left: 3px solid var(--db-green); padding: 12px 16px;
+        border-radius: 12px; margin-top: 16px; font-size: 13px;
+    }
+    .reply-btn {
+        background: transparent; border: 1px solid var(--db-border); border-radius: 30px; padding: 4px 16px;
+        font-size: 12px; color: var(--db-green); cursor: pointer; transition: 0.2s;
+    }
+    .reply-btn:hover { background: var(--db-green-bg); border-color: var(--db-green-border); }
+    .reply-form { margin-top: 16px; display: none; }
+    .reply-textarea {
+        width: 100%; border: 1px solid var(--db-border); border-radius: 16px; padding: 10px;
+        background: var(--db-surface); font-size: 13px;
+    }
+    .empty-state { text-align: center; padding: 60px 0; color: var(--db-muted); }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / ĐÁNH GIÁ</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Quản lý <span style="color: var(--db-green);">đánh giá</span></h1>
+                <p class="text-muted mt-2 mb-0">Xem và phản hồi đánh giá từ khách hàng</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-5">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="filter-bar">
+        <form method="get" action="/Owner/DanhSachDanhGia" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <select name="sanId" class="filter-select" onchange="this.form.submit()">
+                <option value="">-- Tất cả sân --</option>
+                @foreach (var s in dsSan)
+                {
+                    <option value="@s.Id" selected="@(selectedSanId == s.Id ? "selected" : null)">@s.TenSan</option>
+                }
+            </select>
+            <select name="soSao" class="filter-select" onchange="this.form.submit()">
+                <option value="">-- Tất cả số sao --</option>
+                @for (int i = 5; i >= 1; i--)
+                {
+                    <option value="@i" selected="@(selectedSoSao == i ? "selected" : null)">⭐ @i sao</option>
+                }
+            </select>
+            @if (selectedSanId != null || selectedSoSao != null)
+            {
+                <a href="/Owner/DanhSachDanhGia" class="filter-select" style="text-decoration: none;">🗑️ Xóa lọc</a>
+            }
+        </form>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon" style="font-size: 4rem; opacity: 0.4;">⭐</div>
+            <h4 class="fw-semibold">Chưa có đánh giá nào</h4>
+            <p class="text-muted">Khách hàng sẽ đánh giá sau khi đặt sân. Hãy khuyến khích họ để lại nhận xét!</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var dg in Model)
+        {
+            <div class="review-card">
+                <div class="review-header">
+                    <div>
+                        <div class="reviewer-info">@dg.User?.HoTen</div>
+                        <div class="review-date">@dg.NgayDanhGia.ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                    <div class="stars">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= dg.SoSao) { <span>★</span> } else { <span>☆</span> }
+                        }
+                    </div>
+                </div>
+                <div class="review-soccer-field">⚽ @dg.SanBong?.TenSan</div>
+                <div class="review-content">@dg.NhanXet</div>
+
+                @if (!string.IsNullOrEmpty(dg.PhanHoiOwner))
+                {
+                    <div class="owner-reply">
+                        <strong style="color: var(--db-green);">Phản hồi từ chủ sân:</strong><br />
+                        @dg.PhanHoiOwner<br />
+                        <span style="font-size: 11px; color: var(--db-muted);">@(dg.NgayPhanHoi?.ToString("dd/MM/yyyy HH:mm") ?? "")</span>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <button class="reply-btn" data-id="@dg.Id" data-reviewer="@dg.User?.HoTen">💬 Phản hồi</button>
+                        <div id="reply-form-@dg.Id" class="reply-form">
+                            <form method="post" action="/Owner/PhanHoiDanhGia">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@dg.Id" />
+                                <textarea name="phanHoi" class="reply-textarea" rows="2" placeholder="Nhập phản hồi của bạn..."></textarea>
+                                <div style="margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button type="button" class="reply-btn cancel-reply" data-id="@dg.Id">Hủy</button>
+                                    <button type="submit" class="reply-btn" style="background: var(--db-green); color: white; border: none;">Gửi phản hồi</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (e.target.classList.contains('cancel-reply')) return;
+                const id = this.dataset.id;
+                const form = document.getElementById(`reply-form-${id}`);
+                if (form) {
+                    form.style.display = 'block';
+                }
+            });
+        });
+        document.querySelectorAll('.cancel-reply').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const form = document.getElementById(`reply-form-${id}`);
+                if (form) form.style.display = 'none';
+            });
+        });
+    </script>
+}

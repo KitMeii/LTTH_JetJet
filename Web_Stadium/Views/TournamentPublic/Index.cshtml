@@ -1,0 +1,297 @@
+﻿@model List<Web_Stadium.EFCore.GiaiDau>
+@{
+    ViewData["Title"] = "Tìm giải đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var quanList = ViewBag.DanhSachQuan as List<Web_Stadium.EFCore.DanhMucQuan> ?? new();
+    string? kw        = ViewBag.Keyword;
+    string? qf        = ViewBag.Quan;
+    string? tf        = ViewBag.TrangThai;
+    decimal? lePhiTu  = ViewBag.LePhiTu;
+    decimal? lePhiDen = ViewBag.LePhiDen;
+    string? sx        = ViewBag.SapXep;
+}
+
+@section Styles {
+<style>
+/* Filter sidebar */
+.filter-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 22px; position: sticky; top: 88px;
+}
+.filter-title {
+    font-family: var(--ff-h); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.filter-inp {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--r); padding: 9px 12px;
+    font-size: 13px; font-family: var(--ff-b); transition: border-color .2s;
+    margin-bottom: 10px;
+}
+.filter-inp:focus { outline: none; border-color: var(--green); background: var(--bg2); }
+.filter-lbl {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted); display: block; margin-bottom: 5px;
+}
+
+/* Giải card */
+.giai-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); overflow: hidden;
+    transition: box-shadow .2s, transform .2s; height: 100%;
+    display: flex; flex-direction: column;
+}
+.giai-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-4px); }
+.giai-thumb {
+    height: 160px; background: linear-gradient(135deg,#0a2a1a,#0EA86A);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 4rem; position: relative; overflow: hidden;
+}
+.giai-thumb::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,.4), transparent);
+}
+.giai-state {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 4px 12px; border-radius: 999px;
+}
+.gs-open     { background: #0EA5E9; color: #fff; }
+.gs-active   { background: var(--green); color: #fff; }
+.gs-closed   { background: #F59E0B; color: #fff; }
+.gs-finished { background: rgba(15,23,42,.5); color: rgba(255,255,255,.7); }
+.giai-body { padding: 18px 20px; flex: 1; }
+.giai-name {
+    font-family: var(--ff-h); font-size: 1rem; text-transform: uppercase;
+    color: var(--text); margin-bottom: 8px; line-height: 1.2;
+}
+.giai-meta { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.prog-wrap { margin-bottom: 10px; }
+.prog-bar { height: 4px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--green); border-radius: 3px; }
+.giai-footer {
+    padding: 14px 20px; border-top: 1px solid var(--border);
+    background: var(--bg3); display: flex; gap: 8px; justify-content: space-between;
+    align-items: center;
+}
+.giai-price {
+    font-family: var(--ff-h); font-size: 1.1rem; color: var(--green);
+}
+.giai-price small { font-family: var(--ff-b); font-size: 11px; color: var(--muted); }
+
+/* Sort bar */
+.sort-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+}
+.sort-select {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--r); padding: 7px 12px;
+    font-size: 13px; cursor: pointer;
+}
+</style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Cộng đồng PitchHub</div>
+        <h1 style="font-style:italic;line-height:.9;margin:0 0 10px">
+            TÌM KIẾM<br><span class="text-green">GIẢI ĐẤU</span>
+        </h1>
+        <p style="color:var(--muted)">
+            @Model.Count giải đấu &nbsp;·&nbsp;
+            @Model.Count(g => g.TrangThai == "RegistrationOpen") đang mở đăng ký &nbsp;·&nbsp;
+            @Model.Count(g => g.TrangThai == "Active") đang diễn ra
+        </p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+
+        <!-- SIDEBAR BỘ LỌC -->
+        <div class="col-12 col-lg-3">
+            <form method="get" action="/TournamentPublic" id="filterForm">
+                <div class="filter-card">
+                    <div class="filter-title">🔍 Bộ lọc</div>
+
+                    <!-- Tìm tên -->
+                    <label class="filter-lbl">Tên giải / Sân</label>
+                    <input name="keyword" class="filter-inp" placeholder="VD: Cầu Giấy, Mùa hè..."
+                           value="@kw" />
+
+                    <!-- Quận -->
+                    <label class="filter-lbl">Quận / Huyện</label>
+                    <select name="quan" class="filter-inp">
+                        <option value="">Tất cả khu vực</option>
+                        @foreach (var q in quanList)
+                        {
+                            <option value="@q.TenQuan" selected="@(qf == q.TenQuan)">@q.TenQuan</option>
+                        }
+                    </select>
+
+                    <!-- Trạng thái -->
+                    <label class="filter-lbl">Trạng thái</label>
+                    <select name="trangThai" class="filter-inp">
+                        <option value="">Tất cả</option>
+                        @foreach (var (val, lbl) in new[]{
+                            ("RegistrationOpen",   "📋 Đang mở đăng ký"),
+                            ("RegistrationClosed", "🔒 Đã đóng đăng ký"),
+                            ("Active",             "🟢 Đang diễn ra"),
+                            ("Finished",           "🏁 Đã kết thúc"),
+                        })
+                        {
+                            <option value="@val" selected="@(tf == val)">@lbl</option>
+                        }
+                    </select>
+
+                    <!-- Lệ phí -->
+                    <label class="filter-lbl">Lệ phí (đ/đội)</label>
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="number" name="lePhiTu" class="filter-inp mb-0"
+                               placeholder="Từ" value="@lePhiTu" step="50000" />
+                        <input type="number" name="lePhiDen" class="filter-inp mb-0"
+                               placeholder="Đến" value="@lePhiDen" step="50000" />
+                    </div>
+
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="submit" class="btn btn-success rounded-pill flex-grow-1">
+                            Lọc
+                        </button>
+                        <a href="/TournamentPublic" class="btn btn-outline-secondary rounded-pill">
+                            ✕
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- DANH SÁCH GIẢI -->
+        <div class="col-12 col-lg-9">
+
+            <!-- Sort bar -->
+            <div class="sort-bar">
+                <div style="font-size:14px;color:var(--muted)">
+                    Tìm thấy <strong style="color:var(--text)">@Model.Count</strong> giải đấu
+                </div>
+                <select class="sort-select" onchange="doSort(this.value)">
+                    <option value="" selected="@(sx == null)">Mặc định</option>
+                    <option value="moi_nhat" selected="@(sx == "moi_nhat")">Mới nhất</option>
+                    <option value="ngay_gan" selected="@(sx == "ngay_gan")">Ngày đấu gần nhất</option>
+                    <option value="lephi_tang" selected="@(sx == "lephi_tang")">Lệ phí tăng dần</option>
+                    <option value="lephi_giam" selected="@(sx == "lephi_giam")">Lệ phí giảm dần</option>
+                </select>
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div style="text-align:center;padding:80px 0;color:var(--muted)">
+                    <div style="font-size:3rem;margin-bottom:14px">🏆</div>
+                    <div style="font-size:1.1rem;margin-bottom:8px">Không tìm thấy giải đấu nào</div>
+                    <a href="/TournamentPublic" class="btn-outline-green mt-2">Xóa bộ lọc</a>
+                </div>
+            }
+
+            <div class="row g-4">
+                @foreach (var g in Model)
+                {
+                    var (stClass, stLabel) = g.TrangThai switch {
+                        "RegistrationOpen"   => ("gs-open",     "📋 Đang đăng ký"),
+                        "RegistrationClosed" => ("gs-closed",   "🔒 Đã đóng"),
+                        "Active"             => ("gs-active",   "🟢 Đang diễn ra"),
+                        "Finished"           => ("gs-finished", "🏁 Kết thúc"),
+                        _                   => ("gs-closed",    g.TrangThai)
+                    };
+                    var soDoiDK = g.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
+                    var pct     = g.SoDoiToiDa > 0 ? (int)((double)soDoiDK / g.SoDoiToiDa * 100) : 0;
+
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="giai-card">
+                            <div class="giai-thumb">
+                                🏆
+                                <span class="giai-state @stClass">@stLabel</span>
+                            </div>
+                            <div class="giai-body">
+                                <div class="giai-name">@g.TenGiai</div>
+                                <div class="giai-meta">
+                                    🏟️ @g.SanBong?.TenSan &nbsp;·&nbsp; 📍 @g.SanBong?.Quan<br>
+                                    📅 @g.NgayBatDau.ToString("dd/MM") – @g.NgayKetThuc.ToString("dd/MM/yyyy")
+                                </div>
+
+                                @if (g.TrangThai is "RegistrationOpen" or "Active")
+                                {
+                                    <div class="prog-wrap">
+                                        <div style="display:flex;justify-content:space-between;
+                                                    font-size:11px;color:var(--muted);margin-bottom:4px">
+                                            <span>Đội đăng ký</span>
+                                            <span style="font-weight:700;color:var(--text)">
+                                                @soDoiDK/@g.SoDoiToiDa
+                                            </span>
+                                        </div>
+                                        <div class="prog-bar">
+                                            <div class="prog-fill" style="width:@pct%"></div>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                                    <span style="font-size:11px;background:var(--bg3);
+                                                 padding:3px 10px;border-radius:999px;color:var(--muted)">
+                                        ⚽ @g.SoDoiToiDa đội
+                                    </span>
+                                    <span style="font-size:11px;background:var(--bg3);
+                                                 padding:3px 10px;border-radius:999px;color:var(--muted)">
+                                        📊 @g.SoBang bảng
+                                    </span>
+                                    @if (g.TienKyQuy > 0)
+                                    {
+                                        <span style="font-size:11px;background:rgba(14,168,106,.1);
+                                                     padding:3px 10px;border-radius:999px;color:var(--green)">
+                                            🔒 Ký quỹ @g.TienKyQuy.ToString("N0")đ
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="giai-footer">
+                                <div class="giai-price">
+                                    @g.LePhiGiai.ToString("N0")đ
+                                    <small>/đội</small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="/TournamentPublic/Details/@g.Id"
+                                       class="btn btn-sm btn-outline-secondary rounded-pill">
+                                        Chi tiết
+                                    </a>
+                                    @if (g.TrangThai == "RegistrationOpen" &&
+                                         soDoiDK < g.SoDoiToiDa)
+                                    {
+                                        <a href="/TournamentPublic/DangKy/@g.Id"
+                                           class="btn btn-sm btn-success rounded-pill">
+                                            Đăng ký ngay
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function doSort(val) {
+    var form = document.getElementById('filterForm');
+    var inp  = form.querySelector('input[name="sapXep"]')
+               || document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'sapXep'; inp.value = val;
+    form.appendChild(inp);
+    form.submit();
+}
+</script>
+}

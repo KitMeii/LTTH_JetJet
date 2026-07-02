@@ -1,0 +1,48 @@
+@{
+    ViewData["Title"] = "Chuyển nhượng đặt sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var don = (Web_Stadium.EFCore.DatSan)ViewBag.Don;
+}
+
+<div class="container py-4">
+    <h3>👥 Chuyển nhượng đặt sân</h3>
+
+    @if (TempData["Error"] != null)
+    { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <strong>Đơn:</strong> @don.MaXacNhan<br />
+            <strong>Sân:</strong> @don.KhungGio.SanBong.TenSan<br />
+            <strong>Khung giờ:</strong> @don.KhungGio.GioBatDau – @don.KhungGio.GioKetThuc, ngày @don.NgayThiDau.ToString("dd/MM/yyyy")
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        Người nhận phải có tài khoản trong hệ thống. Bạn có thể nhập email hoặc số điện thoại — chỉ cần một trong hai.
+    </div>
+
+    <form asp-action="TaoChuyenNhuong" method="post" class="card">
+        <div class="card-body">
+            <input type="hidden" name="datSanId" value="@don.Id" />
+
+            <div class="mb-3">
+                <label class="form-label">Email người nhận</label>
+                <input type="email" name="emailNguoiNhan" class="form-control" maxlength="150" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Số điện thoại người nhận</label>
+                <input type="tel" name="sdtNguoiNhan" class="form-control" maxlength="20" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Lý do chuyển nhượng *</label>
+                <textarea name="lyDo" class="form-control" rows="3" maxlength="500" required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-success">Gửi yêu cầu</button>
+            <a href="/User/HoSo?tab=lichsu" class="btn btn-secondary">Hủy</a>
+        </div>
+    </form>
+</div>

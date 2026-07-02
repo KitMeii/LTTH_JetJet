@@ -1,147 +1,249 @@
 ﻿@model List<Web_Stadium.EFCore.SanBong>
 @{
     ViewData["Title"] = "Duyệt sân";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new Dictionary<string, decimal>();
 }
 
-<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin — Franchise</div>
-        <h1 style="font-style:italic;line-height:0.9">DUYỆT SÂN<br><span class="text-green">HỒ SƠ CHỜ PHÊ DUYỆT</span></h1>
-    </div>
-</div>
+@section Styles {
+    <style>
+        .ds-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            overflow: hidden;
+            transition: border-color .2s,transform .2s;
+            margin-bottom: 16px;
+        }
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center align-items-center">
-        <a href="/Admin" class="btn btn-outline-green rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLySan" class="btn btn-success rounded-pill">📍 Quản lý sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-outline-info rounded-pill">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-outline-green rounded-pill">🗂️ Master Data</a>
-        <a href="/Admin/KhieuNai" class="btn btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-outline-secondary rounded-pill">📈 Báo cáo</a>
-        <a href="/Admin/AuditLog" class="btn btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
-        <a href="/Admin/TatCaHopDong" class="btn btn-outline-primary rounded-pill">📑 Hợp đồng</a>
-    </div>
-</div>
+            .ds-card:hover {
+                border-color: var(--border2);
+                transform: translateY(-1px);
+            }
 
-<div class="container py-5">
+        .ds-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,.025);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .ds-body {
+            padding: 18px 20px;
+        }
+
+        .ds-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .ds-field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .ds-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--muted2);
+            text-transform: uppercase;
+        }
+
+        .ds-val {
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+
+        .ds-pics {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .ds-pic {
+            width: 88px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform .2s;
+        }
+
+            .ds-pic:hover {
+                transform: scale(1.05);
+            }
+
+        .ds-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tyLe-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0,212,126,.1);
+            border: 1px solid rgba(0,212,126,.2);
+            color: var(--green2);
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+    </style>
+}
+
+<div style="padding:0 0 40px;">
+
+    <div class="pg-header">
+        <div class="pg-label">Admin · Quản lý</div>
+        <h2>Duyệt sân <span class="pg-accent">chờ phê duyệt</span></h2>
+        <p>Xem xét và phê duyệt các hồ sơ đăng ký sân mới từ Owner</p>
+    </div>
 
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-success alert-dismissible fade show mb-4">
+            ✅ @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
 
     @if (!Model.Any())
     {
-        <div style="text-align:center;padding:80px 0;color:var(--muted)">
-            <div style="font-size:3rem;margin-bottom:16px">🎉</div>
-            <div style="font-family:var(--ff-h);font-size:1.5rem;margin-bottom:8px">Không có hồ sơ chờ duyệt</div>
-            <div style="font-size:16px">Tất cả sân đã được xử lý</div>
+        <div style="text-align:center;padding:80px 0;">
+            <div style="font-size:3rem;margin-bottom:16px;">🎉</div>
+            <div style="font-size:20px;font-weight:700;margin-bottom:8px;">Không có hồ sơ chờ duyệt</div>
+            <div style="color:var(--muted);">Tất cả sân đã được xử lý</div>
         </div>
     }
-
-    @{
-        var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new Dictionary<string, decimal>();
-    }
-    @foreach (var san in Model)
+    else
     {
-        var tyLe = tyLeMap.TryGetValue(san.Quan ?? "", out var tl) ? tl : 0.10m;
-        <div class="section-card p-0 overflow-hidden mb-4">
-            <!-- Header sân -->
-            <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)">
-                <div>
-                    <h5 style="margin:0;font-family:var(--ff-h)">@san.TenSan</h5>
-                    <div style="color:var(--muted);font-size:15px;margin-top:6px">
-                        📍 @san.DiaChi, @san.Quan, @san.ThanhPho
-                    </div>
+        <!-- Tổng quan -->
+        <div class="section-card mb-4">
+            <div style="display:flex;gap:0;overflow:hidden;border-radius:16px;">
+                <div style="flex:1;padding:18px 20px;border-right:1px solid var(--border);text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:var(--warn);">@Model.Count</div>
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Chờ duyệt</div>
                 </div>
-                <div style="text-align:right">
-                    <div style="font-size:14px;color:var(--muted)">Loại sân</div>
-                    <span class="badge b-blue">@san.LoaiSan người — @san.LoaiCo</span>
+                <div style="flex:1;padding:18px 20px;border-right:1px solid var(--border);text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:var(--blue);">@Model.Select(s => s.OwnerId).Distinct().Count()</div>
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Chủ sân khác nhau</div>
                 </div>
-            </div>
-
-            <div class="row g-0">
-                <!-- Thông tin -->
-                <div class="col-md-6" style="padding:24px;border-right:1px solid var(--border)">
-                    <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">THÔNG TIN CHỦ SÂN</div>
-                    <div style="font-size:15px;margin-bottom:8px">
-                        <strong>Chủ sân:</strong> @san.Owner?.HoTen
-                    </div>
-                    <div style="font-size:15px;margin-bottom:8px">
-                        <strong>Email:</strong> @san.Owner?.Email
-                    </div>
-                    <div style="font-size:15px;margin-bottom:8px">
-                        <strong>SĐT:</strong> @san.Owner?.SoDienThoai
-                    </div>
-                    <div style="font-size:15px;margin-bottom:8px">
-                        <strong>Tỷ lệ cọc:</strong> @((san.TyLeCoc * 100).ToString("F0"))%
-                    </div>
-
-                    <!-- Hợp đồng -->
-                    <div style="margin-top:16px;padding:12px;background:rgba(30,215,96,0.06);border:1px solid rgba(30,215,96,0.2);border-radius:8px">
-                        @if (san.DaKyHopDong)
-                        {
-                            <div style="color:var(--green);font-size:14px;font-weight:600;margin-bottom:8px">
-                                ✅ Đã ký hợp đồng điện tử — @san.NgayKyHopDong?.ToString("dd/MM/yyyy HH:mm")
-                            </div>
-                            <div style="font-size:14px;color:var(--muted)">
-                                Tỷ lệ HH trong HĐ: <strong style="color:var(--green)">@((tyLe * 100).ToString("F0"))%</strong>
-                            </div>
-                            <a href="/Admin/XemHopDong/@san.Id" target="_blank"
-                               class="btn btn-sm btn-outline-success rounded-pill mt-2"
-                               style="font-size:13px">📄 Xem hợp đồng đã ký</a>
-                        }
-                        else
-                        {
-                            <div style="color:#f39c12;font-size:14px">⚠️ Chưa ký hợp đồng điện tử</div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Phê duyệt -->
-                <div class="col-md-6" style="padding:24px">
-                    <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">QUYẾT ĐỊNH PHÊ DUYỆT</div>
-
-                    <!-- Override tỷ lệ nếu cần -->
-                    <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
-                        <div style="font-size:14px;color:var(--muted);margin-bottom:10px">
-                            Tỷ lệ hoa hồng từ vùng: <strong style="color:var(--green)">@((tyLe * 100).ToString("F0"))%</strong>
-                        </div>
-                        <div style="font-size:14px;color:var(--muted)">Override (nếu có thỏa thuận đặc biệt):</div>
-                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-                            <input type="number" id="tyLe_@san.Id" step="0.01" min="0.01" max="0.50"
-                                   value="@tyLe"
-                                   style="background:var(--bg2);border:1px solid var(--border);color:white;border-radius:6px;padding:4px 8px;width:100px;font-size:13px" />
-                            <span style="font-size:14px;color:var(--muted)">(0.10 = 10%)</span>
-                        </div>
-                    </div>
-
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <form method="post" action="/Admin/PheDuyet" style="display:inline">
-                            <input type="hidden" name="id" value="@san.Id" />
-                            <input type="hidden" name="trangThai" value="DaDuyet" />
-                            <input type="hidden" name="tyLeOverride" id="tyLeHidden_@san.Id" />
-                            <button type="submit"
-                                    onclick="document.getElementById('tyLeHidden_@san.Id').value=document.getElementById('tyLe_@san.Id').value;return confirm('Phê duyệt sân @san.TenSan?')"
-                                    class="btn btn-success rounded-pill">
-                                ✓ Phê duyệt
-                            </button>
-                        </form>
-                        <form method="post" action="/Admin/PheDuyet" style="display:inline">
-                            <input type="hidden" name="id" value="@san.Id" />
-                            <input type="hidden" name="trangThai" value="TuChoi" />
-                            <button type="submit"
-                                    onclick="return confirm('Từ chối sân @san.TenSan?')"
-                                    class="btn btn-outline-danger rounded-pill">
-                                ✗ Từ chối
-                            </button>
-                        </form>
-                    </div>
+                <div style="flex:1;padding:18px 20px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:var(--green2);">@Model.Select(s => s.Quan).Distinct().Count()</div>
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">Quận khác nhau</div>
                 </div>
             </div>
         </div>
+
+        @foreach (var san in Model)
+        {
+            var tyLe = tyLeMap.ContainsKey(san.Quan ?? "") ? tyLeMap[san.Quan ?? ""] : 0m;
+            // Lấy ảnh từ HinhAnh (string) hoặc AnhSanBongs (collection)
+            var anhList = new List<string>();
+            if (!string.IsNullOrEmpty(san.HinhAnh))
+                anhList = san.HinhAnh.Split(',').Select(a => a.Trim()).Where(a => !string.IsNullOrEmpty(a)).ToList();
+            else if (san.AnhSanBongs?.Any() == true)
+                anhList = san.AnhSanBongs.OrderBy(a => a.ThuTu).Select(a => a.DuongDan).Take(6).ToList();
+
+            <div class="ds-card">
+                <div class="ds-head">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,212,126,.1);border:1px solid rgba(0,212,126,.2);display:flex;align-items:center;justify-content:center;font-size:20px;">🏟️</div>
+                        <div>
+                            <div style="font-weight:800;font-size:16px;">@san.TenSan</div>
+                            <div style="font-size:12px;color:var(--muted);">@(san.Owner?.HoTen ?? "—") · @(san.Owner?.Email ?? "")</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        @if (tyLe > 0)
+                        {
+                            <span class="tyLe-badge">💰 @((tyLe * 100).ToString("F0"))% hoa hồng</span>
+                        }
+                        <span class="status-pill warn">Chờ duyệt</span>
+                    </div>
+                </div>
+                <div class="ds-body">
+                    @if (anhList.Any())
+                    {
+                        <div class="ds-pics">
+                            @foreach (var anh in anhList.Take(6))
+                            {
+                                <img src="@anh" class="ds-pic"
+                                     onclick="window.open('@anh','_blank')"
+                                     onerror="this.style.display='none'" />
+                            }
+                        </div>
+                    }
+
+                    <div class="ds-grid">
+                        <div class="ds-field">
+                            <span class="ds-label">📍 Địa chỉ</span>
+                            <span class="ds-val">@san.DiaChi, @san.Quan</span>
+                        </div>
+                        <div class="ds-field">
+                            <span class="ds-label">⚽ Loại sân / Cỏ</span>
+                            <span class="ds-val">@san.LoaiSan · @san.LoaiCo</span>
+                        </div>
+                        <div class="ds-field">
+                            <span class="ds-label">💵 Tỷ lệ cọc</span>
+                            <span class="ds-val" style="color:var(--green2);">@((san.TyLeCoc * 100).ToString("F0"))%</span>
+                        </div>
+                        <div class="ds-field">
+                            <span class="ds-label">⭐ Đánh giá</span>
+                            <span class="ds-val">@san.DanhGiaTrungBinh.ToString("F1") / 5.0</span>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(san.MoTa))
+                    {
+                        <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">@san.MoTa</div>
+                    }
+
+                    <div class="ds-actions">
+                        <form method="post" action="/Admin/PheDuyetSan"
+                              onsubmit="return confirm('Xác nhận duyệt sân @san.TenSan?')">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@san.Id" />
+                            <button type="submit" class="btn btn-success">✅ Phê duyệt</button>
+                        </form>
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#tuChoi_@san.Id">
+                            ✕ Từ chối
+                        </button>
+                        <a href="/Admin/XemHoSo/@san.Id" class="btn btn-outline-primary">📋 Xem hồ sơ</a>
+                    </div>
+
+                    <div class="collapse mt-3" id="tuChoi_@san.Id">
+                        <form method="post" action="/Admin/TuChoiSan">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@san.Id" />
+                            <div class="row g-2">
+                                <div class="col">
+                                    <input type="text" name="lyDo" class="form-control"
+                                           placeholder="Lý do từ chối..." required />
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-danger">Xác nhận từ chối</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
     }
 </div>
-

@@ -461,3 +461,11 @@
         </div>
     }
 </div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script>
+        window.__STAFF_SAN_IDS = [];
+    </script>
+}

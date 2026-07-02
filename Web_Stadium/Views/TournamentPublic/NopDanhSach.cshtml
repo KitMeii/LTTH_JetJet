@@ -1,0 +1,318 @@
+﻿@model Web_Stadium.EFCore.DoiBong
+@{
+    ViewData["Title"] = "Danh sách cầu thủ — " + Model.TenDoi;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var daDong = Model.GiaiDau?.TrangThai is "RegistrationClosed" or "Active" or "Finished";
+}
+
+@section Styles {
+    <style>
+        .nds-wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 0 16px 60px;
+        }
+
+        .nds-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nds-header {
+            background: linear-gradient(135deg,#0a2a1a,#0EA86A);
+            padding: 22px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .add-form {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 22px;
+            margin-bottom: 22px;
+        }
+
+        .form-lbl {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .form-inp {
+            width: 100%;
+            background: var(--bg2);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            border-radius: var(--r);
+            padding: 10px 14px;
+            font-size: 14px;
+            transition: border-color .2s;
+        }
+
+            .form-inp:focus {
+                outline: none;
+                border-color: var(--green);
+            }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background .15s;
+        }
+
+            .player-row:hover {
+                background: rgba(14,168,106,.02);
+            }
+
+            .player-row:last-child {
+                border-bottom: none;
+            }
+
+        .player-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(14,168,106,.1);
+            color: var(--green);
+            font-family: var(--ff-h);
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .player-name {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .player-meta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .player-sus {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(239,68,68,.1);
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--muted);
+        }
+
+        .badge-count {
+            background: var(--green);
+            color: #fff;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 999px;
+        }
+    </style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Đội trưởng — Quản lý đội</div>
+        <h1 style="font-style:italic;line-height:.9;margin:0">
+            DANH SÁCH<br><span class="text-green">CẦU THỦ</span>
+        </h1>
+        <p style="color:var(--muted);margin-top:8px">
+            Đội <strong style="color:var(--text)">@Model.TenDoi</strong> &nbsp;·&nbsp;
+            Giải <strong style="color:var(--text)">@Model.GiaiDau?.TenGiai</strong>
+        </p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="nds-wrap">
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mb-4">
+                ✅ @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show mb-4">
+                ❌ @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <!-- Cảnh báo đã khóa -->
+        @if (daDong)
+        {
+            <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
+                                border-radius:var(--r);padding:14px 16px;margin-bottom:20px;
+                                font-size:13px;color:var(--muted)">
+                🔒 <strong style="color:var(--text)">Danh sách đã bị khóa</strong>
+                — Giải đấu đã đóng đăng ký. Không thể thêm/xóa cầu thủ.
+            </div>
+        }
+
+        <!-- Form thêm cầu thủ -->
+        @if (!daDong)
+        {
+            <div class="add-form">
+                <div style="font-family:var(--ff-h);font-size:12px;letter-spacing:2px;
+                                    text-transform:uppercase;color:var(--green);margin-bottom:16px">
+                    ➕ THÊM CẦU THỦ
+                </div>
+                <form method="post" action="/TournamentPublic/ThemThanhVien"
+                      id="formThem" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="doiId" value="@Model.Id" />
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-lbl">Họ và tên cầu thủ *</label>
+                            <input name="hoTen" class="form-inp" required maxlength="100"
+                                   placeholder="Nguyễn Văn A" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-lbl">Số áo *</label>
+                            <input type="number" name="soAo" class="form-inp"
+                                   required min="1" max="99" placeholder="10" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-lbl">Ảnh đại diện</label>
+                            <input type="file" name="anhFile"
+                                   accept="image/jpeg,image/png,image/webp"
+                                   class="form-control form-control-sm"
+                                   style="background:var(--bg3);border:1px solid var(--border);
+                                                  color:var(--text);border-radius:var(--r);padding:7px;"
+                                   onchange="previewAnh(this)" />
+                            <div style="font-size:10px;color:var(--muted2);margin-top:3px">
+                                JPG/PNG/WebP, tối đa 2MB
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn-primary-glow w-100"
+                                    style="padding:10px;border-radius:var(--r)">
+                                ➕ Thêm
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Preview ảnh trước khi thêm -->
+                    <div id="anhPreviewWrap" style="display:none;margin-top:12px;
+                                 display:none;align-items:center;gap:10px">
+                        <img id="anhPreview"
+                             style="width:48px;height:48px;border-radius:50%;
+                                            object-fit:cover;border:2px solid var(--green)" />
+                        <span style="font-size:12px;color:var(--muted)">Preview ảnh đại diện</span>
+                    </div>
+                </form>
+            </div>
+        }
+
+        <!-- Danh sách cầu thủ -->
+        <div class="nds-card">
+            <div class="nds-header">
+                <div>
+                    <div style="color:rgba(255,255,255,.7);font-size:11px;
+                                letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
+                        DANH SÁCH ĐĂNG KÝ
+                    </div>
+                    <div style="color:#fff;font-weight:700;font-size:1rem">
+                        @Model.TenDoi
+                    </div>
+                </div>
+                <span class="badge-count">@Model.ThanhViens?.Count cầu thủ</span>
+            </div>
+
+            @if (!Model.ThanhViens?.Any() == true)
+            {
+                <div class="empty-state">
+                    <div style="font-size:2.5rem;margin-bottom:12px">⚽</div>
+                    <div style="font-weight:600;margin-bottom:6px">Chưa có cầu thủ nào</div>
+                    <div style="font-size:13px">Thêm cầu thủ vào danh sách bên trên</div>
+                </div>
+            }
+            else
+            {
+                @foreach (var tv in (Model.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+                {
+                    <div class="player-row">
+                        @if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                        {
+                            <img src="@tv.AnhDaiDien" alt="@tv.HoTen"
+                                 style="width:42px;height:42px;border-radius:50%;
+                                                                object-fit:cover;flex-shrink:0;
+                                                                border:2px solid var(--border)" />
+                        }
+                        else
+                        {
+                            <div class="player-num">@tv.SoAo</div>
+                        }
+                        <div style="flex:1">
+                            <div class="player-name">@tv.HoTen</div>
+                            @if (tv.SoTranTreoGio > 0)
+                            {
+                                <div class="player-meta">
+                                    <span class="player-sus">
+                                        ⛔ Treo @tv.SoTranTreoGio trận
+                                    </span>
+                                </div>
+                            }
+                            <div class="player-meta" style="margin-top:3px">
+                                ⚽ @tv.TongBanThang bàn &nbsp;·&nbsp;
+                                💛 @tv.TongTheVang vàng &nbsp;·&nbsp;
+                                🟥 @tv.TongTheDo đỏ
+                            </div>
+                        </div>
+                        @if (!daDong)
+                        {
+                            <form method="post" action="/TournamentPublic/XoaThanhVien">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="thanhVienId" value="@tv.Id" />
+                                <input type="hidden" name="doiId" value="@Model.Id" />
+                                <button type="submit"
+                                        style="background:none;border:none;cursor:pointer;
+                                                                       color:var(--danger);font-size:1.1rem;padding:4px 8px;
+                                                                       border-radius:var(--r);transition:background .15s;"
+                                        title="Xóa cầu thủ"
+                                        onclick="return confirm('Xóa cầu thủ @tv.HoTen?')">
+                                    🗑
+                                </button>
+                            </form>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <!-- Link quay lại -->
+        <div style="text-align:center;margin-top:20px">
+            <a href="/TournamentPublic/Details/@Model.GiaiDauId"
+               class="btn-outline-green">
+                ← Quay lại trang giải đấu
+            </a>
+        </div>
+    </div>
+</div>

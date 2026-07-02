@@ -1,0 +1,237 @@
+@model List<Web_Stadium.EFCore.Voucher>
+@{
+    ViewData["Title"] = "Voucher sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "VoucherSan";
+    var sanList = ViewBag.SanCuaToi as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .breadcrumb-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--db-muted); text-decoration: none; margin-bottom: 8px;
+    }
+        .breadcrumb-back:hover { color: var(--db-green); }
+
+    .form-card { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; padding: 28px; max-width: 800px; margin: 0 auto; }
+    .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
+    .form-control, .form-select {
+        background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 12px;
+        padding: 8px 12px; font-size: 14px; color: var(--db-text);
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
+    }
+
+    .btn-save { background: var(--db-green); border: none; border-radius: 40px; padding: 8px 28px; color: white; font-weight: 500; }
+    .btn-save:hover { background: #0a5338; transform: translateY(-1px); }
+    .info-note { background: #eff6ff; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-top: 20px; }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">Owner · Quản lý Vouchers</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">vouchers</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật thông tin và cấu hình từng voucher</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_OwnerNav")
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">🎟️ Voucher sân của tôi</h3>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTaoVoucher">
+            <i class="bi bi-plus-lg"></i> Tạo voucher mới
+        </button>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tên</th>
+                        <th>Loại phát hành</th>
+                        <th>Giảm</th>
+                        <th>Áp dụng sân</th>
+                        <th>Số lượt còn</th>
+                        <th>Điểm đổi</th>
+                        <th>Hiệu lực</th>
+                        <th>Trạng thái</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="10" class="text-center text-muted py-4">Chưa có voucher nào. Hãy tạo voucher đầu tiên!</td></tr>
+                    }
+                    @foreach (var v in Model)
+                    {
+                        <tr>
+                            <td><code>@v.MaVoucher</code></td>
+                            <td>@v.TenVoucher</td>
+                            <td>
+                                @if (v.LoaiPhatHanh == "CongKhai")
+                                { <span class="badge bg-info">Công khai (nhập mã)</span> }
+                                else if (v.LoaiPhatHanh == "DoiDiem")
+                                { <span class="badge bg-warning text-dark">Đổi điểm</span> }
+                                else
+                                { <span class="badge bg-secondary">@v.LoaiPhatHanh</span> }
+                            </td>
+                            <td>
+                                @if (v.LoaiGiam == "PhanTram")
+                                { <text>@v.GiaTriGiam.ToString("0.##")%</text> }
+                                else
+                                { <text>@v.GiaTriGiam.ToString("N0") đ</text> }
+                                @if (v.GiamToiDa.HasValue)
+                                { <small class="text-muted d-block">tối đa @v.GiamToiDa.Value.ToString("N0")đ</small> }
+                            </td>
+                            <td>@(v.SanBong?.TenSan ?? "Mọi sân của tôi")</td>
+                            <td>@(v.SoLuotConLai?.ToString() ?? "—")</td>
+                            <td>@(v.LoaiPhatHanh == "DoiDiem" ? v.DiemCanDoi.ToString() : "—")</td>
+                            <td>@v.SoNgayHieuLuc ngày</td>
+                            <td>
+                                @if (v.IsActive)
+                                { <span class="badge bg-success">Đang bật</span> }
+                                else
+                                { <span class="badge bg-secondary">Đã tắt</span> }
+                            </td>
+                            <td>
+                                <form asp-action="ToggleVoucher" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@v.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-@(v.IsActive ? "secondary" : "success")">
+                                        @(v.IsActive ? "Tắt" : "Bật")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal tạo voucher -->
+<div class="modal fade" id="modalTaoVoucher" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form asp-action="TaoVoucherSan" method="post" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title">Tạo voucher sân</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Tên voucher *</label>
+                        <input name="tenVoucher" class="form-control" required maxlength="200" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mã voucher *</label>
+                        <input name="maVoucher" class="form-control text-uppercase" required maxlength="50" placeholder="VD: GIAM20" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Mô tả</label>
+                        <textarea name="moTa" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Loại giảm *</label>
+                        <select name="loaiGiam" class="form-select" required>
+                            <option value="PhanTram">Phần trăm (%)</option>
+                            <option value="SoTien">Số tiền (đ)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Giá trị giảm *</label>
+                        <input name="giaTriGiam" type="number" step="0.01" min="0.01" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Giảm tối đa (đ)</label>
+                        <input name="giamToiDa" type="number" min="0" class="form-control" placeholder="(để trống = không giới hạn)" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hiệu lực (ngày) *</label>
+                        <input name="soNgayHieuLuc" type="number" min="1" max="365" value="30" class="form-control" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Loại phát hành *</label>
+                        <select name="loaiPhatHanh" class="form-select" required id="ddlLoaiPhatHanh">
+                            <option value="CongKhai">Công khai (nhập mã khi đặt)</option>
+                            <option value="DoiDiem">Đổi bằng điểm thưởng</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Áp dụng cho sân</label>
+                        <select name="sanBongId" class="form-select">
+                            <option value="">— Mọi sân của tôi —</option>
+                            @foreach (var s in sanList)
+                            {
+                                <option value="@s.Id">@s.TenSan</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Số lượt sử dụng tối đa</label>
+                        <input name="soLuotConLai" type="number" min="1" class="form-control" placeholder="(để trống = không giới hạn)" />
+                    </div>
+                    <div class="col-md-6" id="rowDiemCanDoi" style="display:none;">
+                        <label class="form-label">Điểm cần đổi *</label>
+                        <input name="diemCanDoi" type="number" min="0" value="0" class="form-control" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-success">Tạo voucher</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('ddlLoaiPhatHanh').addEventListener('change', function () {
+        document.getElementById('rowDiemCanDoi').style.display = (this.value === 'DoiDiem') ? '' : 'none';
+    });
+</script>

@@ -1,8 +1,10 @@
-﻿@{
+@{
     ViewData["Title"] = "Báo cáo Sự cố";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var donCoThe = ViewBag.DonCoThe as List<Web_Stadium.EFCore.DatSan> ?? new();
+    ViewBag.NavActivePage = "suco";
+    var donCoThe   = ViewBag.DonCoThe   as List<Web_Stadium.EFCore.DatSan> ?? new();
     var lichSuSuCo = ViewBag.LichSuSuCo as List<Web_Stadium.EFCore.DatSan> ?? new();
+    var sanIds     = ViewBag.SanIds     as List<int> ?? new List<int>();
 }
 
 <div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
@@ -13,24 +15,13 @@
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Staff" class="btn btn-sm btn-outline-light rounded-pill">📋 Ca trực</a>
-        <a href="/Staff/CheckIn" class="btn btn-sm btn-outline-warning rounded-pill">✅ Check-in</a>
-        <a href="/Staff/SuCo" class="btn btn-sm btn-danger rounded-pill">⚠️ Sự cố</a>
-    </div>
-</div>
+@await Html.PartialAsync("_StaffNav")
 
 <div class="container py-5">
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
+    @await Html.PartialAsync("_StaffAlerts")
 
     <div class="row g-4">
-
-        <!-- CỘT TRÁI: Đơn có thể báo sự cố -->
         <div class="col-md-7">
             <div style="font-size:11px;color:#e74c3c;letter-spacing:1px;margin-bottom:12px">⚠️ ĐƠN CÓ THỂ BÁO SỰ CỐ</div>
 
@@ -42,45 +33,51 @@
                 </div>
             }
 
+            @{ int sttSC = 0; }
             @foreach (var don in donCoThe)
             {
-                <div class="section-card p-0 overflow-hidden mb-3">
+                sttSC++;
+                <div class="section-card p-0 overflow-hidden mb-3 voice-suco-card" data-stt="@sttSC" data-don-id="@don.Id">
                     <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
                         <div>
+                            <span style="background:#e74c3c;color:white;padding:1px 8px;border-radius:6px;font-size:11px;font-weight:700;margin-right:6px">#@sttSC</span>
                             <strong style="font-size:13px">@don.KhungGio?.SanBong?.TenSan</strong>
                             <span style="color:var(--muted);font-size:12px;margin-left:8px">
-                                @don.KhungGio?.GioBatDau.ToString("HH:mm")–@don.KhungGio?.GioKetThuc.ToString("HH:mm")
+                                @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
                                 | @don.NgayThiDau.ToString("dd/MM/yyyy")
                             </span>
                             <br />
                             <span style="font-size:12px;color:var(--muted2)">
                                 @don.User?.HoTen — @don.User?.SoDienThoai
                                 — Cọc: <span style="color:var(--green)">@don.TienCoc.ToString("N0")đ</span>
+                                — Mã: <code style="color:var(--green)">@don.MaXacNhan</code>
                             </span>
                         </div>
                         <span style="color:@(don.TrangThai == "DangSuDung" ? "#8E44AD" : "var(--green)");font-size:11px;font-weight:600;white-space:nowrap">
                             @don.TrangThai
                         </span>
                     </div>
-                    <form method="post" action="/Staff/GhiNhanSuCo" style="padding:12px 16px">
+                    <form method="post" action="/Staff/GhiNhanSuCo" style="padding:12px 16px" class="voice-suco-form">
                         <input type="hidden" name="datSanId" value="@don.Id" />
                         <div class="row g-2 align-items-end">
                             <div class="col-auto">
                                 <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">LOẠI SỰ CỐ</label>
-                                <select name="loaiSuCo" class="form-select form-select-sm" required
-                                        style="background:var(--bg3);border-color:var(--border);color:white;font-size:12px">
+                                <select name="loaiSuCo" class="form-select form-select-sm voice-suco-type" required
+                                        style="background:var(--bg3);border-color:var(--border);color:var(--text);font-size:12px">
                                     <option value="NoShow">🚫 No-show (khách không đến)</option>
                                     <option value="HongHoc">🔧 Hỏng hóc cơ sở vật chất</option>
+                                    <option value="TreHen">⏰ Khách trễ hẹn</option>
+                                    <option value="VeSom">🚪 Khách về sớm</option>
                                 </select>
                             </div>
                             <div class="col">
                                 <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">GHI CHÚ</label>
-                                <input type="text" name="ghiChu" class="form-control form-control-sm"
+                                <input type="text" name="ghiChu" class="form-control form-control-sm voice-suco-note"
                                        placeholder="Mô tả chi tiết sự cố..."
-                                       style="background:var(--bg3);border-color:var(--border);color:white;font-size:12px" />
+                                       style="background:var(--bg3);border-color:var(--border);color:var(--text);font-size:12px" />
                             </div>
                             <div class="col-auto">
-                                <button type="submit" class="btn btn-sm btn-danger rounded-pill"
+                                <button type="submit" class="btn btn-sm btn-danger rounded-pill voice-suco-submit"
                                         onclick="return confirm('Xác nhận báo sự cố cho đơn này?')">
                                     Ghi nhận
                                 </button>
@@ -94,7 +91,6 @@
             }
         </div>
 
-        <!-- CỘT PHẢI: Lịch sử sự cố -->
         <div class="col-md-5">
             <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">📋 LỊCH SỬ SỰ CỐ GẦN ĐÂY</div>
 
@@ -107,13 +103,16 @@
 
             @foreach (var don in lichSuSuCo)
             {
-                var iconSuCo = don.LoaiSuCo == "NoShow" ? "🚫" : "🔧";
-                var colorSuCo = don.LoaiSuCo == "NoShow" ? "#e74c3c" : "#f39c12";
+                var iconSuCo = don.LoaiSuCo switch {
+                    "NoShow"  => "🚫", "HongHoc" => "🔧",
+                    "TreHen"  => "⏰", "VeSom"   => "🚪", _ => "⚠️"
+                };
+                var colorSuCo = don.LoaiSuCo switch {
+                    "NoShow" => "#e74c3c", "VeSom" => "#8E44AD", _ => "#f39c12"
+                };
                 <div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;border-left:3px solid @colorSuCo">
                     <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                        <span style="font-size:13px;font-weight:600">
-                            @iconSuCo @don.LoaiSuCo
-                        </span>
+                        <span style="font-size:13px;font-weight:600">@iconSuCo @don.LoaiSuCo</span>
                         <span style="font-size:11px;color:var(--muted)">@don.NgayThiDau.ToString("dd/MM/yyyy")</span>
                     </div>
                     <div style="font-size:12px;color:var(--muted2)">@don.KhungGio?.SanBong?.TenSan — @don.User?.HoTen</div>
@@ -124,7 +123,6 @@
                 </div>
             }
 
-            <!-- Lưu ý quyền hạn -->
             <div style="margin-top:20px;padding:14px;border:1px solid #633806;border-radius:8px;background:rgba(99,56,6,0.1)">
                 <div style="font-size:11px;color:#f39c12;font-weight:600;margin-bottom:8px">⚠️ GIỚI HẠN QUYỀN HẠN STAFF</div>
                 <div style="font-size:12px;color:var(--muted2);line-height:1.6">
@@ -138,6 +136,74 @@
                 </div>
             </div>
         </div>
-
     </div>
 </div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script>
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sanIds));
+
+        window.onStaffSuKien = function(ev) {
+            if (ev.loai === 'SuCo') setTimeout(() => location.reload(), 2500);
+        };
+
+        // Voice context
+        window.voiceContext = {
+            suCoList: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                donCoThe.Select(d => new {
+                    id        = d.Id,
+                    maXacNhan = d.MaXacNhan,
+                    tenKhach  = d.User != null ? d.User.HoTen : "",
+                    tenSan    = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId     = d.KhungGio != null ? d.KhungGio.SanBongId : 0
+                })
+            ))
+        };
+
+        // Xử lý prefill từ voice navigation (?prefill=ID&loai=NoShow)
+        (function handlePrefill() {
+            const params  = new URLSearchParams(location.search);
+            const donId   = params.get('prefill');
+            const loai    = params.get('loai');
+            if (!donId) return;
+            const card = document.querySelector(`.voice-suco-card[data-don-id="${donId}"]`);
+            if (!card) return;
+            card.scrollIntoView({ behavior:'smooth', block:'center' });
+            card.style.boxShadow = '0 0 0 3px rgba(22,196,127,.5)';
+            card.style.borderColor = '#16C47F';
+            if (loai) {
+                const sel = card.querySelector('.voice-suco-type');
+                if (sel) sel.value = loai;
+            }
+        })();
+
+        window.voiceHelpHTML = 'Sự cố: <em>"no-show sân 1"</em>, <em>"hỏng hóc sân 2"</em>, <em>"trễ hẹn sân 3"</em>';
+
+        // Fallback: điền form sự cố theo số thứ tự thẻ (backward compat)
+        function chonLoaiSuCoTheoStt(num, loai) {
+            const card = document.querySelector(`.voice-suco-card[data-stt="${num}"]`);
+            if (!card) return false;
+            card.style.animation = 'vFlash .8s ease';
+            card.scrollIntoView({ behavior:'smooth', block:'center' });
+            card.querySelector('.voice-suco-type').value = loai;
+            const btn = card.querySelector('.voice-suco-submit');
+            btn.onclick = null;
+            setTimeout(() => btn.click(), 600);
+            return true;
+        }
+
+        // voiceCommands — chỉ xử lý trường hợp "số thứ tự" vì engine chính đã xử lý "tên sân"
+        window.voiceCommands = [
+            {
+                re: /(xác nhận|xac nhan|ghi nhận|ghi nhan).*(sự cố|su co|này|nay|đó|do)/,
+                label: 'Ghi nhận sự cố thẻ đầu',
+                action: () => {
+                    const btn = document.querySelector('.voice-suco-submit');
+                    if (btn) { btn.onclick = null; btn.click(); }
+                }
+            }
+        ];
+    </script>
+}

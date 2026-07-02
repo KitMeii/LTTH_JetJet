@@ -1,11 +1,12 @@
-﻿@model Web_Stadium.EFCore.DatSan
+@model Web_Stadium.EFCore.DatSan
 @{
     ViewData["Title"] = "POS Mini";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var danhSachDV = ViewBag.DanhSachDichVu as List<Web_Stadium.EFCore.DichVu> ?? new();
     var tongDichVu = Model.DatSanDichVus?.Sum(x => (x.DichVu?.Gia ?? 0) * x.SoLuong) ?? 0;
-    var tongTatCa = (Model.KhungGio?.Gia ?? 0) + tongDichVu;
-    var conLai = tongTatCa - Model.TienCoc;
+    var tongTatCa  = (Model.KhungGio?.Gia ?? 0) + tongDichVu;
+    var conLai     = tongTatCa - Model.TienCoc;
+    var sanIds     = ViewBag.SanIds as List<int> ?? new List<int>();
 }
 
 <div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
@@ -18,52 +19,53 @@
 
 <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
     <div class="container d-flex gap-2">
-        <a href="/Staff" class="btn btn-sm btn-outline-light rounded-pill">← Ca trực</a>
+        <a href="/Staff" class="btn btn-sm btn-outline-secondary rounded-pill">← Ca trực</a>
         <a href="/Staff/CheckOut/@Model.Id" class="btn btn-sm btn-success rounded-pill">✓ Check-out ngay</a>
     </div>
 </div>
 
 <div class="container py-4">
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
+    @await Html.PartialAsync("_StaffAlerts")
 
     <div class="row g-4">
-
-        <!-- CỘT TRÁI: Dịch vụ có thể thêm -->
         <div class="col-md-7">
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">DANH MỤC DỊCH VỤ TẠI SÂN</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px">DANH MỤC DỊCH VỤ TẠI SÂN</div>
+                <input type="text" id="dvFilter" placeholder="🔍 Lọc nhanh..." oninput="locDV(this.value)"
+                       style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:5px 14px;font-size:12px;width:160px" />
+            </div>
 
             @if (!danhSachDV.Any())
             {
                 <div class="section-card p-4 text-center" style="color:var(--muted)">
                     <div style="font-size:2rem;margin-bottom:8px">📦</div>
-                    Không có dịch vụ nào trong kho. Liên hệ Owner để cập nhật tồn kho.
+                    Không có dịch vụ nào trong kho.
                 </div>
             }
 
-            <div class="row g-3">
+            <div class="row g-3" id="dvGrid">
+                @{ int sttDV = 0; }
                 @foreach (var dv in danhSachDV)
                 {
-                    <div class="col-6">
-                        <div class="section-card p-3">
-                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
-                                Còn: <span style="color:@(dv.TonKho < 5 ? "#e74c3c" : "var(--green)")">@dv.TonKho</span>
+                    sttDV++;
+                    <div class="col-6 voice-dv-wrap" data-ten="@dv.TenDichVu.ToLower()" data-stt="@sttDV">
+                        <div class="section-card p-3 voice-dv">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                                <span style="background:#f59e0b;color:white;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">#@sttDV</span>
+                                <span style="font-size:11px;color:var(--muted)">
+                                    Còn: <span style="color:@(dv.TonKho < 5 ? "#e74c3c" : "var(--green)")">@dv.TonKho</span>
+                                </span>
                             </div>
                             <div style="font-weight:600;margin-bottom:2px">@dv.TenDichVu</div>
                             <div style="color:var(--green);font-size:14px;margin-bottom:12px">@dv.Gia.ToString("N0")đ</div>
-                            <form method="post" action="/Staff/ThemDichVuPOS" style="display:flex;gap:6px">
+                            <form method="post" action="/Staff/ThemDichVuPOS" style="display:flex;gap:6px" class="voice-add-form">
                                 <input type="hidden" name="datSanId" value="@Model.Id" />
                                 <input type="hidden" name="dichVuId" value="@dv.Id" />
                                 <input type="number" name="soLuong" value="1" min="1" max="@dv.TonKho"
-                                       style="width:56px;background:var(--bg3);border:1px solid var(--border);color:white;border-radius:6px;padding:4px 8px;font-size:13px" />
-                                <button type="submit" class="btn btn-sm btn-warning rounded-pill flex-fill">
+                                       class="voice-add-qty"
+                                       style="width:56px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:13px" />
+                                <button type="submit" class="btn btn-sm btn-warning rounded-pill flex-fill voice-add-btn">
                                     + Thêm
                                 </button>
                             </form>
@@ -73,21 +75,17 @@
             </div>
         </div>
 
-        <!-- CỘT PHẢI: Tổng kết đơn -->
         <div class="col-md-5">
             <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">TỔNG KẾT ĐƠN HIỆN TẠI</div>
-
             <div class="section-card p-4">
-                <!-- Tiền sân -->
                 <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
                     <span style="color:var(--muted2)">
                         Tiền sân<br />
-                        <small>@Model.KhungGio?.GioBatDau.ToString("HH:mm") – @Model.KhungGio?.GioKetThuc.ToString("HH:mm")</small>
+                        <small>@Model.KhungGio?.GioBatDau.ToString(@"hh\:mm") – @Model.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</small>
                     </span>
                     <span style="font-weight:600">@(Model.KhungGio?.Gia.ToString("N0") ?? "0")đ</span>
                 </div>
 
-                <!-- Dịch vụ -->
                 @if (Model.DatSanDichVus?.Any() == true)
                 {
                     @foreach (var x in Model.DatSanDichVus)
@@ -103,7 +101,6 @@
                     </div>
                 }
 
-                <!-- Tổng & còn lại -->
                 <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px">
                     <span>Tổng cộng</span>
                     <span style="font-weight:700">@tongTatCa.ToString("N0")đ</span>
@@ -118,7 +115,7 @@
                 </div>
 
                 <a href="/Staff/CheckOut/@Model.Id"
-                   class="btn btn-success w-100 rounded-pill mt-3"
+                   class="btn btn-success w-100 rounded-pill mt-3 voice-goto-checkout"
                    style="font-size:14px;padding:10px">
                     ✓ Tiến hành Check-out
                 </a>
@@ -126,3 +123,52 @@
         </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script>
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sanIds));
+
+        function locDV(kw) {
+            kw = (kw || '').toLowerCase().trim();
+            document.querySelectorAll('.voice-dv-wrap').forEach(el => {
+                const ten = el.dataset.ten || '';
+                el.style.display = (!kw || ten.includes(kw)) ? '' : 'none';
+            });
+        }
+
+        window.onStaffSuKien = function(ev) {
+            if (ev.loai === 'CheckOut') setTimeout(() => location.href = '/Staff', 1500);
+        };
+
+        window.voiceHelpHTML = 'Trang POS: <em>"thêm một", "thêm hai", "tìm nước", "check-out"</em>';
+        window.voiceCommands = [
+            {
+                re: /(thêm|them|mua|cộng|cong|add).*?(\d+|một|mot|hai|ba|bốn|bon|năm|nam|sáu|sau|bảy|bay|tám|tam|chín|chin)/,
+                label: 'Thêm dịch vụ theo số',
+                action: (text, num) => {
+                    if (!num) return;
+                    const card = document.querySelector(`.voice-dv-wrap[data-stt="${num}"]`);
+                    if (!card) { document.getElementById('voice-status').textContent = `❌ Không có DV #${num}`; return; }
+                    card.style.animation = 'vFlash .8s ease';
+                    const btn = card.querySelector('.voice-add-btn');
+                    setTimeout(() => btn.click(), 400);
+                }
+            },
+            {
+                re: /(tìm|tim|lọc|loc|search)\s+(.+)/,
+                label: 'Lọc dịch vụ theo tên',
+                action: (text) => {
+                    const m = text.match(/(tìm|tim|lọc|loc|search)\s+(.+)/);
+                    if (m) { document.getElementById('dvFilter').value = m[2].trim(); locDV(m[2]); }
+                }
+            },
+            {
+                re: /(thanh toán|thanh toan|kết thúc|ket thuc|hoàn thành|hoan thanh)/,
+                label: 'Sang Check-out',
+                action: () => { document.querySelector('.voice-goto-checkout').click(); }
+            }
+        ];
+    </script>
+}

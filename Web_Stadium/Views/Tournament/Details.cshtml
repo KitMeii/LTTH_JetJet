@@ -1,0 +1,726 @@
+@model Web_Stadium.EFCore.GiaiDau
+@{
+    ViewData["Title"] = "Chi tiết giải — " + Model.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+    var bxh = ViewBag.BangXepHang
+              as Dictionary<int, List<Web_Stadium.Services.StandingRow>>
+              ?? new Dictionary<int, List<Web_Stadium.Services.StandingRow>>();
+    var soDoiDK = Model.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
+    var staffKhaDung = ViewBag.StaffKhaDung as List<Web_Stadium.EFCore.User> ?? new();
+    var (pillClass, pillLabel) = Model.TrangThai switch
+    {
+        "Draft"              => ("tp-draft",    "⚪ Draft"),
+        "Approved"           => ("tp-approved", "✅ Đã duyệt"),
+        "RegistrationOpen"   => ("tp-open",     "📋 Đang đăng ký"),
+        "RegistrationClosed" => ("tp-closed",   "🔒 Đã đóng đăng ký"),
+        "Active"             => ("tp-active",   "🟢 Đang diễn ra"),
+        "Finished"           => ("tp-finished", "🏁 Kết thúc"),
+        _                    => ("tp-draft",    Model.TrangThai)
+    };
+}
+
+@await Html.PartialAsync("_TournamentStyle")
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .pitch-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .pitch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+        border-color: var(--db-green-border);
+    }
+    .pitch-card.opacity-50 { opacity: 0.6; }
+    .pitch-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pitch-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+        color: var(--db-text);
+    }
+    .pitch-address {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 5px;
+    }
+    .pitch-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    .badge-custom {
+        background: #eef2ff;
+        color: #1e40af;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge-grass { background: #e6f7e6; color: #2e7d32; }
+    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
+    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+    .pitch-commission { text-align: right; }
+    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
+    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
+    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    .pitch-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--db-border);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .btn-outline-custom {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-text);
+        transition: 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-outline-custom:hover {
+        background: var(--db-green-bg);
+        border-color: var(--db-green-border);
+        color: var(--db-green);
+    }
+    /* Header gọn nhẹ - không padding-top quá lớn */
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 20px 0 20px;
+        margin-top: 0;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 80px 0;
+        color: var(--db-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
+</style>
+
+
+
+<!-- HERO -->
+<div class="tour-hero">
+    <div class="container">
+        <a href="/Tournament" class="tour-btn">
+            ← Tất cả giải đấu
+        </a>
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Chi tiết giải đấu</div>
+                <h1 class="tour-hero__title">@Model.TenGiai.ToUpper()</h1>
+                <div class="tour-hero__sub d-flex gap-2 align-items-center flex-wrap mt-2">
+                    <span class="tour-pill @pillClass">@pillLabel</span>
+                    <span>🏟️ @Model.SanBong?.TenSan</span>
+                    @if (Model.StaffPhuTrach != null)
+                    {
+                        <span>· 👷 Staff: @Model.StaffPhuTrach.HoTen</span>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                @if (Model.TrangThai is "Active" or "Finished")
+                {
+                    <a href="/Tournament/ExcelDoiSoat/@Model.Id" class="tour-btn tour-btn--ghost-green">📊 Tải Excel</a>
+                }
+                @if (Model.TrangThai is "Draft" or "RegistrationOpen" or "RegistrationClosed")
+                {
+                    <a href="/Tournament/LichBlock/@Model.Id" class="tour-btn">📅 Lịch block</a>
+                }
+                @if (Model.TrangThai == "Active")
+                {
+                    <a href="/Tournament/Bracket/@Model.Id" class="tour-btn tour-btn--primary">🏆 Bracket KO</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="tour-alert tour-alert--success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
+    }
+
+    <!-- KPI strip -->
+    <div class="tour-kpi-grid">
+        @foreach (var (ico, val, lbl) in new[] {
+            ("⚽", $"{soDoiDK}/{Model.SoDoiToiDa}", "Đội đăng ký"),
+            ("📊", $"{Model.SoBang} bảng", "Thể thức"),
+            ("💰", Model.LePhiGiai.ToString("N0")+"đ", "Lệ phí/đội"),
+            ("🔒", Model.TienKyQuy.ToString("N0")+"đ", "Ký quỹ/đội"),
+            ("📅", Model.NgayBatDau.ToString("dd/MM/yy"), "Bắt đầu"),
+            ("🏁", Model.NgayKetThuc.ToString("dd/MM/yy"), "Kết thúc"),
+        })
+        {
+            <div class="tour-kpi">
+                <div class="tour-kpi__label">@lbl</div>
+                <div class="tour-kpi__num" style="color:var(--db-green)">@val</div>
+                <span class="tour-kpi__icon">@ico</span>
+            </div>
+        }
+    </div>
+
+    <!-- TABS -->
+    <div>
+        <div class="tour-tabs">
+            <button class="tour-tab active" onclick="showTab('thongtin',this)">📋 Thông tin</button>
+            <button class="tour-tab" onclick="showTab('quantri',this)">⚙️ Quản trị Owner</button>
+            <button class="tour-tab" onclick="showTab('doi',this)">👥 Đội tham dự</button>
+            <button class="tour-tab" onclick="showTab('lich',this)">📅 Lịch thi đấu</button>
+            <button class="tour-tab" onclick="showTab('bxh',this)">📊 BXH</button>
+            <button class="tour-tab" onclick="showTab('vpl',this)">⚽ Vua phá lưới</button>
+        </div>
+
+        <!-- TAB: THÔNG TIN -->
+        <div class="tour-panel active" id="tab-thongtin">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="tour-card">
+                        <div class="tour-card__header">
+                            <div>
+                                <div class="tour-card__title">Thông tin chung</div>
+                                <div class="tour-card__sub">Dữ liệu cơ bản của giải đấu</div>
+                            </div>
+                        </div>
+                        @foreach (var (l, v) in new[] {
+                            ("Sân",         Model.SanBong?.TenSan + " — " + Model.SanBong?.Quan),
+                            ("Tạo lúc",     Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")),
+                            ("Đóng đăng ký", Model.ThoiGianDongDanhSach?.ToString("dd/MM/yyyy") ?? "—"),
+                            ("Staff phụ trách", Model.StaffPhuTrach?.HoTen ?? "(chưa gán)"),
+                            ("Mô tả",       string.IsNullOrEmpty(Model.MoTa) ? "—" : Model.MoTa),
+                        })
+                        {
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">@l</span>
+                                <span class="tour-info-row__val">@v</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="tour-card">
+                        <div class="tour-card__header">
+                            <div>
+                                <div class="tour-card__title">Chế tài &amp; tài chính</div>
+                                <div class="tour-card__sub">Mức phạt và thu nhập dự kiến</div>
+                            </div>
+                        </div>
+                        @foreach (var (l, v) in new[] {
+                            ("Lệ phí / đội",    Model.LePhiGiai.ToString("N0") + "đ"),
+                            ("Ký quỹ / đội",    Model.TienKyQuy.ToString("N0") + "đ"),
+                            ("Tổng lệ phí",     (Model.LePhiGiai * soDoiDK).ToString("N0") + "đ"),
+                            ("Phạt thẻ vàng",   Model.TienPhatTheVang.ToString("N0") + "đ"),
+                            ("Phạt thẻ đỏ",     Model.TienPhatTheDo.ToString("N0") + "đ"),
+                            ("Treo giò đỏ",     Model.SoTranTreoGioTheDo + " trận"),
+                            ("Vàng tích lũy",   Model.SoTheVangTichLuy + " thẻ"),
+                        })
+                        {
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">@l</span>
+                                <span class="tour-info-row__val" style="color:var(--db-green)">@v</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: QUẢN TRỊ -->
+        <div class="tour-panel" id="tab-quantri">
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <div class="tour-card">
+                        <div class="tour-card__header">
+                            <div>
+                                <div class="tour-card__title">🔄 Lifecycle giải đấu</div>
+                                <div class="tour-card__sub">Điều khiển trạng thái theo State Machine</div>
+                            </div>
+                        </div>
+                        @if (Model.TrangThai is "Draft" or "Approved")
+                        {
+                            <form method="post" action="/Tournament/MoiDangKy/@Model.Id" class="mb-2">
+                                @Html.AntiForgeryToken()
+                                <button class="tour-btn tour-btn--primary tour-btn--block">📋 Mở đăng ký</button>
+                            </form>
+                        }
+                        @if (Model.TrangThai == "RegistrationOpen")
+                        {
+                            <form method="post" action="/Tournament/DongDangKy/@Model.Id" class="mb-2"
+                                  onsubmit="return confirm('Đóng đăng ký? Sau khi đóng sẽ chuyển sang bước chia bảng.')">
+                                @Html.AntiForgeryToken()
+                                <button class="tour-btn tour-btn--warn tour-btn--block">🔒 Đóng đăng ký</button>
+                            </form>
+                        }
+                        @if (Model.TrangThai == "RegistrationClosed")
+                        {
+                            <a href="/Tournament/ChiaBang/@Model.Id" class="tour-btn tour-btn--warn tour-btn--block mb-2">
+                                🎯 Chia bảng (kéo-thả)
+                            </a>
+                        }
+                        @if (Model.TrangThai == "Active")
+                        {
+                            <form method="post" action="/Tournament/SinhBracket" class="mb-2"
+                                  onsubmit="return confirm('Sinh vòng knock-out từ kết quả vòng bảng?')">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="giaiDauId" value="@Model.Id" />
+                                <button class="tour-btn tour-btn--ghost-green tour-btn--block">🏆 Sinh Bracket KO</button>
+                            </form>
+                            <form method="post" action="/Tournament/KetThuc/@Model.Id"
+                                  onsubmit="return confirm('Kết thúc giải đấu? Mọi slot block còn lại sẽ được giải phóng.')">
+                                @Html.AntiForgeryToken()
+                                <button class="tour-btn tour-btn--danger tour-btn--block">🏁 Kết thúc giải</button>
+                            </form>
+                        }
+                        @if (Model.TrangThai == "Finished")
+                        {
+                            <a href="/Tournament/ExcelDoiSoat/@Model.Id" class="tour-btn tour-btn--primary tour-btn--block">
+                                📥 Tải file đối soát Excel
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="tour-card">
+                        <div class="tour-card__header">
+                            <div>
+                                <div class="tour-card__title">👷 Gán Staff phụ trách</div>
+                                <div class="tour-card__sub">Staff sẽ check-in toàn bộ trận của giải</div>
+                            </div>
+                        </div>
+                        @if (!staffKhaDung.Any())
+                        {
+                            <div class="tour-alert tour-alert--info mb-0">
+                                ⚠️ Chưa có Staff nào được phân công tại sân này.
+                                <a href="/Owner/QuanLyStaff" style="color:var(--db-green);font-weight:600">Phân công Staff →</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" action="/Tournament/GanStaff" class="d-flex gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="giaiDauId" value="@Model.Id" />
+                                <select name="staffId" class="tour-inp" required>
+                                    <option value="">-- Chọn Staff --</option>
+                                    @foreach (var s in staffKhaDung.DistinctBy(u => u.Id))
+                                    {
+                                        <option value="@s.Id" selected="@(Model.StaffPhuTrachId == s.Id)">
+                                            @s.HoTen @(string.IsNullOrEmpty(s.Email) ? "" : "(" + s.Email + ")")
+                                        </option>
+                                    }
+                                </select>
+                                <button class="tour-btn tour-btn--primary">Gán</button>
+                            </form>
+                            <div class="tour-hint mt-2">
+                                Staff được gán sẽ phụ trách mọi trận chưa có người check-in.
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.TrangThai is "RegistrationOpen" or "RegistrationClosed")
+                {
+                    <div class="col-12">
+                        <div class="tour-card">
+                            <div class="tour-card__header">
+                                <div>
+                                    <div class="tour-card__title">💳 Xác nhận thanh toán / Hủy đội</div>
+                                    <div class="tour-card__sub">Owner xác nhận đã nhận tiền lệ phí + ký quỹ từng đội</div>
+                                </div>
+                            </div>
+                            @if (!(Model.DoiBongs?.Any() ?? false))
+                            {
+                                <p class="tour-hint mb-0">Chưa có đội đăng ký.</p>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="tour-table">
+                                        <thead>
+                                            <tr><th>#</th><th>Tên đội</th><th>Đội trưởng</th><th>Email</th>
+                                                <th>TV</th><th>Trạng thái</th><th></th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @{ int i = 1; }
+                                            @foreach (var d in Model.DoiBongs!.OrderBy(x => x.ThoiGianTao))
+                                            {
+                                                <tr>
+                                                    <td>@i</td>
+                                                    <td style="font-weight:600">@d.TenDoi</td>
+                                                    <td>@d.DoiTruong?.HoTen</td>
+                                                    <td style="font-size:12px;color:var(--db-muted)">@d.DoiTruong?.Email</td>
+                                                    <td>@(d.ThanhViens?.Count ?? 0)</td>
+                                                    <td>
+                                                        @if (d.DaThanhToan)
+                                                        {
+                                                            <span class="tour-badge tour-badge--ok">✅ Đã xác nhận</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="tour-badge tour-badge--warn">⏳ Chờ xác nhận</span>
+                                                        }
+                                                    </td>
+                                                    <td class="d-flex gap-1">
+                                                        @if (!d.DaThanhToan && Model.TrangThai == "RegistrationOpen")
+                                                        {
+                                                            <form method="post" action="/Tournament/XacNhanThanhToanDoi"
+                                                                  onsubmit="return confirm('Xác nhận đã nhận đủ tiền lệ phí + ký quỹ từ đội này?')">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="doiId" value="@d.Id" />
+                                                                <button class="tour-btn tour-btn--sm tour-btn--primary">Xác nhận</button>
+                                                            </form>
+                                                        }
+                                                        @if (Model.TrangThai == "RegistrationOpen")
+                                                        {
+                                                            <button type="button" class="tour-btn tour-btn--sm tour-btn--danger"
+                                                                    onclick="moHuyDoi(@d.Id, '@d.TenDoi.Replace("'", "\\'")')">
+                                                                Hủy
+                                                            </button>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                                i++;
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (Model.TrangThai == "Active")
+                {
+                    <div class="col-12">
+                        <div class="tour-card">
+                            <div class="tour-card__header">
+                                <div>
+                                    <div class="tour-card__title">🚨 Xử lý sự cố trận đấu</div>
+                                    <div class="tour-card__sub">
+                                        Đội đến muộn quá 15 phút hoặc bỏ cuộc → xử thua 0-3, trừ 100% ký quỹ
+                                    </div>
+                                </div>
+                                <button type="button" class="tour-btn tour-btn--danger" onclick="moModalSuCo()">
+                                    📝 Ghi nhận sự cố
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        <!-- TAB: ĐỘI -->
+        <div class="tour-panel" id="tab-doi">
+            <div class="stat-grid">
+                @foreach (var doi in Model.DoiBongs ?? new List<Web_Stadium.EFCore.DoiBong>())
+                {
+                    <div class="doi-card">
+                        <div class="doi-avatar">@doi.TenDoi.FirstOrDefault()</div>
+                        <div style="min-width:0;flex:1">
+                            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                @doi.TenDoi @(doi.DaThanhToan ? "✅" : "⏳")
+                            </div>
+                            <div style="font-size:11px;color:var(--db-muted)">
+                                @doi.ThanhViens?.Count người · @(doi.Bang?.TenBang ?? "chưa xếp bảng")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- TAB: LỊCH -->
+        <div class="tour-panel" id="tab-lich">
+            @if ((Model.TranDaus?.Count ?? 0) == 0)
+            {
+                <div class="tour-card tour-empty">
+                    <div class="tour-empty__icon">📅</div>
+                    <div class="tour-empty__title">Chưa có lịch thi đấu</div>
+                    <div class="tour-empty__sub">Lịch sẽ được sinh tự động sau khi Owner khởi tạo giải</div>
+                </div>
+            }
+            else
+            {
+                @foreach (var vong in Model.TranDaus!.GroupBy(t => t.VongDau).OrderBy(g => g.Key))
+                {
+                    <div class="round-title">
+                        @(vong.First().LoaiVong == "VongBang" ? "VÒNG " + vong.Key : vong.First().LoaiVong)
+                    </div>
+                    @foreach (var t in vong.OrderBy(x => x.NgayThiDau))
+                    {
+                        var tyso = t.BanThangNha.HasValue ? $"{t.BanThangNha} – {t.BanThangKhach}" : "VS";
+                        var gioStr = t.KhungGio != null
+                            ? $"{t.KhungGio.GioBatDau:hh\\:mm}–{t.KhungGio.GioKetThuc:hh\\:mm}"
+                            : "(chưa gán giờ)";
+                        <div class="match-row" id="tran-@t.Id">
+                            <span style="font-weight:600;flex:1;text-align:right;font-size:13px">@t.DoiNha?.TenDoi</span>
+                            <span style="font-size:1.1rem;font-weight:700;color:var(--db-green);
+                                         min-width:60px;text-align:center" id="tyso-@t.Id">@tyso</span>
+                            <span style="font-weight:600;flex:1;font-size:13px">@t.DoiKhach?.TenDoi</span>
+                            <span style="font-size:11px;color:var(--db-muted);white-space:nowrap">
+                                @t.NgayThiDau.ToString("dd/MM") · @gioStr
+                            </span>
+                            <span class="tour-badge" style="background:var(--db-bg)">@t.TrangThai</span>
+                        </div>
+                    }
+                }
+            }
+        </div>
+
+        <!-- TAB: BXH -->
+        <div class="tour-panel" id="tab-bxh">
+            <div id="bxhContainer">
+                @{
+                    var bxhViewData = new ViewDataDictionary(ViewData);
+                    bxhViewData["BangXepHang"] = bxh;
+                    bxhViewData["Bangs"] = Model.BangDaus;
+                }
+                @await Html.PartialAsync("_BangXepHang", bxhViewData)
+            </div>
+        </div>
+
+        <!-- TAB: VPL -->
+        <div class="tour-panel" id="tab-vpl">
+            @{
+                var vpl = (Model.DoiBongs ?? new List<Web_Stadium.EFCore.DoiBong>())
+                          .SelectMany(d => d.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>())
+                          .Where(tv => tv.TongBanThang > 0)
+                          .OrderByDescending(tv => tv.TongBanThang)
+                          .Take(10).ToList();
+            }
+            @if (!vpl.Any())
+            {
+                <div class="tour-card tour-empty">
+                    <div class="tour-empty__icon">⚽</div>
+                    <div class="tour-empty__title">Chưa có bàn thắng</div>
+                </div>
+            }
+            else
+            {
+                <div class="tour-card">
+                    <div class="table-responsive">
+                        <table class="tour-table">
+                            <thead>
+                                <tr><th>#</th><th>Cầu thủ</th><th>Đội</th><th>⚽ Bàn</th><th>💛 Vàng</th><th>🟥 Đỏ</th></tr>
+                            </thead>
+                            <tbody>
+                                @{ int r = 1; }
+                                @foreach (var tv in vpl)
+                                {
+                                    <tr class="rank-@r">
+                                        <td><strong>@r</strong></td>
+                                        <td style="font-weight:600">@tv.HoTen</td>
+                                        <td style="color:var(--db-muted);font-size:12px">@tv.Doi?.TenDoi</td>
+                                        <td><strong style="color:var(--db-green);font-size:15px">@tv.TongBanThang</strong></td>
+                                        <td style="color:#f59e0b;font-weight:700">@tv.TongTheVang</td>
+                                        <td style="color:#dc2626;font-weight:700">@tv.TongTheDo</td>
+                                    </tr>
+                                    r++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal Hủy đội -->
+<div class="modal fade" id="modalHuyDoi" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;border:1px solid var(--db-border)">
+            <form method="post" action="/Tournament/HuyDangKyDoi">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="doiId" id="huyDoiId" />
+                <div class="modal-header" style="border-bottom:1px solid var(--db-border)">
+                    <h5 class="modal-title" style="font-weight:700">🗑 HỦY ĐỘI</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p style="color:var(--db-muted);font-size:14px">
+                        Bạn sắp hủy đăng ký đội <strong id="huyTenDoi"></strong>.
+                        Toàn bộ danh sách thành viên cũng sẽ bị xóa. Hành động không hoàn tác.
+                    </p>
+                    <label class="tour-lbl">Lý do hủy (bắt buộc)</label>
+                    <textarea name="lyDo" class="tour-inp" rows="2" required></textarea>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--db-border)">
+                    <button type="button" class="tour-btn" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="tour-btn tour-btn--danger">Xác nhận hủy đội</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sự cố -->
+@if (Model.TrangThai == "Active")
+{
+    <div class="modal fade" id="modalSuCo" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:1px solid var(--db-border)">
+                <form method="post" action="/Tournament/XuLySuCo">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header" style="border-bottom:1px solid var(--db-border)">
+                        <h5 class="modal-title" style="font-weight:700">🚨 GHI NHẬN SỰ CỐ</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label class="tour-lbl">Trận đấu *</label>
+                            <select name="tranDauId" id="suCoTran" class="tour-inp" required onchange="suCoOnTranChange()">
+                                <option value="">-- Chọn trận --</option>
+                                @foreach (var t in Model.TranDaus!.Where(x => x.TrangThai != "Closed").OrderBy(x => x.NgayThiDau))
+                                {
+                                    <option value="@t.Id" data-nha="@t.DoiNhaId" data-khach="@t.DoiKhachId"
+                                            data-tn="@t.DoiNha?.TenDoi" data-tk="@t.DoiKhach?.TenDoi">
+                                        Vòng @t.VongDau: @t.DoiNha?.TenDoi vs @t.DoiKhach?.TenDoi (@t.NgayThiDau.ToString("dd/MM"))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="tour-lbl">Đội bỏ cuộc *</label>
+                            <select name="doiBoCuocId" id="suCoDoi" class="tour-inp" required>
+                                <option value="">-- Chọn đội --</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="tour-lbl">Lý do *</label>
+                            <textarea name="lyDo" class="tour-inp" rows="2" required
+                                      placeholder="VD: Đội đến muộn quá 15 phút, không đủ cầu thủ..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top:1px solid var(--db-border)">
+                        <button type="button" class="tour-btn" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="tour-btn tour-btn--danger">Xử thua 0–3 &amp; trừ ký quỹ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.0/dist/browser/signalr.min.js"></script>
+    <script>
+        function showTab(name, el) {
+            document.querySelectorAll('.tour-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tour-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            if (el) el.classList.add('active');
+        }
+        function moHuyDoi(id, ten) {
+            document.getElementById('huyDoiId').value = id;
+            document.getElementById('huyTenDoi').textContent = ten;
+            new bootstrap.Modal(document.getElementById('modalHuyDoi')).show();
+        }
+        function moModalSuCo() { new bootstrap.Modal(document.getElementById('modalSuCo')).show(); }
+        function suCoOnTranChange() {
+            var sel = document.getElementById('suCoTran');
+            var opt = sel.options[sel.selectedIndex];
+            var doi = document.getElementById('suCoDoi');
+            doi.innerHTML = '<option value="">-- Chọn đội --</option>';
+            if (!opt.value) return;
+            doi.innerHTML += '<option value="' + opt.dataset.nha + '">' + opt.dataset.tn + ' (đội nhà)</option>';
+            doi.innerHTML += '<option value="' + opt.dataset.khach + '">' + opt.dataset.tk + ' (đội khách)</option>';
+        }
+        @if (Model.TrangThai == "Active")
+        {
+            <text>
+        var conn = new signalR.HubConnectionBuilder().withUrl('/tournamentHub').build();
+        conn.on('CapNhatTyso', function (t) {
+            var el = document.getElementById('tyso-' + t.tranDauId);
+            if (el) el.textContent = t.tysoNha + ' – ' + t.tysoKhach;
+        });
+        conn.on('CapNhatBXH', function () {
+            fetch(window.location.pathname).then(r => r.text()).then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var fresh = doc.getElementById('bxhContainer');
+                if (fresh) document.getElementById('bxhContainer').innerHTML = fresh.innerHTML;
+            });
+        });
+        conn.start().then(function () { conn.invoke('ThamGiaGiai', '@Model.Id'); })
+                    .catch(function (e) { console.warn('SignalR off', e); });
+            </text>
+        }
+    </script>
+}

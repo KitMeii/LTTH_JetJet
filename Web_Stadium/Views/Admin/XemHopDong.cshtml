@@ -1,84 +1,77 @@
 ﻿@model Web_Stadium.EFCore.SanBong
 @{
     ViewData["Title"] = "Xem hợp đồng — " + Model.TenSan;
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin — Hợp đồng điện tử</div>
-        <h1 style="font-style:italic;line-height:0.9">HỢP ĐỒNG<br><span class="text-green">ĐÃ KÝ</span></h1>
-    </div>
-</div>
+<div style="padding:0 0 40px;max-width:860px;">
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <a href="/Admin/TatCaHopDong" class="btn btn-outline-success rounded-pill">← Danh sách hợp đồng</a>
-        <div class="d-flex gap-2">
-            <a href="/Admin/XuatWordHopDong?sanId=@Model.Id" class="btn btn-success rounded-pill">📄 Xuất Word</a>
-            <button onclick="window.print()" class="btn btn-outline-secondary rounded-pill">🖨 In</button>
+    <div class="pg-header">
+        <div class="pg-label">Admin · Hợp đồng</div>
+        <h2>Hợp đồng <span class="pg-accent">@Model.TenSan</span></h2>
+        <p>Nội dung hợp đồng điện tử đã ký kết</p>
+    </div>
+
+    <!-- Thống kê nhanh -->
+    <div class="section-card mb-4">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
+            <div style="padding:18px 20px;border-right:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:7px;">🏟️ Sân bóng</div>
+                <div style="font-weight:700;font-size:15px;">@Model.TenSan</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:3px;">@Model.DiaChi — @Model.Quan</div>
+            </div>
+            <div style="padding:18px 20px;border-right:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:7px;">👤 Chủ sân</div>
+                <div style="font-weight:700;font-size:15px;">@(Model.Owner?.HoTen ?? "—")</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:3px;">@(Model.Owner?.SoDienThoai ?? Model.Owner?.Email ?? "")</div>
+            </div>
+            <div style="padding:18px 20px;">
+                <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:7px;">📅 Ngày ký</div>
+                <div style="font-weight:700;font-size:15px;color:var(--green2);">@(Model.NgayKyHopDong?.ToString("dd/MM/yyyy") ?? "—")</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:3px;">@(Model.NgayKyHopDong?.ToString("HH:mm") ?? "")</div>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-9">
-
-            <!-- Thông tin tóm tắt -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;">
-                <div style="padding:16px 20px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);">
-                    <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Sân bóng</div>
-                    <div style="font-weight:700;font-size:15px;color:var(--text);">@Model.TenSan</div>
-                    <div style="font-size:13px;color:var(--muted);margin-top:3px;">@Model.DiaChi — @Model.Quan</div>
-                </div>
-                <div style="padding:16px 20px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);">
-                    <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Chủ sân</div>
-                    <div style="font-weight:700;font-size:15px;color:var(--text);">@(Model.Owner?.HoTen ?? "—")</div>
-                    <div style="font-size:13px;color:var(--muted);margin-top:3px;">@(Model.Owner?.SoDienThoai ?? Model.Owner?.Email ?? "")</div>
-                </div>
-                <div style="padding:16px 20px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);">
-                    <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Ngày ký</div>
-                    <div style="font-weight:700;font-size:15px;color:var(--green);">@(Model.NgayKyHopDong?.ToString("dd/MM/yyyy") ?? "—")</div>
-                    <div style="font-size:13px;color:var(--muted);margin-top:3px;">@(Model.NgayKyHopDong?.ToString("HH:mm") ?? "")</div>
-                </div>
+    <!-- Nội dung hợp đồng -->
+    <div class="section-card mb-4">
+        <div class="ph-panel-head">
+            <h5>📄 Nội dung hợp đồng</h5>
+            <div style="display:flex;gap:8px;">
+                <a href="/Admin/XuatWordHopDong?sanId=@Model.Id" class="btn btn-outline-primary btn-sm rounded-pill">
+                    <i class="bi bi-file-earmark-word me-1"></i>Xuất Word
+                </a>
+                <a href="/Admin/TatCaHopDong" class="btn btn-outline-secondary btn-sm rounded-pill">
+                    ← Quay lại
+                </a>
             </div>
-
-            <!-- Nội dung hợp đồng -->
-            <div class="section-card p-0 overflow-hidden mb-4">
-                <div style="background:#1a1a2e;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;">
-                    <span style="font-family:var(--ff-h);font-size:13px;letter-spacing:1px;">📄 NỘI DUNG HỢP ĐỒNG</span>
-                    <span style="font-size:12px;color:var(--muted);">@Model.TenSan</span>
-                </div>
-                @if (!string.IsNullOrEmpty(Model.NoiDungHopDong))
-                {
-                    <div style="padding:32px;max-height:640px;overflow-y:auto;
-                                    font-family:'Courier New',monospace;font-size:13px;
-                                    line-height:2.0;color:var(--muted2);
-                                    white-space:pre-wrap;background:rgba(0,0,0,0.25);">
-                        @Model.NoiDungHopDong
-                    </div>
-                }
-                else
-                {
-                    <div style="padding:48px;text-align:center;color:var(--muted);font-style:italic;">
-                        Không có nội dung hợp đồng.
-                    </div>
-                }
+        </div>
+        @if (!string.IsNullOrEmpty(Model.NoiDungHopDong))
+        {
+            <div style="padding:28px 32px;max-height:640px;overflow-y:auto;
+                            font-family:'Courier New',monospace;font-size:13px;
+                            line-height:2.0;color:var(--muted);
+                            white-space:pre-wrap;background:rgba(0,0,0,.12);">
+                @Model.NoiDungHopDong
             </div>
-
-            <!-- Trạng thái -->
-            <div style="text-align:center;padding:20px;border:1px solid rgba(14,168,106,.3);
-                        border-radius:12px;background:rgba(14,168,106,.05);">
-                <div style="font-size:22px;margin-bottom:8px;">✅</div>
-                <div style="font-weight:700;font-size:15px;color:var(--green);margin-bottom:4px;">
-                    Hợp đồng đã ký kết và có hiệu lực
-                </div>
-                <div style="font-size:13px;color:var(--muted);">
-                    Ký lúc @(Model.NgayKyHopDong?.ToString("HH:mm — dd/MM/yyyy") ?? "—")
-                </div>
+        }
+        else
+        {
+            <div style="padding:48px;text-align:center;color:var(--muted);font-style:italic;">
+                Không có nội dung hợp đồng.
             </div>
+        }
+    </div>
 
+    <!-- Trạng thái -->
+    <div style="text-align:center;padding:22px;border:1px solid rgba(0,212,126,.22);
+                border-radius:16px;background:rgba(0,212,126,.05);">
+        <div style="font-size:2rem;margin-bottom:10px;">✅</div>
+        <div style="font-weight:700;font-size:16px;color:var(--green2);margin-bottom:5px;">
+            Hợp đồng đã ký kết và có hiệu lực
+        </div>
+        <div style="font-size:13px;color:var(--muted);">
+            Ký lúc @(Model.NgayKyHopDong?.ToString("HH:mm — dd/MM/yyyy") ?? "—")
         </div>
     </div>
 </div>

@@ -268,6 +268,219 @@ namespace Web_Stadium.Controllers
         }
 
         // ══════════════════════════════════════════════════════════
+        // UC069 — User tạo Yêu cầu đổi giờ
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> TaoYeuCauDoiGio(int datSanId)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Chỉ đơn đã xác nhận mới có thể đổi giờ."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            var dangCho = await _context.YeuCauDoiGios.AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoPheDuyet");
+            if (dangCho)
+            { TempData["Error"] = "Đã tồn tại yêu cầu đổi giờ đang chờ duyệt cho đơn này."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            var khungTrong = await _context.KhungGios
+                .Where(k => k.SanBongId == don.KhungGio.SanBongId
+                         && k.TrangThai == "Trong"
+                         && k.Id != don.KhungGioId)
+                .OrderBy(k => k.GioBatDau)
+                .ToListAsync();
+
+            ViewBag.Don = don;
+            ViewBag.KhungTrong = khungTrong;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TaoYeuCauDoiGio(int datSanId, int khungGioMoiId, DateTime ngayThiDauMoi, string lyDo)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Đơn không hợp lệ."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+            if (string.IsNullOrWhiteSpace(lyDo))
+            { TempData["Error"] = "Vui lòng nhập lý do."; return RedirectToAction("TaoYeuCauDoiGio", new { datSanId }); }
+
+            var khung = await _context.KhungGios.FirstOrDefaultAsync(k => k.Id == khungGioMoiId);
+            if (khung == null || khung.SanBongId != don.KhungGio.SanBongId || khung.TrangThai != "Trong")
+            { TempData["Error"] = "Khung giờ mới không hợp lệ."; return RedirectToAction("TaoYeuCauDoiGio", new { datSanId }); }
+
+            _context.YeuCauDoiGios.Add(new YeuCauDoiGio
+            {
+                DatSanId = datSanId,
+                KhungGioMoiId = khungGioMoiId,
+                NgayThiDauMoi = ngayThiDauMoi,
+                LyDo = lyDo.Trim(),
+                TrangThai = "ChoPheDuyet",
+                NgayTao = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Đã gửi yêu cầu đổi giờ. Vui lòng chờ chủ sân duyệt.";
+            return RedirectToAction("HoSo", new { tab = "lichsu" });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC070 — User tạo Yêu cầu đổi sân
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> TaoYeuCauDoiSan(int datSanId)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Chỉ đơn đã xác nhận mới có thể đổi sân."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            var dangCho = await _context.YeuCauDoiSans.AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoPheDuyet");
+            if (dangCho)
+            { TempData["Error"] = "Đã tồn tại yêu cầu đổi sân đang chờ duyệt."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            // Sân khác đã duyệt + cùng owner thì user có thể yêu cầu chuyển sang
+            var ownerId = don.KhungGio.SanBong.OwnerId;
+            var sanKhac = await _context.SanBongs
+                .Where(s => s.OwnerId == ownerId && s.TrangThaiDuyet == "DaDuyet" && s.Id != don.KhungGio.SanBongId)
+                .Select(s => new { s.Id, s.TenSan })
+                .ToListAsync();
+
+            ViewBag.Don = don;
+            ViewBag.SanKhac = sanKhac;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TaoYeuCauDoiSan(int datSanId, int khungGioMoiId, DateTime ngayThiDauMoi, string lyDo)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Đơn không hợp lệ."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+            if (string.IsNullOrWhiteSpace(lyDo))
+            { TempData["Error"] = "Vui lòng nhập lý do."; return RedirectToAction("TaoYeuCauDoiSan", new { datSanId }); }
+
+            var khung = await _context.KhungGios.Include(k => k.SanBong)
+                .FirstOrDefaultAsync(k => k.Id == khungGioMoiId);
+            if (khung == null || khung.TrangThai != "Trong")
+            { TempData["Error"] = "Khung giờ mới không khả dụng."; return RedirectToAction("TaoYeuCauDoiSan", new { datSanId }); }
+
+            // Sân mới phải cùng Owner để Owner có quyền duyệt
+            if (khung.SanBong.OwnerId != don.KhungGio.SanBong.OwnerId)
+            { TempData["Error"] = "Chỉ có thể đổi sang sân khác của cùng chủ sân."; return RedirectToAction("TaoYeuCauDoiSan", new { datSanId }); }
+
+            _context.YeuCauDoiSans.Add(new YeuCauDoiSan
+            {
+                DatSanId = datSanId,
+                KhungGioMoiId = khungGioMoiId,
+                NgayThiDauMoi = ngayThiDauMoi,
+                LyDo = lyDo.Trim(),
+                TrangThai = "ChoPheDuyet",
+                NgayTao = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Đã gửi yêu cầu đổi sân.";
+            return RedirectToAction("HoSo", new { tab = "lichsu" });
+        }
+
+        // API: trả khung giờ trống cho 1 sân — phục vụ dropdown động trang đổi sân
+        public async Task<IActionResult> KhungTrongTheoSan(int sanBongId)
+        {
+            var raw = await _context.KhungGios
+                .Where(k => k.SanBongId == sanBongId && k.TrangThai == "Trong")
+                .OrderBy(k => k.GioBatDau)
+                .ToListAsync();
+            var list = raw.Select(k => new {
+                k.Id,
+                GioBatDau = k.GioBatDau.ToString("HH:mm"),
+                GioKetThuc = k.GioKetThuc.ToString("HH:mm"),
+                k.Gia
+            }).ToList();
+            return Json(list);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC071 — User tạo Yêu cầu chuyển nhượng
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> TaoChuyenNhuong(int datSanId)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Chỉ đơn đã xác nhận mới có thể chuyển nhượng."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            var dangCho = await _context.ChuyenNhuongDatSans.AnyAsync(c => c.DatSanId == datSanId && c.TrangThai == "ChoPheDuyet");
+            if (dangCho)
+            { TempData["Error"] = "Đã tồn tại yêu cầu chuyển nhượng đang chờ duyệt."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+
+            ViewBag.Don = don;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TaoChuyenNhuong(int datSanId, string? emailNguoiNhan, string? sdtNguoiNhan, string lyDo)
+        {
+            var userId = GetUserId();
+            var don = await _context.DatSans
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Đơn không hợp lệ."; return RedirectToAction("HoSo", new { tab = "lichsu" }); }
+            if (string.IsNullOrWhiteSpace(lyDo))
+            { TempData["Error"] = "Vui lòng nhập lý do."; return RedirectToAction("TaoChuyenNhuong", new { datSanId }); }
+
+            emailNguoiNhan = emailNguoiNhan?.Trim();
+            sdtNguoiNhan = sdtNguoiNhan?.Trim();
+
+            if (string.IsNullOrWhiteSpace(emailNguoiNhan) && string.IsNullOrWhiteSpace(sdtNguoiNhan))
+            { TempData["Error"] = "Cần nhập email hoặc số điện thoại người nhận."; return RedirectToAction("TaoChuyenNhuong", new { datSanId }); }
+
+            // Tự kiểm tra trùng người chuyển ngay client side
+            if (!string.IsNullOrWhiteSpace(emailNguoiNhan) && emailNguoiNhan == don.User.Email)
+            { TempData["Error"] = "Không thể chuyển nhượng cho chính mình."; return RedirectToAction("TaoChuyenNhuong", new { datSanId }); }
+
+            // Resolve trước (nếu tìm thấy) để hiển thị cho Owner
+            int? nguoiNhanId = null;
+            if (!string.IsNullOrWhiteSpace(emailNguoiNhan))
+                nguoiNhanId = (await _context.Users.FirstOrDefaultAsync(u => u.Email == emailNguoiNhan && u.IsActive))?.Id;
+            if (nguoiNhanId == null && !string.IsNullOrWhiteSpace(sdtNguoiNhan))
+                nguoiNhanId = (await _context.Users.FirstOrDefaultAsync(u => u.SoDienThoai == sdtNguoiNhan && u.IsActive))?.Id;
+
+            _context.ChuyenNhuongDatSans.Add(new ChuyenNhuongDatSan
+            {
+                DatSanId = datSanId,
+                NguoiChuyenId = userId,
+                EmailNguoiNhan = emailNguoiNhan,
+                SdtNguoiNhan = sdtNguoiNhan,
+                NguoiNhanId = nguoiNhanId,
+                LyDo = lyDo.Trim(),
+                TrangThai = "ChoPheDuyet",
+                NgayTao = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = nguoiNhanId.HasValue
+                ? "Đã gửi yêu cầu chuyển nhượng. Đang chờ chủ sân duyệt."
+                : "Đã gửi yêu cầu. Lưu ý: hệ thống chưa tìm thấy tài khoản người nhận — họ cần đăng ký trước khi chủ sân duyệt.";
+            return RedirectToAction("HoSo", new { tab = "lichsu" });
+        }
+
+        // ══════════════════════════════════════════════════════════
         // CỘNG ĐIỂM — Gọi nội bộ sau khi đánh giá / đặt sân
         // Dùng static method để BookingController / DanhGiaController gọi được
         // ══════════════════════════════════════════════════════════

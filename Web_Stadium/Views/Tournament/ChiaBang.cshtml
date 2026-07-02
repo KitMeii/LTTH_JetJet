@@ -1,0 +1,220 @@
+@model Web_Stadium.EFCore.GiaiDau
+@{
+    ViewData["Title"] = "Chia bảng — " + Model.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+    var doiChuaBang = Model.DoiBongs?.Where(d => d.BangId == null).ToList() ?? new();
+    var totalDoi = Model.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
+}
+
+@await Html.PartialAsync("_TournamentStyle")
+
+@section Styles {
+    <style>
+        .drag-area { min-height: 120px; border: 2px dashed var(--db-border);
+                     border-radius: 14px; padding: 14px; transition: all .15s;
+                     background: var(--db-bg); }
+        .drag-area.drag-over { border-color: var(--db-green); background: var(--db-green-bg); }
+        .doi-chip { display: flex; align-items: center; gap: 10px; background: #fff;
+                    border: 1px solid var(--db-border); border-radius: 12px;
+                    padding: 10px 14px; margin-bottom: 8px; cursor: grab; user-select: none;
+                    transition: all .15s; }
+        .doi-chip:hover { border-color: var(--db-green); box-shadow: 0 4px 8px rgba(0,0,0,.04); }
+        .doi-chip:active { cursor: grabbing; opacity: .8; }
+        .doi-chip.in-bang { background: var(--db-green-bg); border-color: var(--db-green-border); }
+        .doi-avatar-sm { width: 34px; height: 34px; border-radius: 50%;
+                         background: var(--db-green); color: #fff; font-weight: 700;
+                         font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .bang-header { font-size: 13px; letter-spacing: 2.5px; text-transform: uppercase;
+                       color: var(--db-green); font-weight: 700; margin-bottom: 12px;
+                       display: flex; justify-content: space-between; align-items: center; }
+        .bang-count { font-size: 11px; background: var(--db-green-bg); color: var(--db-green);
+                      padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+    </style>
+}
+
+<!-- HERO -->
+<div class="tour-hero">
+    <div class="container">
+        <a href="/Tournament/Details/@Model.Id"
+           style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;
+                  display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">
+            ← Quay lại chi tiết giải
+        </a>
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Chia bảng giải đấu</div>
+                <h1 class="tour-hero__title">CHIA BẢNG — @Model.TenGiai.ToUpper()</h1>
+                <div class="tour-hero__sub">
+                    @totalDoi đội · @Model.SoBang bảng đấu · Kéo thả đội vào đúng bảng
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span id="warnChuaBang" class="tour-hero__badge"
+                      style="background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.4)">
+                    ⚠️ Còn <span id="soConLai">@doiChuaBang.Count</span> đội chưa xếp
+                </span>
+                <button id="btnKhoiTao" class="tour-btn tour-btn--primary" onclick="khoiTaoGiai()" style="display:none">
+                    🚀 Khởi tạo giải — Sinh lịch tự động
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
+    }
+
+    <div class="row g-4">
+        <!-- Đội chưa xếp -->
+        <div class="col-12 col-lg-4">
+            <div class="tour-card">
+                <div class="bang-header" style="color:var(--db-muted)">
+                    Chưa xếp bảng
+                    <span class="bang-count" style="background:var(--db-bg);color:var(--db-muted)" id="countChua">
+                        @doiChuaBang.Count
+                    </span>
+                </div>
+                <div class="drag-area" id="pool"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="onDrop(event, null)">
+                    @foreach (var doi in doiChuaBang)
+                    {
+                        <div class="doi-chip" draggable="true" id="chip-@doi.Id"
+                             data-doi-id="@doi.Id" data-ten-doi="@doi.TenDoi"
+                             data-bang-id="@(doi.BangId?.ToString() ?? "")" ondragstart="onDragStart(event)">
+                            <div class="doi-avatar-sm">@doi.TenDoi.FirstOrDefault()</div>
+                            <div>
+                                <div style="font-weight:700;font-size:13px">@doi.TenDoi</div>
+                                <div style="font-size:11px;color:var(--db-muted)">
+                                    👤 @doi.DoiTruong?.HoTen · @doi.ThanhViens?.Count người
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng đấu -->
+        <div class="col-12 col-lg-8">
+            <div class="row g-3">
+                @foreach (var bang in Model.BangDaus ?? new List<Web_Stadium.EFCore.BangDau>())
+                {
+                    var doiTrongBang = Model.DoiBongs?.Where(d => d.BangId == bang.Id).ToList() ?? new();
+                    <div class="col-12 col-md-6">
+                        <div class="tour-card" style="height:100%">
+                            <div class="bang-header">
+                                @bang.TenBang
+                                <span class="bang-count" id="count-bang-@bang.Id">@doiTrongBang.Count đội</span>
+                            </div>
+                            <div class="drag-area" id="bang-@bang.Id" data-bang-id="@bang.Id"
+                                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                                 ondragleave="this.classList.remove('drag-over')"
+                                 ondrop="onDrop(event, @bang.Id)">
+                                @foreach (var doi in doiTrongBang)
+                                {
+                                    <div class="doi-chip in-bang" draggable="true" id="chip-@doi.Id"
+                                         data-doi-id="@doi.Id" data-ten-doi="@doi.TenDoi"
+                                         data-bang-id="@bang.Id" ondragstart="onDragStart(event)">
+                                        <div class="doi-avatar-sm">@doi.TenDoi.FirstOrDefault()</div>
+                                        <div>
+                                            <div style="font-weight:700;font-size:13px">@doi.TenDoi</div>
+                                            <div style="font-size:11px;color:var(--db-muted)">
+                                                @doi.ThanhViens?.Count người
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                @if (!doiTrongBang.Any())
+                                {
+                                    <div style="text-align:center;color:var(--db-muted);font-size:13px;padding:20px 0">
+                                        Kéo đội vào đây
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="/Tournament/KhoiTao/@Model.Id" id="formKhoiTao">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        var dragData = null;
+
+        function onDragStart(e) {
+            dragData = {
+                doiId: e.currentTarget.dataset.doiId,
+                tenDoi: e.currentTarget.dataset.tenDoi,
+                bangId: e.currentTarget.dataset.bangId
+            };
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function onDrop(e, bangId) {
+            e.preventDefault();
+            var area = e.currentTarget;
+            area.classList.remove('drag-over');
+            if (!dragData) return;
+
+            var fd = new FormData();
+            fd.append('doiId', dragData.doiId);
+            fd.append('bangId', bangId ?? '');
+            fd.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+            fetch('/Tournament/GanBang', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(function (data) {
+                    if (!data.ok) { alert(data.message); return; }
+                    var chip = document.getElementById('chip-' + dragData.doiId);
+                    if (!chip) return;
+                    chip.classList.toggle('in-bang', !!bangId);
+                    area.appendChild(chip);
+                    capNhatSoDem();
+                    dragData = null;
+                })
+                .catch(function () { alert('Lỗi kết nối!'); });
+        }
+
+        function capNhatSoDem() {
+            var chua = document.getElementById('pool').querySelectorAll('.doi-chip').length;
+            document.getElementById('countChua').textContent = chua;
+            document.getElementById('soConLai').textContent = chua;
+            document.querySelectorAll('.drag-area[id^="bang-"]').forEach(function (area) {
+                var bangId = area.id.replace('bang-', '');
+                var cnt = area.querySelectorAll('.doi-chip').length;
+                var el = document.getElementById('count-bang-' + bangId);
+                if (el) el.textContent = cnt + ' đội';
+            });
+            if (chua === 0) {
+                document.getElementById('btnKhoiTao').style.display = 'inline-flex';
+                document.getElementById('warnChuaBang').style.display = 'none';
+            } else {
+                document.getElementById('btnKhoiTao').style.display = 'none';
+                document.getElementById('warnChuaBang').style.display = '';
+            }
+        }
+
+        function khoiTaoGiai() {
+            if (!confirm('Khởi tạo giải?\n\nHệ thống sẽ:\n• Sinh lịch đấu tự động (Berger Algorithm)\n• Khóa slot sân cho toàn bộ ngày thi đấu\n• Gửi email lịch đấu cho các đội trưởng\n\nThao tác này không thể hoàn tác!')) return;
+            document.getElementById('formKhoiTao').submit();
+        }
+
+        capNhatSoDem();
+    </script>
+}

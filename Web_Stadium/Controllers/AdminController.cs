@@ -12,12 +12,14 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly HoanCocService _hoanCocService;
 
-        public AdminController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public AdminController(SanBongContext context, IConfiguration config, EmailService emailService, HoanCocService hoanCocService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _hoanCocService = hoanCocService;
         }
 
         private int GetAdminId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -91,6 +93,29 @@ namespace Web_Stadium.Controllers
                     SoLuot = s.KhungGios.SelectMany(k => k.DatSans).Count()
                 })
                 .OrderByDescending(x => x.SoLuot).Take(5).ToListAsync();
+
+            // Top 5 Owner có nhiều sân nhất
+            ViewBag.TopOwners = await _context.Users
+                .Where(u => u.VaiTro == "Owner" && u.IsActive)
+                .Select(u => new {
+                    u.HoTen,
+                    u.Email,
+                    SoSan = u.SanBongs.Count(s => s.TrangThaiDuyet == "DaDuyet")
+                })
+                .OrderByDescending(u => u.SoSan)
+                .Take(5)
+                .ToListAsync();
+
+            // 10 hoạt động gần nhất
+            ViewBag.RecentActivity = await _context.AuditLogs
+                .OrderByDescending(a => a.ThoiGian)
+                .Take(10)
+                .Select(a => new {
+                    a.HanhDong,
+                    a.MoTa,
+                    a.ThoiGian
+                })
+                .ToListAsync();
 
             return View();
         }
@@ -574,13 +599,49 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
         }
 
 
-        public async Task<IActionResult> QuanLyUser(string? vaiTro, string? tuKhoa)
+        public async Task<IActionResult> QuanLyUser(string? vaiTro, string? tuKhoa, string? quan, int? ownerId)
         {
-            var query = _context.Users.AsQueryable();
-            if (!string.IsNullOrEmpty(vaiTro)) query = query.Where(u => u.VaiTro == vaiTro);
+            var query = _context.Users
+                .Include(u => u.SanBongs)
+                .Include(u => u.StaffSanPhanCongs)
+                    .ThenInclude(s => s.SanBong)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(vaiTro))
+                query = query.Where(u => u.VaiTro == vaiTro);
+
             if (!string.IsNullOrEmpty(tuKhoa))
                 query = query.Where(u => u.HoTen.Contains(tuKhoa) || u.Email.Contains(tuKhoa));
-            ViewBag.VaiTro = vaiTro; ViewBag.TuKhoa = tuKhoa;
+
+            // Lọc theo quận của sân (dành cho Staff và Owner)
+            if (!string.IsNullOrEmpty(quan))
+                query = query.Where(u =>
+                    u.SanBongs.Any(s => s.Quan == quan) ||                          // Owner có sân thuộc quận
+                    u.StaffSanPhanCongs.Any(s => s.SanBong.Quan == quan));          // Staff được gán sân thuộc quận
+
+            // Lọc Staff thuộc Owner cụ thể
+            if (ownerId.HasValue)
+                query = query.Where(u =>
+                    u.OwnerIdCuaStaff == ownerId.Value ||
+                    u.Id == ownerId.Value);
+
+            ViewBag.VaiTro = vaiTro;
+            ViewBag.TuKhoa = tuKhoa;
+            ViewBag.Quan = quan;
+            ViewBag.OwnerId = ownerId;
+
+            // Dropdown quận
+            ViewBag.QuanList = await _context.DanhMucQuans
+                .Where(q => q.IsActive)
+                .OrderBy(q => q.ThuTu)
+                .ToListAsync();
+
+            // Dropdown Owner (để lọc Staff)
+            ViewBag.OwnerList = await _context.Users
+                .Where(u => u.VaiTro == "Owner")
+                .OrderBy(u => u.HoTen)
+                .ToListAsync();
+
             return View(await query.OrderByDescending(u => u.NgayTao).ToListAsync());
         }
 
@@ -601,6 +662,29 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             return RedirectToAction("QuanLyUser");
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DoiVaiTro(int id, string vaiTro)
+        {
+            var dsVaiTroHopLe = new[] { "User", "Owner", "Staff" };
+            if (!dsVaiTroHopLe.Contains(vaiTro))
+            { TempData["Error"] = "Vai trò không hợp lệ!"; return RedirectToAction("QuanLyUser"); }
+
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+            if (user.VaiTro == "Admin")
+            { TempData["Error"] = "Không thể đổi vai trò Admin!"; return RedirectToAction("QuanLyUser"); }
+            if (user.Id == GetAdminId())
+            { TempData["Error"] = "Không thể đổi vai trò tài khoản đang đăng nhập!"; return RedirectToAction("QuanLyUser"); }
+
+            var oldVaiTro = user.VaiTro;
+            user.VaiTro = vaiTro;
+            // Nếu đổi sang không phải Staff thì xóa OwnerIdCuaStaff
+            if (vaiTro != "Staff") user.OwnerIdCuaStaff = null;
+            await _context.SaveChangesAsync();
+            await GhiLog("DoiVaiTro", "User", id, $"{user.HoTen}: {oldVaiTro} → {vaiTro}");
+            TempData["Success"] = $"Đã đổi vai trò \"{user.HoTen}\": {oldVaiTro} → {vaiTro}";
+            return RedirectToAction("QuanLyUser");
+        }
         // ══════════════════════════════════════════════════════════
         // KHIẾU NẠI & HOÀN CỌC
         // ══════════════════════════════════════════════════════════
@@ -622,15 +706,38 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
         public async Task<IActionResult> XuLyKhieuNai(int id, string ketQua, decimal? soTienHoan, string? ghiChu)
         {
             var kn = await _context.KhieuNais
-                .Include(k => k.DatSan).Include(k => k.User)
+                .Include(k => k.DatSan)
+                    .ThenInclude(d => d.KhungGio)
+                        .ThenInclude(k => k.SanBong)
+                .Include(k => k.User)
                 .FirstOrDefaultAsync(k => k.Id == id);
             if (kn == null) return NotFound();
+
+            if (ketQua == "DaHoanCoc" && kn.DatSan != null)
+            {
+                var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                    kn.DatSan,
+                    nguonHuy: "AdminKhieuNai",
+                    vaiTroNguoiKhoiTao: "Admin",
+                    nguoiKhoiTaoId: GetAdminId(),
+                    soTienHoanTuyChon: soTienHoan,
+                    ghiChu: ghiChu
+                );
+
+                if (!success)
+                {
+                    TempData["Error"] = message;
+                    return RedirectToAction("KhieuNai");
+                }
+
+                kn.DatSan.TrangThai = "DaHuy";
+            }
+
             kn.TrangThai = ketQua;
             kn.SoTienHoan = soTienHoan;
             kn.GhiChuAdmin = ghiChu;
             kn.NgayXuLy = DateTime.Now;
             kn.AdminXuLyId = GetAdminId();
-            if (ketQua == "DaHoanCoc" && kn.DatSan != null) kn.DatSan.TrangThai = "DaHuy";
             await _context.SaveChangesAsync();
             await GhiLog(ketQua == "DaHoanCoc" ? "HoanCoc" : "TuChoiHoanCoc",
                 "KhieuNai", id, $"{kn.User?.HoTen} — {soTienHoan:N0}đ");
@@ -775,17 +882,6 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.TongDoanhThuSan = (double)data.Sum(d => (double)((dynamic)d).dtSan);
             ViewBag.TongLuot = (int)data.Sum(d => (int)((dynamic)d).soLuot);
             ViewBag.DiemCaoNhat = data.OrderByDescending(d => (double)((dynamic)d).phi).FirstOrDefault();
-            ViewBag.TongGiamHeThong = (double)data.Sum(d => (double)((dynamic)d).giamHeThong);
-            ViewBag.TongGiamOwner = (double)data.Sum(d => (double)((dynamic)d).giamOwner);
-            ViewBag.SoLuotVoucherHT = await _context.DatSans
-                .Where(d => d.VoucherHeThongId != null
-                         && d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).CountAsync();
-            ViewBag.TopVoucherHT = await _context.Vouchers
-                .Where(v => v.LoaiVoucher == "HeThong")
-                .OrderByDescending(v => v.DaDung).Take(5)
-                .Select(v => new { v.TenVoucher, v.DaDung,
-                    TienGiam = _context.DatSans.Where(d => d.VoucherHeThongId == v.Id).Sum(d => d.TienGiamHeThong) })
-                .ToListAsync();
 
             // Aliases cho BaoCao View
             ViewBag.DoanhThuNam = data.Select(d => new
@@ -858,9 +954,7 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             phi = (double)rows.Sum(d => TinhPhiHoaHong(d)),
             soLuot = rows.Count,
             soKA = rows.Count(d => d.TrangThai == "DaHuy"),
-            soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung"),
-            giamHeThong = (double)rows.Sum(d => d.TienGiamHeThong),
-            giamOwner = (double)rows.Sum(d => d.TienGiamSan)
+            soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung")
         };
 
         // ══════════════════════════════════════════════════════════
@@ -999,8 +1093,8 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
                 trangThai = s.TrangThaiDuyet,
                 owner = s.Owner?.HoTen ?? "",
                 loaiSan = s.LoaiSan,
-                lat = quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lat : 21.028,
-                lng = quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lng : 105.854,
+                lat = s.Latitude != 0 ? s.Latitude : (quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lat : 21.028),
+                lng = s.Longitude != 0 ? s.Longitude : (quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lng : 105.854),
                 dichVus = (s.DichVus ?? new List<DichVu>())
                                 .Where(d => d.IsActive)
                                 .Select(d => new { ten = d.TenDichVu, gia = d.Gia, kho = d.TonKho })
@@ -1014,107 +1108,6 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.Keyword = keyword;
 
             return View();
-        }
-
-        // ══════════════════════════════════════════════════════════
-        // QUẢN LÝ VOUCHER HỆ THỐNG
-        // ══════════════════════════════════════════════════════════
-
-        // GET /Admin/Voucher
-        public async Task<IActionResult> Voucher(string? filter = null)
-        {
-            var query = _context.Vouchers
-                .Where(v => v.LoaiVoucher == "HeThong");
-
-            if (filter == "active")
-                query = query.Where(v => v.IsActive && v.NgayHetHan > DateTime.Now);
-            else if (filter == "expired")
-                query = query.Where(v => !v.IsActive || v.NgayHetHan <= DateTime.Now);
-
-            var vouchers = await query.OrderByDescending(v => v.NgayTao).ToListAsync();
-
-            // KPI
-            var allHT = await _context.Vouchers.Where(v => v.LoaiVoucher == "HeThong").ToListAsync();
-            ViewBag.TongPhatHanh = allHT.Sum(v => v.DaDung);
-            ViewBag.TongConLai = allHT.Sum(v => v.SoLuong == 0 ? 0 : Math.Max(0, v.SoLuong - v.DaDung));
-            ViewBag.TongTienGiam = await _context.DatSans
-                .Where(d => d.VoucherHeThongId != null)
-                .SumAsync(d => d.TienGiamHeThong);
-            ViewBag.Filter = filter;
-
-            return View(vouchers);
-        }
-
-        // GET /Admin/TaoVoucher
-        public IActionResult TaoVoucher() => View();
-
-        // POST /Admin/TaoVoucher
-        [HttpPost]
-        public async Task<IActionResult> TaoVoucher(
-            string tenVoucher, string? moTa,
-            string loaiGiam, decimal giaTriGiam, decimal? giamToiDa,
-            decimal dieuKienToiThieu, int soLuong,
-            DateTime ngayBatDau, DateTime ngayHetHan)
-        {
-            if (string.IsNullOrWhiteSpace(tenVoucher))
-            { TempData["Error"] = "Tên voucher không được để trống."; return View(); }
-
-            if (ngayHetHan <= ngayBatDau)
-            { TempData["Error"] = "Ngày hết hạn phải sau ngày bắt đầu."; return View(); }
-
-            if (giaTriGiam <= 0)
-            { TempData["Error"] = "Giá trị giảm phải lớn hơn 0."; return View(); }
-
-            var ma = $"HT-{DateTime.Now:yyyyMMddHHmmss}-{new Random().Next(100, 999)}";
-            var v = new Voucher
-            {
-                MaVoucher = ma,
-                TenVoucher = tenVoucher.Trim(),
-                MoTa = moTa?.Trim(),
-                LoaiGiam = loaiGiam,
-                GiaTriGiam = giaTriGiam,
-                GiamToiDa = loaiGiam == "PhanTram" ? giamToiDa : null,
-                DieuKienToiThieu = dieuKienToiThieu,
-                SoLuong = soLuong,
-                LoaiVoucher = "HeThong",
-                NgayBatDau = ngayBatDau,
-                NgayHetHan = ngayHetHan,
-                IsActive = true,
-                NgayTao = DateTime.Now,
-                DiemCanDoi = 0,
-                SoNgayHieuLuc = 0
-            };
-            _context.Vouchers.Add(v);
-            await _context.SaveChangesAsync();
-            await GhiLog("TaoVoucher", "Voucher", v.Id, $"Tạo voucher hệ thống: {tenVoucher}");
-            TempData["Success"] = $"Đã tạo voucher \"{tenVoucher}\" — Mã: {ma}";
-            return RedirectToAction("Voucher");
-        }
-
-        // POST /Admin/KichHoatVoucher/{id}
-        [HttpPost]
-        public async Task<IActionResult> KichHoatVoucher(int id)
-        {
-            var v = await _context.Vouchers.FindAsync(id);
-            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
-            v.IsActive = true;
-            await _context.SaveChangesAsync();
-            await GhiLog("KichHoatVoucher", "Voucher", id, $"Kích hoạt: {v.TenVoucher}");
-            TempData["Success"] = $"Đã kích hoạt voucher \"{v.TenVoucher}\".";
-            return RedirectToAction("Voucher");
-        }
-
-        // POST /Admin/VoHieuVoucher/{id}
-        [HttpPost]
-        public async Task<IActionResult> VoHieuVoucher(int id)
-        {
-            var v = await _context.Vouchers.FindAsync(id);
-            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
-            v.IsActive = false;
-            await _context.SaveChangesAsync();
-            await GhiLog("VoHieuVoucher", "Voucher", id, $"Vô hiệu: {v.TenVoucher}");
-            TempData["Success"] = $"Đã vô hiệu voucher \"{v.TenVoucher}\".";
-            return RedirectToAction("Voucher");
         }
     }
 }

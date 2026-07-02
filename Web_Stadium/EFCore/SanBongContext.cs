@@ -55,10 +55,26 @@ public partial class SanBongContext : DbContext
     public virtual DbSet<SanYeuThich> SanYeuThichs { get; set; }
     public virtual DbSet<UserVoucher> UserVouchers { get; set; }
     public virtual DbSet<Voucher> Vouchers { get; set; }
+    public virtual DbSet<GiaoDichHoanCoc> GiaoDichHoanCocs { get; set; }
+
+    // - V6: 6 bang moi
+    public virtual DbSet<BangDau> BangDaus { get; set; }
+    public virtual DbSet<DoiBong> DoiBongs { get; set; }
+    public virtual DbSet<GiaiDau> GiaiDaus { get; set; }
+    public virtual DbSet<SuKienTran> SuKienTrans { get; set; }
+    public virtual DbSet<ThanhVienDoi> ThanhVienDois { get; set; }
+    public virtual DbSet<TranDau> TranDaus { get; set; }
+
+    // ── UC068-UC071: Owner ops ─────────────────────────────────
+    public virtual DbSet<YeuCauDoiGio> YeuCauDoiGios { get; set; }
+    public virtual DbSet<YeuCauDoiSan> YeuCauDoiSans { get; set; }
+    public virtual DbSet<ChuyenNhuongDatSan> ChuyenNhuongDatSans { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=TunKittt;Database=SanBongBTL;User Id=sa;Password=422005;TrustServerCertificate=True;");
+    {
+        if (!optionsBuilder.IsConfigured)
+            optionsBuilder.UseSqlServer("Data Source=NEMMM\\CNAMM;Initial Catalog=SanBongBTL;Integrated Security=True;Encrypt=True;Trust Server Certificate=True;MultipleActiveResultSets=True");
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -195,9 +211,6 @@ public partial class SanBongContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.TienCoc).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TongTien).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.TienGoc).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
-            entity.Property(e => e.TienGiamSan).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
-            entity.Property(e => e.TienGiamHeThong).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
             entity.Property(e => e.TrangThai)
                 .HasMaxLength(20)
                 .HasDefaultValue("ChoDuyet");
@@ -219,14 +232,6 @@ public partial class SanBongContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DatSans_User");
-
-            entity.HasOne(d => d.VoucherSan).WithMany(p => p.DatSanAsSan)
-                .HasForeignKey(d => d.VoucherSanId)
-                .HasConstraintName("FK_DatSans_VoucherSan");
-
-            entity.HasOne(d => d.VoucherHeThong).WithMany(p => p.DatSanAsHeThong)
-                .HasForeignKey(d => d.VoucherHeThongId)
-                .HasConstraintName("FK_DatSans_VoucherHeThong");
         });
 
         modelBuilder.Entity<DatSanDichVu>(entity =>
@@ -576,37 +581,262 @@ public partial class SanBongContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Vouchers__3214EC07092807B4");
             entity.HasIndex(e => e.MaVoucher, "UQ__Vouchers__0AAC5B1029A0D8F8").IsUnique();
-            entity.HasIndex(e => e.LoaiVoucher, "IX_Vouchers_LoaiVoucher");
-            entity.HasIndex(e => e.SanBongId, "IX_Vouchers_SanBongId");
             entity.Property(e => e.GiaTriGiam).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.GiamToiDa).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.DieuKienToiThieu).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.LoaiGiam)
                 .HasMaxLength(20)
                 .HasDefaultValue("PhanTram");
-            entity.Property(e => e.LoaiVoucher)
-                .HasMaxLength(20)
-                .HasDefaultValue("HeThong");
             entity.Property(e => e.MaVoucher).HasMaxLength(50);
             entity.Property(e => e.MoTa).HasMaxLength(500);
-            entity.Property(e => e.NgayBatDau).HasColumnType("datetime");
-            entity.Property(e => e.NgayHetHan).HasColumnType("datetime");
             entity.Property(e => e.NgayTao)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.SoNgayHieuLuc).HasDefaultValue(30);
-            entity.Property(e => e.SoLuong).HasDefaultValue(0);
-            entity.Property(e => e.DaDung).HasDefaultValue(0);
             entity.Property(e => e.TenVoucher).HasMaxLength(200);
+            entity.Property(e => e.LoaiPhatHanh)
+                .HasMaxLength(20)
+                .HasDefaultValue("HeThong");
 
-            entity.HasOne(d => d.SanBong).WithMany()
-                .HasForeignKey(d => d.SanBongId)
-                .HasConstraintName("FK_Vouchers_SanBong");
+            entity.HasIndex(e => e.OwnerId, "IX_Vouchers_OwnerId");
+            entity.HasIndex(e => e.SanBongId, "IX_Vouchers_SanBongId");
 
             entity.HasOne(d => d.Owner).WithMany()
                 .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.NoAction)
                 .HasConstraintName("FK_Vouchers_Owner");
+
+            entity.HasOne(d => d.SanBong).WithMany()
+                .HasForeignKey(d => d.SanBongId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_Vouchers_SanBong");
+        });
+
+        // ── UC069: YeuCauDoiGio ───────────────────────────────
+        modelBuilder.Entity<YeuCauDoiGio>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("YeuCauDoiGios");
+
+            entity.HasIndex(e => e.DatSanId, "IX_YCDG_DatSanId");
+            entity.HasIndex(e => e.TrangThai, "IX_YCDG_TrangThai");
+
+            entity.Property(e => e.LyDo).HasMaxLength(500);
+            entity.Property(e => e.GhiChuXuLy).HasMaxLength(500);
+            entity.Property(e => e.TrangThai)
+                .HasMaxLength(20)
+                .HasDefaultValue("ChoPheDuyet");
+            entity.Property(e => e.NgayTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NgayThiDauMoi).HasColumnType("datetime");
+            entity.Property(e => e.NgayXuLy).HasColumnType("datetime");
+
+            entity.HasOne(d => d.DatSan).WithMany()
+                .HasForeignKey(d => d.DatSanId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_YCDG_DatSan");
+
+            entity.HasOne(d => d.KhungGioMoi).WithMany()
+                .HasForeignKey(d => d.KhungGioMoiId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_YCDG_KhungGio");
+
+            entity.HasOne(d => d.NguoiXuLy).WithMany()
+                .HasForeignKey(d => d.NguoiXuLyId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_YCDG_NguoiXuLy");
+        });
+
+        // ── UC070: YeuCauDoiSan ───────────────────────────────
+        modelBuilder.Entity<YeuCauDoiSan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("YeuCauDoiSans");
+
+            entity.HasIndex(e => e.DatSanId, "IX_YCDS_DatSanId");
+            entity.HasIndex(e => e.TrangThai, "IX_YCDS_TrangThai");
+
+            entity.Property(e => e.LyDo).HasMaxLength(500);
+            entity.Property(e => e.GhiChuXuLy).HasMaxLength(500);
+            entity.Property(e => e.TrangThai)
+                .HasMaxLength(20)
+                .HasDefaultValue("ChoPheDuyet");
+            entity.Property(e => e.NgayTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NgayThiDauMoi).HasColumnType("datetime");
+            entity.Property(e => e.NgayXuLy).HasColumnType("datetime");
+
+            entity.HasOne(d => d.DatSan).WithMany()
+                .HasForeignKey(d => d.DatSanId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_YCDS_DatSan");
+
+            entity.HasOne(d => d.KhungGioMoi).WithMany()
+                .HasForeignKey(d => d.KhungGioMoiId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_YCDS_KhungGio");
+
+            entity.HasOne(d => d.NguoiXuLy).WithMany()
+                .HasForeignKey(d => d.NguoiXuLyId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_YCDS_NguoiXuLy");
+        });
+
+        // ── UC071: ChuyenNhuongDatSan ─────────────────────────
+        modelBuilder.Entity<ChuyenNhuongDatSan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("ChuyenNhuongDatSans");
+
+            entity.HasIndex(e => e.DatSanId, "IX_CNDS_DatSanId");
+            entity.HasIndex(e => e.TrangThai, "IX_CNDS_TrangThai");
+
+            entity.Property(e => e.EmailNguoiNhan).HasMaxLength(150);
+            entity.Property(e => e.SdtNguoiNhan).HasMaxLength(20);
+            entity.Property(e => e.LyDo).HasMaxLength(500);
+            entity.Property(e => e.GhiChuXuLy).HasMaxLength(500);
+            entity.Property(e => e.TrangThai)
+                .HasMaxLength(20)
+                .HasDefaultValue("ChoPheDuyet");
+            entity.Property(e => e.NgayTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NgayXuLy).HasColumnType("datetime");
+
+            entity.HasOne(d => d.DatSan).WithMany()
+                .HasForeignKey(d => d.DatSanId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CNDS_DatSan");
+
+            entity.HasOne(d => d.NguoiChuyen).WithMany()
+                .HasForeignKey(d => d.NguoiChuyenId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_CNDS_NguoiChuyen");
+
+            entity.HasOne(d => d.NguoiNhan).WithMany()
+                .HasForeignKey(d => d.NguoiNhanId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_CNDS_NguoiNhan");
+
+            entity.HasOne(d => d.NguoiXuLyOwner).WithMany()
+                .HasForeignKey(d => d.NguoiXuLyOwnerId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_CNDS_OwnerXuLy");
+        });
+
+        modelBuilder.Entity<GiaoDichHoanCoc>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__GiaoDich__3214EC07A1B2C3D4");
+
+            entity.HasIndex(e => e.DatSanId, "IX_GiaoDichHoanCoc_DatSanId");
+            entity.HasIndex(e => e.ThoiGianGiaoDich, "IX_GiaoDichHoanCoc_ThoiGian");
+            entity.HasIndex(e => e.VaiTroNguoiKhoiTao, "IX_GiaoDichHoanCoc_VaiTro");
+
+            entity.Property(e => e.ThoiGianGiaoDich)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.SoTien).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.VaiTroNguoiKhoiTao).HasMaxLength(20);
+            entity.Property(e => e.TrangThaiHoan).HasMaxLength(20);
+            entity.Property(e => e.GhiChu).HasMaxLength(500);
+
+            entity.HasOne(d => d.DatSan).WithMany(p => p.GiaoDichHoanCocs)
+                .HasForeignKey(d => d.DatSanId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GiaoDichHoanCoc_DatSan");
+
+            entity.HasOne(d => d.NguoiKhoiTao).WithMany()
+                .HasForeignKey(d => d.NguoiKhoiTaoId)
+                .HasConstraintName("FK_GiaoDichHoanCoc_User");
+        });
+
+        // ngày 22/5/2026   : Config 6 bảng mới của V6
+        modelBuilder.Entity<GiaiDau>(entity => {
+            entity.HasOne(d => d.SanBong).WithMany()
+                .HasForeignKey(d => d.SanBongId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Owner).WithMany()
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.NoAction);
+            // Staff phụ trách toàn giải (Owner gán)
+            entity.HasOne(d => d.StaffPhuTrach).WithMany()
+                .HasForeignKey(d => d.StaffPhuTrachId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // Dummy Booking khóa slot sân cho giải đấu (giai đoạn 1 blueprint)
+        modelBuilder.Entity<DatSan>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.DatSans)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BangDau>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.BangDaus)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DoiBong>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.DoiBongs)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.Bang).WithMany(b => b.DoiBongs)
+                .HasForeignKey(d => d.BangId);
+            entity.HasOne(d => d.DoiTruong).WithMany()
+                .HasForeignKey(d => d.DoiTruongId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ThanhVienDoi>(entity => {
+            entity.HasOne(d => d.Doi)
+                .WithMany(d => d.ThanhViens)
+                .HasForeignKey(d => d.DoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(d => new { d.DoiId, d.SoAo }).IsUnique();
+        });
+
+        modelBuilder.Entity<TranDau>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.TranDaus)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.BangDau)
+                .WithMany(b => b.TranDaus)
+                .HasForeignKey(d => d.BangId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.DoiNha)
+                .WithMany(d => d.TranDauDoiNhas)
+                .HasForeignKey(d => d.DoiNhaId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.DoiKhach)
+                .WithMany(d => d.TranDauDoiKhachs)
+                .HasForeignKey(d => d.DoiKhachId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.KhungGio).WithMany()
+                .HasForeignKey(d => d.KhungGioId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.StaffPhuTrach).WithMany()
+                .HasForeignKey(d => d.StaffPhuTrachId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<SuKienTran>(entity => {
+            entity.HasOne(d => d.TranDau)
+                .WithMany(t => t.SuKiens)
+                .HasForeignKey(d => d.TranDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.ThanhVien).WithMany()
+                .HasForeignKey(d => d.ThanhVienId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Doi).WithMany()
+                .HasForeignKey(d => d.DoiId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         OnModelCreatingPartial(modelBuilder);

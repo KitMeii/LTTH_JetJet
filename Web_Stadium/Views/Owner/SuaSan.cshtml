@@ -1,117 +1,153 @@
 ﻿@model Web_Stadium.EFCore.SanBong
 @{
-    ViewData["Title"] = "Sửa thông tin sân";
+    ViewData["Title"] = "Cấu hình sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DanhSachSan";
+    var loaiSans = ViewBag.LoaiSans as List<Web_Stadium.EFCore.DanhMucLoaiSan> ?? new();
+    var loaiCos = ViewBag.LoaiCos as List<Web_Stadium.EFCore.DanhMucLoaiCo> ?? new();
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .breadcrumb-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--db-muted); text-decoration: none; margin-bottom: 8px;
+    }
+        .breadcrumb-back:hover { color: var(--db-green); }
+
+    .form-card { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; padding: 28px; max-width: 800px; margin: 0 auto; }
+    .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
+    .form-control, .form-select {
+        background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 12px;
+        padding: 8px 12px; font-size: 14px; color: var(--db-text);
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
+    }
+
+    .btn-save { background: var(--db-green); border: none; border-radius: 40px; padding: 8px 28px; color: white; font-weight: 500; }
+    .btn-save:hover { background: #0a5338; transform: translateY(-1px); }
+    .info-note { background: #eff6ff; border-radius: 12px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-top: 20px; }
+</style>
+
+<div class="page-header">
     <div class="container">
-        <div class="section-label">Owner — Chỉnh sửa</div>
-        <h1 style="font-style:italic;line-height:0.9">SỬA THÔNG TIN<br><span class="text-green">@Model.TenSan</span></h1>
-        <p style="color:var(--muted)">Chỉ có thể sửa mô tả, tỷ lệ cọc và trạng thái hiển thị. Thông tin địa chỉ đã ký trong hợp đồng không thể thay đổi.</p>
+        <a href="/Owner/DanhSachSan" class="breadcrumb-back"><i class="fas fa-arrow-left"></i> Danh sách sân</a>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / CẤU HÌNH SÂN</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Chỉnh sửa <span style="color: var(--db-green);">@Model.TenSan</span></h1>
+                <p class="text-muted mt-2 mb-0">Điều chỉnh thông tin, chính sách hủy và thời gian giữ chỗ</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap align-items-left">
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-success rounded-pill">← Danh sách sân</a>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
-    @{
-        var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new Dictionary<string, decimal>();
-        var tyLe = tyLeMap.TryGetValue(Model.Quan ?? "", out var tl) ? tl : 0.10m;
-    }
-    <div class="row justify-content-center">
-        <div class="col-lg-7">
+    <div class="form-card">
+        <form method="post" action="/Owner/SuaSan/@Model.Id">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
 
-            @if (TempData["Success"] != null)
-            {
-                <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-            }
-
-            <!-- Thông tin đã ký — chỉ đọc -->
-            <div style="padding:16px 20px;border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,0.2);margin-bottom:24px">
-                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px">
-                    🔒 THÔNG TIN ĐÃ KÝ TRONG HỢP ĐỒNG — KHÔNG THỂ THAY ĐỔI
+            <div class="row g-4">
+                <!-- Thông tin cơ bản (chỉ hiển thị) -->
+                <div class="col-12">
+                    <h6 class="fw-semibold mb-3">Thông tin cơ bản</h6>
                 </div>
-                <div class="row g-2" style="font-size:13px">
-                    <div class="col-md-6"><span style="color:var(--muted)">Địa chỉ:</span> @Model.DiaChi</div>
-                    <div class="col-md-6"><span style="color:var(--muted)">Khu vực:</span> @Model.Quan, @Model.ThanhPho</div>
-                    <div class="col-md-6"><span style="color:var(--muted)">Loại sân:</span> @Model.LoaiSan người</div>
-                    <div class="col-md-6"><span style="color:var(--muted)">Loại cỏ:</span> @Model.LoaiCo</div>
-                    <div class="col-md-6"><span style="color:var(--muted)">Hoa hồng:</span> <span style="color:var(--green);font-weight:600">@((tyLe * 100).ToString("F0"))%</span></div>
-                    <div class="col-md-6">
-                        <span style="color:var(--muted)">Trạng thái duyệt:</span>
-                        <span style="color:@(Model.TrangThaiDuyet == "DaDuyet" ? "var(--green)" : Model.TrangThaiDuyet == "TuChoi" ? "#e74c3c" : "#f39c12");font-weight:600">
-                            @Model.TrangThaiDuyet
-                        </span>
-                    </div>
+                <div class="col-md-6">
+                    <div class="form-label">Loại sân</div>
+                    <select class="form-select" disabled>
+                        @foreach (var ls in loaiSans)
+                        {
+                            <option value="@ls.MaLoai" selected="@(ls.MaLoai == Model.LoaiSan)">@ls.TenLoai</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Loại cỏ</div>
+                    <select class="form-select" disabled>
+                        @foreach (var lc in loaiCos)
+                        {
+                            <option value="@lc.MaLoai" selected="@(lc.MaLoai == Model.LoaiCo)">@lc.TenLoai</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div class="form-label">Mô tả sân</div>
+                    <textarea name="moTa" class="form-control" rows="2">@Model.MoTa</textarea>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Tỷ lệ cọc (%)</div>
+                    <select name="tyLeCoc" class="form-select">
+                        <option value="0.30" selected="@(Model.TyLeCoc == 0.30m)">30%</option>
+                        <option value="0.40" selected="@(Model.TyLeCoc == 0.40m)">40%</option>
+                        <option value="0.50" selected="@(Model.TyLeCoc == 0.50m)">50%</option>
+                    </select>
+                </div>
+
+
+                <!-- Cấu hình giữ chỗ & hủy -->
+                <div class="col-12 mt-4">
+                    <h6 class="fw-semibold mb-3">⏱️ Cấu hình giữ chỗ & chính sách hủy</h6>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Thời gian giữ chỗ (phút)</div>
+                    <input type="number" name="thoiGianGiuCho" class="form-control" value="@Model.ThoiGianGiuCho" min="0" step="5" required />
+                    <div class="text-muted small mt-1">Số phút hệ thống giữ chỗ sau khi khách đặt (chưa cọc).</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Thời gian hủy tối thiểu trước giờ đá (phút)</div>
+                    <input type="number" name="thoiGianHuyTruocGioDa" class="form-control" value="@Model.ThoiGianHuyTruocGioDa" min="0" step="15" required />
+                    <div class="text-muted small mt-1">Khách cần hủy trước thời gian này để được hoàn cọc theo tỷ lệ "đúng hạn".</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Tỷ lệ hoàn cọc khi hủy đúng hạn (%)</div>
+                    <input type="number" name="phanTramHoanCocDungHan" class="form-control" value="@(Model.PhanTramHoanCocDungHan * 100)" step="5" min="0" max="100" required />
+                    <div class="text-muted small mt-1">Ví dụ: 100% hoàn toàn bộ cọc.</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-label">Tỷ lệ hoàn cọc khi hủy trễ (%)</div>
+                    <input type="number" name="phanTramHoanCocTreHan" class="form-control" value="@(Model.PhanTramHoanCocTreHan * 100)" step="5" min="0" max="100" required />
+                    <div class="text-muted small mt-1">Khách hủy sau thời gian quy định sẽ chỉ được hoàn % này.</div>
+                </div>
+
+                <div class="info-note">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Các cài đặt này sẽ áp dụng cho tất cả các khung giờ của sân. Khách hàng sẽ thấy chính sách hủy khi đặt sân.
                 </div>
             </div>
 
-            <!-- Form sửa được -->
-            <div class="section-card p-4">
-                <div style="font-size:11px;color:var(--green);letter-spacing:1px;margin-bottom:20px">
-                    ✏️ CÁC THÔNG TIN CÓ THỂ CHỈNH SỬA
-                </div>
-
-                <form method="post" action="/Owner/SuaSan/@Model.Id">
-
-                    <div class="mb-4">
-                        <label style="color:var(--muted);font-size:12px;margin-bottom:6px;display:block">MÔ TẢ CƠ SỞ</label>
-                        <textarea name="moTa" rows="4" class="form-control"
-                                  placeholder="Giới thiệu ngắn về cơ sở, tiện ích, ưu điểm..."
-                                  style="background:var(--bg3);border-color:var(--border);color:white">@Model.MoTa</textarea>
-                        <div style="font-size:12px;color:var(--muted);margin-top:4px">Hiển thị trên trang chi tiết sân cho User xem</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label style="color:var(--muted);font-size:12px;margin-bottom:6px;display:block">TỶ LỆ ĐẶT CỌC</label>
-                        <div style="display:flex;gap:12px;flex-wrap:wrap">
-                            @foreach (var opt in new[] { (0.30m, "30%", "Phổ biến"), (0.40m, "40%", ""), (0.50m, "50%", "Cao") })
-                            {
-                                <label style="display:flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid @(Model.TyLeCoc == opt.Item1 ? "var(--green)" : "var(--border)");border-radius:8px;cursor:pointer;background:@(Model.TyLeCoc == opt.Item1 ? "rgba(30,215,96,0.08)" : "transparent")">
-                                    <input type="radio" name="tyLeCoc" value="@opt.Item1"
-                                           @(Model.TyLeCoc == opt.Item1 ? "checked" : "")
-                                           style="accent-color:var(--green)" />
-                                    <div>
-                                        <div style="font-weight:700;color:@(Model.TyLeCoc == opt.Item1 ? "var(--green)" : "white")">@opt.Item2</div>
-                                        @if (!string.IsNullOrEmpty(opt.Item3))
-                                        {
-                                            <div style="font-size:11px;color:var(--muted)">@opt.Item3</div>
-                                        }
-                                    </div>
-                                </label>
-                            }
-                        </div>
-                        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-                            Khách hàng phải thanh toán % này khi đặt sân. Phần còn lại trả khi đến sân.
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                            <input type="checkbox" name="isHidden" value="true"
-                                   @(Model.IsHidden ? "checked" : "")
-                                   style="width:18px;height:18px;accent-color:#f39c12" />
-                            <div>
-                                <div style="font-weight:600">Tạm ẩn sân</div>
-                                <div style="font-size:12px;color:var(--muted)">Sân sẽ không hiển thị cho User đặt. Dùng khi bảo trì hoặc tạm dừng hoạt động.</div>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid var(--border)">
-                        <a href="/Owner/DanhSachSan" class="btn btn-outline-secondary rounded-pill">← Huỷ</a>
-                        <button type="submit" class="btn btn-success rounded-pill px-4">
-                            💾 Lưu thay đổi
-                        </button>
-                    </div>
-                </form>
+            <div class="text-end mt-4">
+                <a href="/Owner/DanhSachSan" class="btn btn-outline-secondary rounded-pill px-4 me-2">Hủy</a>
+                <button type="submit" class="btn-save px-4">Lưu cấu hình</button>
             </div>
-
-        </div>
+        </form>
     </div>
 </div>

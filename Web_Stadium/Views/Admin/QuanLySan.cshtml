@@ -1,78 +1,41 @@
 ﻿@{
     ViewData["Title"] = "Quản lý sân toàn hệ thống";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var sanList = ViewBag.SanList as List<Web_Stadium.EFCore.SanBong> ?? new();
     var ownerList = ViewBag.OwnerList as List<Web_Stadium.EFCore.User> ?? new();
     var filterOwner = (int?)(ViewBag.FilterOwner);
 }
 
-<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin — Quản trị nền tảng</div>
-        <h1 style="font-style:italic;line-height:0.9">
-            QUẢN LÝ SÂN<br><span class="text-green">TOÀN HỆ THỐNG</span>
-        </h1>
-        <p style="color:var(--muted);margin-top:8px;">
-            @sanList.Count sân &nbsp;·&nbsp;
-            @sanList.Count(s => s.TrangThaiDuyet == "DaDuyet") đã duyệt &nbsp;·&nbsp;
-            @sanList.Count(s => s.TrangThaiDuyet == "ChoDuyet") chờ duyệt
-        </p>
-    </div>
-</div>
-
-<!-- NAV -->
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center align-items-center">
-        <a href="/Admin" class="btn btn-outline-green rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLySan" class="btn btn-success rounded-pill">📍 Quản lý sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-outline-info rounded-pill">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-outline-green rounded-pill">🗂️ Master Data</a>
-        <a href="/Admin/KhieuNai" class="btn btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-outline-secondary rounded-pill">📈 Báo cáo</a>
-        <a href="/Admin/AuditLog" class="btn btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
-    </div>
-</div>
-
-<div class="container py-4" style="max-width:1280px">
-
+@section Styles {
     <style>
-        .filter-select {
-            background: rgba(255,255,255,.15);
-            border: 1px solid rgba(255,255,255,.3);
-            color: #fff;
-            border-radius: 10px;
-            padding: 7px 12px;
-            font-size: 14px;
-            min-width: 180px;
-            cursor: pointer;
-            /* Khi dropdown mở — option có nền tối chữ sáng */
+        .ph-filter-select, .ph-filter-input {
             color-scheme: dark;
         }
 
-            /* Option bên trong — nền tối chữ trắng */
-            .filter-select option {
-                background: #1a2a1a;
-                color: #fff;
-            }
-
-                /* Option được chọn */
-                .filter-select option:checked {
-                    background: #0f6e56;
-                    color: #fff;
-                }
+        .san-card {
+            transition: border-color .2s, box-shadow .2s;
+        }
     </style>
+}
+
+<div style="padding:0 0 40px;">
+
+    <div class="pg-header">
+        <div class="pg-label">Admin · Quản lý</div>
+        <h2>Quản lý sân <span class="pg-accent">toàn hệ thống</span></h2>
+        <p>Xem, lọc và quản lý tất cả sân bóng trong hệ thống PitchHub</p>
+    </div>
 
     <!-- ══ BỘ LỌC ══ -->
-    <div class="section-card p-0 overflow-hidden mb-4">
-        <div style="background:linear-gradient(135deg,#1F5C99,#0F6E56);padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="color:#fff;font-family:var(--ff-h);font-size:16px;">🔍 LỌC & TÌM KIẾM</div>
+    <div class="section-card mb-4">
+        <div class="ph-filter-bar">
+            <span class="title">🔍 Lọc &amp; Tìm kiếm</span>
             <div style="flex:1;"></div>
             <form method="get" action="/Admin/QuanLySan" id="filterForm"
                   style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
 
                 <select name="ownerId" onchange="document.getElementById('filterForm').submit()"
-                        class="filter-select">
+                        class="ph-filter-select">
                     <option value="">👤 Tất cả chủ sân</option>
                     @foreach (var o in ownerList)
                     {
@@ -88,7 +51,7 @@
                 </select>
 
                 <select name="trangThai" onchange="document.getElementById('filterForm').submit()"
-                        class="filter-select">
+                        class="ph-filter-select">
                     <option value="">📋 Tất cả trạng thái</option>
                     @if ((string)ViewBag.FilterTT == "DaDuyet")
                     {
@@ -119,11 +82,10 @@
                 <input type="text" name="keyword"
                        value="@ViewBag.Keyword"
                        placeholder="🔍 Tên sân, địa chỉ..."
-                       style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-                              color:#fff;border-radius:10px;padding:7px 14px;font-size:14px;min-width:200px;"
+                       class="ph-filter-input"
                        oninput="clearTimeout(window._kw); window._kw=setTimeout(()=>document.getElementById('filterForm').submit(),400)" />
 
-                <a href="/Admin/QuanLySan" style="color:rgba(255,255,255,.7);font-size:13px;text-decoration:none;">✕ Xóa lọc</a>
+                <a href="/Admin/QuanLySan" class="ph-filter-clear">✕ Xóa lọc</a>
             </form>
         </div>
 
@@ -183,7 +145,7 @@
                     <div style="display:flex;gap:0;">
                         <!-- Ảnh sân -->
                         <div style="width:120px;height:100px;flex-shrink:0;background:var(--bg3);
-                                        display:flex;align-items:center;justify-content:center;font-size:2.5rem;overflow:hidden;">
+                                                    display:flex;align-items:center;justify-content:center;font-size:2.5rem;overflow:hidden;">
                             @if (san.AnhSanBongs?.Any() == true)
                             {
                                 <img src="@san.AnhSanBongs.First().DuongDan"
@@ -200,7 +162,7 @@
                             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
                                 <div style="min-width:0;">
                                     <div style="font-weight:700;font-size:15px;color:var(--text);
-                                                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                         @san.TenSan
                                     </div>
                                     <div style="font-size:12px;color:var(--muted);margin-top:2px;">
@@ -209,13 +171,13 @@
                                 </div>
                                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
                                     <span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;
-                                                     background:@stBg;color:@stColor;border:1px solid @stBd;">
+                                                                 background:@stBg;color:@stColor;border:1px solid @stBd;">
                                         @stLabel
                                     </span>
                                     @if (san.IsHidden)
                                     {
                                         <span style="font-size:11px;padding:2px 8px;border-radius:20px;
-                                                             background:rgba(100,100,100,.15);color:var(--muted);">
+                                                                                     background:rgba(100,100,100,.15);color:var(--muted);">
                                             🔒 Đang ẩn
                                         </span>
                                     }
@@ -236,8 +198,8 @@
                                     @foreach (var dv in san.DichVus.Where(d => d.IsActive).Take(5))
                                     {
                                         <span style="font-size:11px;padding:2px 8px;border-radius:8px;
-                                                                 background:rgba(14,168,106,.1);color:var(--green);
-                                                                 border:1px solid rgba(14,168,106,.2);">
+                                                                                                     background:rgba(14,168,106,.1);color:var(--green);
+                                                                                                     border:1px solid rgba(14,168,106,.2);">
                                             @dv.TenDichVu
                                         </span>
                                     }
@@ -257,11 +219,10 @@
 
                         <!-- Actions -->
                         <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;
-                                        padding:12px;border-left:1px solid var(--border);flex-shrink:0;">
+                                                    padding:12px;border-left:1px solid var(--border);flex-shrink:0;">
                             <a href="/Venues/Details/@san.Id"
                                onclick="event.stopPropagation()"
-                               class="btn btn-sm btn-outline-green rounded-pill"
-                               style="font-size:12px;white-space:nowrap;">
+                               class="btn btn-sm btn-outline-success rounded-pill">
                                 👁 Xem chi tiết
                             </a>
                             @if (san.TrangThaiDuyet == "ChoDuyet")
@@ -278,7 +239,7 @@
 
                     <!-- Expand: chi tiết dịch vụ -->
                     <div id="dv-@san.Id" style="display:none;border-top:1px solid var(--border);
-                                                    padding:12px 16px;background:rgba(0,0,0,.08);">
+                                                                padding:12px 16px;background:rgba(0,0,0,.08);">
                         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">
                             DỊCH VỤ KÈM THEO (@(san.DichVus?.Count(d => d.IsActive) ?? 0) dịch vụ)
                         </div>
@@ -299,29 +260,21 @@
         </div>
 
         <!-- CỘT PHẢI: BẢN ĐỒ -->
-        <div style="position:sticky;top:72px;">
-            <div class="section-card p-0 overflow-hidden">
-                <div style="background:var(--bg3);padding:12px 16px;border-bottom:1px solid var(--border);
-                            display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:13px;font-weight:700;color:var(--text);">
-                        📍 BẢN ĐỒ — @sanList.Count sân
-                    </div>
-                    <div style="font-size:11px;color:var(--muted);">Bấm card để định vị</div>
-                </div>
-                <div id="map" style="height:520px;width:100%;"></div>
-            </div>
+        <div>
+            <div class="ph-map-label">Bấm card để định vị trên bản đồ</div>
+            <div id="map" class="ph-map" style="height:520px;"></div>
+        </div>
+    </div>
 
-            <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;">
-                <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
-                    <div style="width:12px;height:12px;border-radius:50%;background:#22c55e;"></div> Đã duyệt
-                </div>
-                <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
-                    <div style="width:12px;height:12px;border-radius:50%;background:#f59e0b;"></div> Chờ duyệt
-                </div>
-                <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
-                    <div style="width:12px;height:12px;border-radius:50%;background:#ef4444;"></div> Từ chối
-                </div>
-            </div>
+    <div style="display:flex;gap:14px;margin-top:16px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
+            <div style="width:12px;height:12px;border-radius:50%;background:#22c55e;"></div> Đã duyệt
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
+            <div style="width:12px;height:12px;border-radius:50%;background:#f59e0b;"></div> Chờ duyệt
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
+            <div style="width:12px;height:12px;border-radius:50%;background:#ef4444;"></div> Từ chối
         </div>
     </div>
 </div>
@@ -368,7 +321,7 @@
             m.bindPopup(
                 '<div style="font-family:Arial,sans-serif;min-width:200px;">' +
                 '<div style="font-weight:700;font-size:14px;color:#111;margin-bottom:4px;">'+s.ten+'</div>' +
-                '<div style="font-size:12px;color:#666;margin-bottom:3px;">📍 '+s.diaChiHtml+'</div>' +
+                '<div style="font-size:12px;color:#666;margin-bottom:3px;">📍 '+s.diaChi+'</div>' +
                 '<div style="font-size:12px;color:#666;margin-bottom:3px;">⚽ Sân '+s.loaiSan+' người · 👤 '+s.owner+'</div>' +
                 dvHtml +
                 '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eee;">' +

@@ -1,0 +1,429 @@
+﻿@model List<Web_Stadium.EFCore.DatSan>
+@{
+    ViewData["Title"] = "Duyệt lịch đặt sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DonDat";
+    string currentStatus = ViewBag.CurrentStatus ?? "ChoDuyet";
+    var lyDoMap = (ViewBag.LyDoTuChoi as Dictionary<int, (string LyDo, DateTime ThoiGian, string NguoiXuLy)>)
+                  ?? new Dictionary<int, (string LyDo, DateTime ThoiGian, string NguoiXuLy)>();
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
+        }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .filter-btn {
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 13px;
+        text-decoration: none;
+        background: transparent;
+        color: var(--db-muted);
+        border: 1px solid var(--db-border);
+        transition: 0.15s;
+    }
+
+    .filter-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+        font-weight: 600;
+    }
+
+    .table-wrapper {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        overflow: auto;
+    }
+
+    .booking-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+    }
+
+        .booking-table th {
+            background: var(--db-surface);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--db-muted);
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--db-border);
+            text-align: left;
+        }
+
+        .booking-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--db-border);
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .booking-table tr:last-child td {
+            border-bottom: none;
+        }
+
+    .status-badge {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-radius: 30px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    .status-badge-pending {
+        background: #fffbeb;
+        color: #b45309;
+    }
+
+    .status-badge-confirmed {
+        background: #e6f7e6;
+        color: #0f6e4a;
+    }
+
+    .status-badge-cancelled {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    .btn-sm-outline {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 30px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 500;
+        transition: 0.15s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+        .btn-sm-outline:hover {
+            background: var(--db-green-bg);
+            border-color: var(--db-green-border);
+            color: var(--db-green);
+        }
+
+    .btn-sm-danger {
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
+        .btn-sm-danger:hover {
+            background: #fef2f2;
+            border-color: #f87171;
+        }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 0;
+        color: var(--db-muted);
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / DUYỆT LỊCH</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Duyệt <span style="color: var(--db-green);">lịch đặt sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Xác nhận hoặc từ chối đơn đặt từ khách hàng</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-5">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Bộ lọc trạng thái -->
+    <div class="filter-tabs">
+        <a href="/Owner/DanhSachDonDat?status=ChoDuyet" class="filter-btn @(currentStatus == "ChoDuyet" ? "filter-btn-active" : "")">⏳ Chờ duyệt</a>
+        <a href="/Owner/DanhSachDonDat?status=DaXacNhan" class="filter-btn @(currentStatus == "DaXacNhan" ? "filter-btn-active" : "")">✅ Đã xác nhận</a>
+        <a href="/Owner/DanhSachDonDat?status=DaHuy" class="filter-btn @(currentStatus == "DaHuy" ? "filter-btn-active" : "")">❌ Đã từ chối</a>
+        <a href="/Owner/DanhSachDonDat?status=All" class="filter-btn @(currentStatus == "All" ? "filter-btn-active" : "")">📋 Tất cả</a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon" style="font-size: 4rem; opacity: 0.4;">📅</div>
+            <h4 class="fw-semibold">Không có đơn đặt nào</h4>
+            <p class="text-muted">Chưa có lịch đặt nào thuộc trạng thái này</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="booking-table">
+                <thead>
+                    <tr>
+                        <th>Khách hàng</th>
+                        <th>Sân</th>
+                        <th>Ngày đá</th>
+                        <th>Khung giờ</th>
+                        <th>Tổng tiền</th>
+                        <th>Cọc</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var don in Model)
+                    {
+                        var statusClass = don.TrangThai switch
+                        {
+                            "ChoDuyet" => "status-badge-pending",
+                            "DaXacNhan" => "status-badge-confirmed",
+                            "DaHuy" => "status-badge-cancelled",
+                            _ => "status-badge"
+                        };
+                        var statusText = don.TrangThai switch
+                        {
+                            "ChoDuyet" => "⏳ Chờ duyệt",
+                            "DaXacNhan" => "✅ Đã xác nhận",
+                            "DaHuy" => "❌ Đã từ chối",
+                            _ => don.TrangThai
+                        };
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@don.User?.HoTen</div>
+                                <div class="text-muted" style="font-size: 12px;">@don.User?.Email<br />@don.User?.SoDienThoai</div>
+                            </td>
+                            <td>
+                                <div>@don.KhungGio?.SanBong?.TenSan</div>
+                                <div class="text-muted" style="font-size: 12px;">@don.KhungGio?.SanBong?.DiaChi</div>
+                            </td>
+                            <td>@don.NgayThiDau.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @(don.KhungGio?.GioBatDau.ToString(@"hh\:mm")) - @(don.KhungGio?.GioKetThuc.ToString(@"hh\:mm"))
+                            </td>
+                            <td>
+                                @don.TongTien.ToString("N0") VNĐ
+                            </td>
+                            <td>
+                                @don.TienCoc.ToString("N0") VNĐ
+                            </td>
+                            <td><span class="status-badge @statusClass">@statusText</span></td>
+                            <td>
+                                @if (don.TrangThai == "ChoDuyet")
+                                {
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <form method="post" action="/Owner/XacNhanDon" style="display: inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="datSanId" value="@don.Id" />
+                                            <button type="submit" class="btn-sm-outline" style="border-color: var(--db-green-border); color: var(--db-green);">
+                                                <i class="fas fa-check"></i> Xác nhận
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn-sm-outline btn-sm-danger" data-bs-toggle="modal" data-bs-target="#modalTuChoi" data-id="@don.Id" data-tenkh="@don.User?.HoTen" data-san="@don.KhungGio?.SanBong?.TenSan" data-ngay="@don.NgayThiDau.ToString("dd/MM/yyyy")">
+                                            <i class="fas fa-times"></i> Từ chối
+                                        </button>
+                                    </div>
+                                }
+                                else if (don.TrangThai == "DaHuy")
+                                {
+                                    var hasInfo = lyDoMap.ContainsKey(don.Id);
+                                    var lyDoText = hasInfo ? lyDoMap[don.Id].LyDo : "(Không có lý do được ghi)";
+                                    var thoiGianText = hasInfo ? lyDoMap[don.Id].ThoiGian.ToString("HH:mm dd/MM/yyyy") : "—";
+                                    var nguoiText = hasInfo ? lyDoMap[don.Id].NguoiXuLy : "Owner";
+                                    <button type="button" class="btn-sm-outline btn-sm-danger"
+                                            data-bs-toggle="modal" data-bs-target="#modalXemLyDo"
+                                            data-tenkh="@don.User?.HoTen"
+                                            data-san="@don.KhungGio?.SanBong?.TenSan"
+                                            data-ngay="@don.NgayThiDau.ToString("dd/MM/yyyy")"
+                                            data-ma="@don.MaXacNhan"
+                                            data-lydo="@lyDoText"
+                                            data-thoigian="@thoiGianText"
+                                            data-nguoixuly="@nguoiText">
+                                        <i class="fas fa-circle-info"></i> Xem lý do từ chối
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Modal XEM lý do từ chối -->
+<div class="modal fade" id="modalXemLyDo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 20px;">
+            <div class="modal-header" style="border-color: var(--db-border);">
+                <h5 class="modal-title"><i class="fas fa-circle-info text-danger me-2"></i>Lý do từ chối đơn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 p-3 rounded-3" style="background: #fef2f2; border: 1px solid #fecaca;">
+                    <div class="row g-2" style="font-size: 13px;">
+                        <div class="col-5 text-muted">Mã đơn</div>
+                        <div class="col-7 fw-semibold" id="lyDoMa">—</div>
+                        <div class="col-5 text-muted">Khách hàng</div>
+                        <div class="col-7" id="lyDoKh">—</div>
+                        <div class="col-5 text-muted">Sân / Ngày</div>
+                        <div class="col-7" id="lyDoSan">—</div>
+                        <div class="col-5 text-muted">Người xử lý</div>
+                        <div class="col-7" id="lyDoNguoi">—</div>
+                        <div class="col-5 text-muted">Thời gian xử lý</div>
+                        <div class="col-7" id="lyDoThoiGian">—</div>
+                    </div>
+                </div>
+                <label class="form-label fw-semibold">Lý do từ chối</label>
+                <div id="lyDoNoiDung"
+                     class="p-3 rounded-3"
+                     style="background: var(--db-bg); border: 1px solid var(--db-border); white-space: pre-wrap; min-height: 80px;">—</div>
+            </div>
+            <div class="modal-footer" style="border-color: var(--db-border);">
+                <button type="button" class="btn-sm-outline" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal từ chối đơn -->
+<div class="modal fade" id="modalTuChoi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--db-surface); border: 1px solid var(--db-border); border-radius: 20px;">
+            <div class="modal-header" style="border-color: var(--db-border);">
+                <h5 class="modal-title">Từ chối đơn đặt sân</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/Owner/TuChoiDon">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" name="datSanId" id="donId" />
+                    <p>Bạn có chắc chắn muốn <strong class="text-danger">từ chối</strong> đơn đặt của khách hàng <span id="tenKh"></span>?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Lý do từ chối (không bắt buộc)</label>
+                        <textarea name="lyDo" class="form-control" rows="2" placeholder="Nhập lý do để khách hàng biết..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color: var(--db-border);">
+                    <button type="button" class="btn-sm-outline" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn-sm-outline btn-sm-danger">Xác nhận từ chối</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ── Modal từ chối ──
+            var modal = document.getElementById('modalTuChoi');
+            modal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var donId = button.getAttribute('data-id');
+                var tenKh = button.getAttribute('data-tenkh');
+                var tenSan = button.getAttribute('data-san');
+                var ngay = button.getAttribute('data-ngay');
+
+                var modalBody = modal.querySelector('#donId');
+                modalBody.value = donId;
+                document.getElementById('tenKh').innerHTML = `${tenKh} (sân ${tenSan} - ${ngay})`;
+            });
+
+            // ── Modal xem lý do từ chối ──
+            var modalXem = document.getElementById('modalXemLyDo');
+            if (modalXem) {
+                modalXem.addEventListener('show.bs.modal', function (event) {
+                    var btn = event.relatedTarget;
+                    document.getElementById('lyDoMa').textContent        = btn.getAttribute('data-ma')        || '—';
+                    document.getElementById('lyDoKh').textContent        = btn.getAttribute('data-tenkh')     || '—';
+                    var san = btn.getAttribute('data-san') || '—';
+                    var ngay = btn.getAttribute('data-ngay') || '';
+                    document.getElementById('lyDoSan').textContent       = ngay ? `${san} — ${ngay}` : san;
+                    document.getElementById('lyDoNguoi').textContent     = btn.getAttribute('data-nguoixuly')|| 'Owner';
+                    document.getElementById('lyDoThoiGian').textContent  = btn.getAttribute('data-thoigian') || '—';
+                    document.getElementById('lyDoNoiDung').textContent   = btn.getAttribute('data-lydo')     || '(Không có lý do)';
+                });
+            }
+        });
+    </script>
+}

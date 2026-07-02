@@ -1,73 +1,199 @@
-﻿@* ============================================================
-   Views/Owner/DangKySan.cshtml
-   ============================================================ *@
+﻿@* Views/Owner/DangKySan.cshtml *@
 @{
     ViewData["Title"] = "Đăng ký sân mới";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DangKySan";
     var quans = ViewBag.Quans as List<Web_Stadium.EFCore.DanhMucQuan> ?? new();
     var loaiSans = ViewBag.LoaiSans as List<Web_Stadium.EFCore.DanhMucLoaiSan> ?? new();
     var loaiCos = ViewBag.LoaiCos as List<Web_Stadium.EFCore.DanhMucLoaiCo> ?? new();
 }
 
-<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    /* ── ĐỒNG BỘ FONT VỚI CÁC TRANG OWNER KHÁC ── */
+    body, input, select, textarea, button, .form-label, .nav-btn, .db-section-label, .info-note {
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
+        }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .form-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 24px;
+    }
+
+    .form-control, .form-select {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        color: var(--db-text);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--db-green);
+            box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
+            outline: none;
+        }
+
+    .form-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-muted);
+        margin-bottom: 4px;
+    }
+
+    .preview-card {
+        background: var(--db-green-bg);
+        border: 1px solid var(--db-green-border);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 24px;
+    }
+
+    .btn-green {
+        background: var(--db-green);
+        border: none;
+        border-radius: 40px;
+        padding: 8px 28px;
+        font-weight: 500;
+        color: white;
+        transition: 0.2s;
+        font-family: inherit;
+    }
+
+        .btn-green:hover {
+            background: #0a5338;
+            transform: translateY(-1px);
+        }
+
+    .info-note {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #1e40af;
+        font-family: inherit;
+    }
+
+    .text-muted {
+        color: var(--db-muted) !important;
+    }
+</style>
+
+<div class="page-header">
     <div class="container">
-        <div class="section-label">Owner — Đăng ký sân</div>
-        <h1 style="font-style:italic;line-height:0.9">ĐĂNG KÝ<br><span class="text-green">SÂN MỚI</span></h1>
-        <p style="color:var(--muted)">Điền đầy đủ thông tin → Xem hợp đồng → Xác nhận đăng ký</p>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / ĐĂNG KÝ SÂN</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Đăng ký <span style="color: var(--db-green);">sân mới</span></h1>
+                <p class="text-muted mt-2 mb-0">Điền thông tin → Xem hợp đồng → Xác nhận đăng ký</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center">
-        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
-        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
-        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-
             @if (TempData["Error"] != null)
             {
-                <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+                    <i class="fas fa-exclamation-circle me-2"></i> @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             }
 
-            <div class="section-card p-4">
-                <form method="post" action="/Owner/XemHopDong">
-
-                    <!-- Tỷ lệ hoa hồng preview -->
-                    <div id="hopDongPreview" style="display:none;padding:14px;margin-bottom:24px;border-radius:8px;background:rgba(30,215,96,0.06);border:1px solid rgba(30,215,96,0.3)">
-                        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">KHU VỰC ĐÃ CHỌN</div>
-                        <div style="display:flex;align-items:center;gap:10px">
-                            <div id="vungDot" style="width:12px;height:12px;border-radius:50%;background:#aaa"></div>
-                            <span id="tenVung" style="color:var(--green);font-weight:600"></span>
-                            <span style="color:var(--muted)">→</span>
-                            <span style="color:var(--green);font-family:var(--ff-h);font-size:1.2rem" id="tyLeHH"></span>
-                            <span style="color:var(--muted);font-size:13px">hoa hồng/tháng</span>
+            <div class="form-card">
+                <form method="post" action="/Owner/XemHopDongPreview">
+                    <!-- Preview vùng hoa hồng (ẩn ban đầu) -->
+                    <div id="hopDongPreview" style="display:none;" class="preview-card">
+                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--db-muted); margin-bottom: 6px;">KHU VỰC ÁP DỤNG HOA HỒNG</div>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div id="vungDot" style="width: 14px; height: 14px; border-radius: 50%; background: #aaa;"></div>
+                            <span id="tenVung" style="font-weight: 600; color: var(--db-green);"></span>
+                            <span>→</span>
+                            <span id="tyLeHH" style="font-size: 1.2rem; font-weight: 700; color: var(--db-green);"></span>
+                            <span class="text-muted small">hoa hồng trên doanh thu</span>
                         </div>
                     </div>
 
                     <div class="row g-3">
                         <div class="col-12">
-                            <label style="color:var(--muted);font-size:12px">TÊN CƠ SỞ *</label>
+                            <div class="form-label">TÊN CƠ SỞ *</div>
                             <input type="text" name="tenSan" class="form-control" required
-                                   placeholder="VD: Sân Bóng Cầu Giấy Sport"
-                                   style="background:var(--bg3);border-color:var(--border);color:white" />
+                                   placeholder="VD: Sân Bóng Cầu Giấy Sport">
                         </div>
                         <div class="col-12">
-                            <label style="color:var(--muted);font-size:12px">ĐỊA CHỈ *</label>
+                            <div class="form-label">ĐỊA CHỈ *</div>
                             <input type="text" name="diaChi" class="form-control" required
-                                   placeholder="Số nhà, tên đường"
-                                   style="background:var(--bg3);border-color:var(--border);color:white" />
+                                   placeholder="Số nhà, tên đường">
                         </div>
                         <div class="col-md-6">
-                            <label style="color:var(--muted);font-size:12px">QUẬN/HUYỆN *</label>
-                            <select name="quan" id="selectQuan" class="form-select" required
-                                    style="background:var(--bg3);border-color:var(--border);color:white">
+                            <div class="form-label">QUẬN/HUYỆN *</div>
+                            <select name="quan" id="selectQuan" class="form-select" required>
                                 <option value="">-- Chọn quận/huyện --</option>
                                 @foreach (var q in quans)
                                 {
@@ -85,14 +211,12 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label style="color:var(--muted);font-size:12px">THÀNH PHỐ *</label>
-                            <input type="text" name="thanhPho" class="form-control" value="Hà Nội"
-                                   style="background:var(--bg3);border-color:var(--border);color:white" />
+                            <div class="form-label">THÀNH PHỐ *</div>
+                            <input type="text" name="thanhPho" class="form-control" value="Hà Nội">
                         </div>
                         <div class="col-md-6">
-                            <label style="color:var(--muted);font-size:12px">LOẠI SÂN *</label>
-                            <select name="loaiSan" class="form-select" required
-                                    style="background:var(--bg3);border-color:var(--border);color:white">
+                            <div class="form-label">LOẠI SÂN *</div>
+                            <select name="loaiSan" class="form-select" required>
                                 @foreach (var ls in loaiSans)
                                 {
                                     <option value="@ls.MaLoai">@ls.TenLoai</option>
@@ -100,9 +224,8 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label style="color:var(--muted);font-size:12px">LOẠI CỎ *</label>
-                            <select name="loaiCo" class="form-select" required
-                                    style="background:var(--bg3);border-color:var(--border);color:white">
+                            <div class="form-label">LOẠI CỎ *</div>
+                            <select name="loaiCo" class="form-select" required>
                                 @foreach (var lc in loaiCos)
                                 {
                                     <option value="@lc.MaLoai">@lc.TenLoai</option>
@@ -110,40 +233,36 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label style="color:var(--muted);font-size:12px">TỶ LỆ CỌC (%)</label>
-                            <select name="tyLeCoc" class="form-select"
-                                    style="background:var(--bg3);border-color:var(--border);color:white">
+                            <div class="form-label">TỶ LỆ CỌC (%)</div>
+                            <select name="tyLeCoc" class="form-select">
                                 <option value="0.30">30% (phổ biến)</option>
                                 <option value="0.40">40%</option>
                                 <option value="0.50">50%</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label style="color:var(--muted);font-size:12px">VĨ ĐỘ (Lat)</label>
-                            <input type="number" name="latitude" step="0.0001" value="21.0285" class="form-control"
-                                   style="background:var(--bg3);border-color:var(--border);color:white" />
+                            <div class="form-label">VĨ ĐỘ (Lat)</div>
+                            <input type="number" name="latitude" step="0.0001" value="21.0285" class="form-control">
                         </div>
                         <div class="col-md-3">
-                            <label style="color:var(--muted);font-size:12px">KINH ĐỘ (Lng)</label>
-                            <input type="number" name="longitude" step="0.0001" value="105.8542" class="form-control"
-                                   style="background:var(--bg3);border-color:var(--border);color:white" />
+                            <div class="form-label">KINH ĐỘ (Lng)</div>
+                            <input type="number" name="longitude" step="0.0001" value="105.8542" class="form-control">
                         </div>
                         <div class="col-12">
-                            <label style="color:var(--muted);font-size:12px">MÔ TẢ CƠ SỞ</label>
+                            <div class="form-label">MÔ TẢ CƠ SỞ</div>
                             <textarea name="moTa" rows="3" class="form-control"
-                                      placeholder="Giới thiệu ngắn về cơ sở của bạn..."
-                                      style="background:var(--bg3);border-color:var(--border);color:white"></textarea>
+                                      placeholder="Giới thiệu ngắn về cơ sở của bạn..."></textarea>
                         </div>
                     </div>
 
-                    <div style="margin-top:24px;padding:14px;background:rgba(108,174,224,0.06);border:1px solid rgba(108,174,224,0.3);border-radius:8px;font-size:13px;color:var(--muted2)">
-                        📋 Sau khi điền xong, bạn sẽ được xem <strong style="color:white">Hợp đồng Điện tử</strong>
-                        với tỷ lệ hoa hồng theo khu vực của sân. Vui lòng đọc kỹ trước khi xác nhận.
+                    <div class="info-note mt-4">
+                        <i class="fas fa-file-signature me-2"></i>
+                        Sau khi điền xong, bạn sẽ được xem <strong>Hợp đồng Điện tử</strong> với tỷ lệ hoa hồng theo khu vực của sân. Vui lòng đọc kỹ trước khi xác nhận.
                     </div>
 
-                    <div style="margin-top:20px;display:flex;justify-content:flex-end">
-                        <button type="submit" class="btn btn-success rounded-pill px-4">
-                            Tiếp theo — Xem hợp đồng →
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-green px-4">
+                            Tiếp theo — Xem hợp đồng <i class="fas fa-arrow-right ms-2"></i>
                         </button>
                     </div>
                 </form>

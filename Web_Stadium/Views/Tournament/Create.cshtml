@@ -1,0 +1,366 @@
+@{
+    ViewData["Title"] = "Tạo giải đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+    var sanList = ViewBag.SanList as List<Web_Stadium.EFCore.SanBong> ?? new();
+}
+
+@await Html.PartialAsync("_TournamentStyle")
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+    <style>
+        .form-wrap { max-width: 980px; margin: 0 auto; }
+
+        .radio-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .radio-card { border: 1.5px solid var(--db-border); border-radius: 12px; padding: 14px;
+                      text-align: center; cursor: pointer; transition: all .15s; position: relative; }
+        .radio-card:hover { border-color: var(--db-green); background: var(--db-green-bg); }
+        .radio-card input { position: absolute; opacity: 0; }
+        .radio-card.checked { border-color: var(--db-green); background: var(--db-green-bg); }
+        .radio-card .rc-val { font-size: 1.6rem; font-weight: 700; color: var(--db-green); }
+        .radio-card .rc-lbl { font-size: 11px; color: var(--db-muted); margin-top: 3px; }
+
+        .fine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        /* Calendar */
+        .kg-chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .kg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+                   background: #fff; border: 1.5px solid var(--db-border); border-radius: 999px;
+                   cursor: pointer; font-size: 12px; transition: .15s; user-select: none; color: var(--db-text); }
+        .kg-chip:hover { border-color: var(--db-green); }
+        .kg-chip.active { background: var(--db-green-bg); border-color: var(--db-green);
+                          color: var(--db-green); font-weight: 700; }
+        #calendar { background: #fff; border-radius: 12px; padding: 14px; border: 1px solid var(--db-border); }
+        .slot-block { background: var(--db-green-bg) !important; color: var(--db-green) !important;
+                      border: 1px solid var(--db-green) !important; font-weight: 700; cursor: pointer; }
+        .summary-box { background: var(--db-green-bg); border: 1px solid var(--db-green-border);
+                       border-radius: 10px; padding: 14px 18px; margin-top: 14px; }
+    </style>
+}
+
+<!-- HERO -->
+<div class="tour-hero">
+    <div class="container">
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Tạo giải đấu</div>
+                <h1 class="tour-hero__title">TẠO GIẢI ĐẤU MỚI</h1>
+                <div class="tour-hero__sub">
+                    Khởi tạo khung giải, cài đặt chế tài thẻ phạt và block lịch sân
+                </div>
+            </div>
+            <a href="/Tournament" class="tour-btn">← Quay lại danh sách</a>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
+    }
+
+    <div class="form-wrap">
+        <form method="post" action="/Tournament/Create" id="mainForm">
+            @Html.AntiForgeryToken()
+
+            <!-- ① Thông tin -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">① Thông tin giải đấu</div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="tour-lbl">Tên giải đấu *</label>
+                        <input name="TenGiai" class="tour-inp" required
+                               placeholder="VD: Giải Bóng Đá Mùa Hè 2026 — Cầu Giấy" maxlength="200" />
+                    </div>
+                    <div class="col-12">
+                        <label class="tour-lbl">Sân tổ chức *</label>
+                        <select name="SanBongId" id="sanSelect" class="tour-inp" required onchange="onSanChange()">
+                            <option value="">-- Chọn sân của bạn --</option>
+                            @foreach (var s in sanList)
+                            {
+                                <option value="@s.Id">@s.TenSan — @s.Quan (sân @s.LoaiSan người)</option>
+                            }
+                        </select>
+                        @if (!sanList.Any())
+                        {
+                            <div class="tour-hint" style="color:#b91c1c">
+                                ⚠️ Bạn chưa có sân được duyệt.
+                                <a href="/Owner/DangKySan" style="color:var(--db-green)">Đăng ký sân trước →</a>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <label class="tour-lbl">Mô tả giải</label>
+                        <textarea name="MoTa" class="tour-inp" rows="3"
+                                  placeholder="Điều lệ, thể thức, đối tượng tham dự..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ② Đội & bảng -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">② Cấu hình đội &amp; bảng đấu</div>
+                <label class="tour-lbl mb-2">Số đội tối đa *</label>
+                <div class="radio-grid mb-4" id="soDoiGrid">
+                    @foreach (var sd in new[] { 4, 8, 16, 32 })
+                    {
+                        <label class="radio-card @(sd == 8 ? "checked" : "")" id="rc-@sd">
+                            <input type="radio" name="SoDoiToiDa" value="@sd"
+                                   @(sd == 8 ? "checked" : "") onchange="onSoDoiChange(@sd)" />
+                            <div class="rc-val">@sd</div>
+                            <div class="rc-lbl">đội</div>
+                        </label>
+                    }
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Số bảng đấu *</label>
+                        <select name="SoBang" class="tour-inp" required>
+                            <option value="1">1 bảng</option>
+                            <option value="2" selected>2 bảng (A &amp; B)</option>
+                            <option value="4">4 bảng (A, B, C, D)</option>
+                        </select>
+                        <div class="tour-hint">Hệ thống tự tạo bảng theo số lượng</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Hạn đóng đăng ký</label>
+                        <input type="date" name="ThoiGianDong" class="tour-inp" id="thoiGianDong" />
+                        <div class="tour-hint">Để trống = 1 ngày trước ngày bắt đầu</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ③ Tài chính -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">③ Tài chính &amp; lệ phí</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Lệ phí đăng ký (đ/đội) *</label>
+                        <input type="number" name="LePhiGiai" class="tour-inp" required
+                               min="0" step="50000" placeholder="500000" oninput="tinhTongThu()" id="lePhiInput" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Tiền ký quỹ hành vi (đ/đội) *</label>
+                        <input type="number" name="TienKyQuy" class="tour-inp" required
+                               min="0" step="50000" placeholder="200000" />
+                        <div class="tour-hint">Găm lại để trừ phạt thẻ cuối giải</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="summary-box d-none" id="tongThuBox">
+                            <div style="font-size:11.5px;color:var(--db-muted);margin-bottom:4px">
+                                💰 Ước tính tổng thu (nếu đủ đội)
+                            </div>
+                            <div style="font-size:1.3rem;font-weight:700;color:var(--db-green)" id="tongThuVal">0đ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ④ Chế tài thẻ -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">④ Chế tài thẻ phạt</div>
+                <div class="fine-grid">
+                    <div>
+                        <label class="tour-lbl">💛 Tiền phạt thẻ vàng (đ)</label>
+                        <input type="number" name="TienPhatTheVang" class="tour-inp" value="20000" min="0" step="10000" />
+                    </div>
+                    <div>
+                        <label class="tour-lbl">🟥 Tiền phạt thẻ đỏ (đ)</label>
+                        <input type="number" name="TienPhatTheDo" class="tour-inp" value="100000" min="0" step="10000" />
+                    </div>
+                    <div>
+                        <label class="tour-lbl">🟥 Treo giò sau thẻ đỏ (trận)</label>
+                        <input type="number" name="SoTranTreoGioTheDo" class="tour-inp" value="1" min="1" max="3" />
+                        <div class="tour-hint">Cấm bao nhiêu trận kế tiếp</div>
+                    </div>
+                    <div>
+                        <label class="tour-lbl">💛 Tích lũy vàng → treo giò</label>
+                        <input type="number" name="SoTheVangTichLuy" class="tour-inp" value="2" min="2" max="5" />
+                        <div class="tour-hint">Đủ N thẻ vàng → cấm 1 trận</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⑤ Lịch giải -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">⑤ Thời gian tổ chức</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Ngày bắt đầu *</label>
+                        <input type="date" name="NgayBatDau" class="tour-inp" required id="ngayBD"
+                               min="@DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")" onchange="capNhatNgayKT()" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="tour-lbl">Ngày kết thúc *</label>
+                        <input type="date" name="NgayKetThuc" class="tour-inp" required id="ngayKT" onchange="duyetCalendar()" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⑥ Block lịch -->
+            <div class="tour-form-section">
+                <div class="tour-form-section__title">⑥ Block lịch sân cho giải đấu</div>
+                <div class="tour-hint mb-2" style="font-size:12.5px;line-height:1.5">
+                    Chọn khung giờ rồi click các ngày trên lịch để block. Khi bấm <strong>Khởi tạo giải</strong>,
+                    hệ thống tự sinh đặt sân ảo (Dummy Booking) khóa các slot này — khách vãng lai sẽ thấy
+                    <span style="color:#b91c1c;font-weight:700">"Đã khóa cho Giải đấu"</span>.
+                </div>
+
+                <div id="kgPicker" class="kg-chip-row">
+                    <span style="font-size:12px;color:var(--db-muted)">Chưa chọn sân...</span>
+                </div>
+
+                <div id="calendar"></div>
+
+                <div class="summary-box d-none" id="slotSummary">
+                    <div style="font-size:11.5px;color:var(--db-muted);margin-bottom:4px">📅 Slot đã block</div>
+                    <div style="font-size:1.2rem;font-weight:700;color:var(--db-green)" id="slotCount">0 slot</div>
+                    <div id="slotDetail" style="font-size:11.5px;color:var(--db-muted);margin-top:6px"></div>
+                </div>
+
+                <input type="hidden" name="LichBlockJson" id="lichBlockJson" value="[]" />
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex gap-3 justify-content-end">
+                <a href="/Tournament" class="tour-btn">Hủy</a>
+                <button type="submit" class="tour-btn tour-btn--primary" id="submitBtn">🏆 Tạo giải đấu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script>
+        var calendar = null;
+        var khungGios = [];
+        var kgActiveId = null;
+        var lichBlock = [];
+
+        function onSoDoiChange(val) {
+            document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('checked'));
+            document.getElementById('rc-' + val).classList.add('checked');
+            tinhTongThu();
+        }
+        function tinhTongThu() {
+            var lePhi = parseFloat(document.getElementById('lePhiInput').value) || 0;
+            var soDoi = parseInt(document.querySelector('input[name="SoDoiToiDa"]:checked')?.value) || 8;
+            var t = lePhi * soDoi;
+            if (t > 0) {
+                document.getElementById('tongThuBox').classList.remove('d-none');
+                document.getElementById('tongThuVal').textContent = t.toLocaleString('vi-VN') + 'đ';
+            } else document.getElementById('tongThuBox').classList.add('d-none');
+        }
+        function capNhatNgayKT() {
+            var bd = document.getElementById('ngayBD').value; if (!bd) return;
+            var d = new Date(bd); d.setDate(d.getDate() + 49);
+            document.getElementById('ngayKT').value = d.toISOString().slice(0, 10);
+            document.getElementById('ngayKT').min = bd;
+            var dong = new Date(bd); dong.setDate(dong.getDate() - 2);
+            document.getElementById('thoiGianDong').value = dong.toISOString().slice(0, 10);
+            duyetCalendar();
+        }
+        function duyetCalendar() {
+            var bd = document.getElementById('ngayBD').value, kt = document.getElementById('ngayKT').value;
+            if (!bd || !kt) return;
+            lichBlock = lichBlock.filter(s => s.ngay >= bd && s.ngay <= kt);
+            renderCalendarEvents(); updateSummary();
+        }
+        async function onSanChange() {
+            var sanId = document.getElementById('sanSelect').value;
+            var picker = document.getElementById('kgPicker');
+            if (!sanId) {
+                picker.innerHTML = '<span style="font-size:12px;color:var(--db-muted)">Chưa chọn sân...</span>';
+                khungGios = []; lichBlock = []; renderCalendarEvents(); updateSummary(); return;
+            }
+            try {
+                var res = await fetch('/Tournament/LayKhungGioJson?sanId=' + sanId);
+                var data = await res.json();
+                if (!data.ok) { alert(data.message || 'Không lấy được khung giờ!'); return; }
+                khungGios = data.khungGios || [];
+                renderKgPicker(); lichBlock = []; renderCalendarEvents(); updateSummary();
+            } catch (e) { alert('Lỗi kết nối khi tải khung giờ!'); }
+        }
+        function renderKgPicker() {
+            var html = '';
+            if (khungGios.length === 0)
+                html = '<span style="font-size:12px;color:#b91c1c">⚠️ Sân chưa có khung giờ.</span>';
+            khungGios.forEach(function (kg) {
+                html += '<span class="kg-chip" data-kg-id="' + kg.id + '" onclick="chonKg(' + kg.id + ')">⏰ ' +
+                    kg.gioBatDau + ' – ' + kg.gioKetThuc + '</span>';
+            });
+            document.getElementById('kgPicker').innerHTML = html;
+        }
+        function chonKg(id) {
+            kgActiveId = id;
+            document.querySelectorAll('.kg-chip').forEach(function (el) {
+                el.classList.toggle('active', parseInt(el.dataset.kgId) === id);
+            });
+        }
+        function renderCalendarEvents() {
+            if (!calendar) return;
+            calendar.removeAllEvents();
+            lichBlock.forEach(function (s) {
+                var kg = khungGios.find(k => k.id === s.khungGioId);
+                if (!kg) return;
+                calendar.addEvent({
+                    id: s.ngay + '_' + s.khungGioId,
+                    title: '🔒 ' + kg.gioBatDau + '–' + kg.gioKetThuc,
+                    start: s.ngay, allDay: true, classNames: ['slot-block']
+                });
+            });
+        }
+        function updateSummary() {
+            document.getElementById('slotCount').textContent = lichBlock.length + ' slot';
+            document.getElementById('slotSummary').classList.toggle('d-none', lichBlock.length === 0);
+            var byDate = {};
+            lichBlock.forEach(function (s) {
+                if (!byDate[s.ngay]) byDate[s.ngay] = [];
+                var kg = khungGios.find(k => k.id === s.khungGioId);
+                if (kg) byDate[s.ngay].push(kg.gioBatDau);
+            });
+            document.getElementById('slotDetail').textContent =
+                Object.keys(byDate).sort().map(d => d + ': ' + byDate[d].sort().join(', ')).join(' · ');
+            document.getElementById('lichBlockJson').value = JSON.stringify(
+                lichBlock.map(s => ({ khungGioId: s.khungGioId, ngay: s.ngay + 'T00:00:00' }))
+            );
+        }
+        function onDateClick(info) {
+            if (!kgActiveId) { alert('Hãy chọn khung giờ trước!'); return; }
+            var bd = document.getElementById('ngayBD').value, kt = document.getElementById('ngayKT').value;
+            if (bd && info.dateStr < bd) { alert('Slot phải trong khoảng giải đấu!'); return; }
+            if (kt && info.dateStr > kt) { alert('Slot phải trong khoảng giải đấu!'); return; }
+            var idx = lichBlock.findIndex(s => s.ngay === info.dateStr && s.khungGioId === kgActiveId);
+            if (idx >= 0) lichBlock.splice(idx, 1); else lichBlock.push({ khungGioId: kgActiveId, ngay: info.dateStr });
+            renderCalendarEvents(); updateSummary();
+        }
+        function onEventClick(info) {
+            var idx = lichBlock.findIndex(s => (s.ngay + '_' + s.khungGioId) === info.event.id);
+            if (idx >= 0) { lichBlock.splice(idx, 1); renderCalendarEvents(); updateSummary(); }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'dayGridMonth', locale: 'vi', height: 520,
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                dateClick: onDateClick, eventClick: onEventClick
+            });
+            calendar.render();
+        });
+        document.getElementById('mainForm').addEventListener('submit', function (e) {
+            if (!document.querySelector('select[name="SanBongId"]').value) {
+                e.preventDefault(); alert('Vui lòng chọn sân tổ chức!'); return;
+            }
+            var bd = document.getElementById('ngayBD').value, kt = document.getElementById('ngayKT').value;
+            if (bd && kt && bd >= kt) { e.preventDefault(); alert('Ngày kết thúc phải sau ngày bắt đầu!'); return; }
+            updateSummary();
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '⏳ Đang tạo...';
+        });
+    </script>
+}

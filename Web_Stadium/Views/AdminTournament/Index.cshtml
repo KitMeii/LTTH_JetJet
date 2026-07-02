@@ -1,0 +1,571 @@
+﻿@{
+    ViewData["Title"] = "Quản lý giải đấu";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var giaiDaus = ViewBag.GiaiDaus as List<Web_Stadium.EFCore.GiaiDau> ?? new();
+    var tongGiai = (int)(ViewBag.TongGiai ?? giaiDaus.Count);
+    var choDuyet = (int)(ViewBag.ChoDuyet ?? giaiDaus.Count(g => g.TrangThai == "ChoDuyet"));
+    var dangDienRa = (int)(ViewBag.DangDienRa ?? giaiDaus.Count(g => g.TrangThai == "DangDienRa"));
+    var tongLePhi = (decimal)(ViewBag.TongLePhi ?? giaiDaus.Sum(g => g.LePhiGiai));
+    var filterTT = ViewBag.FilterTrangThai as string ?? "";
+    var filterOwner = ViewBag.FilterOwner as string ?? "";
+    var filterSearch = ViewBag.FilterSearch as string ?? "";
+    var filterSapXep = ViewBag.FilterSapXep as string ?? "moi_nhat";
+}
+
+@section Styles {
+    <style>
+        .gd-kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(5,1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .gd-kpi {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            transition: .2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .gd-kpi::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: var(--kpi-accent,var(--green));
+                border-radius: 16px 16px 0 0;
+            }
+
+            .gd-kpi:hover {
+                transform: translateY(-2px);
+                border-color: var(--border2);
+            }
+
+        .gd-kpi-icon {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .gd-kpi-val {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .gd-kpi-label {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: .5px;
+        }
+
+        .gd-filter {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .gd-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+            .gd-filter-group label {
+                font-size: 11px;
+                color: var(--muted);
+                font-weight: 600;
+            }
+
+        .gd-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            transition: border-color .2s,transform .2s;
+        }
+
+            .gd-card:hover {
+                border-color: var(--border2);
+                transform: translateY(-1px);
+            }
+
+            .gd-card.tt-ChoDuyet {
+                border-color: rgba(246,170,56,.3);
+            }
+
+            .gd-card.tt-DangDienRa {
+                border-color: rgba(0,212,126,.3);
+            }
+
+            .gd-card.tt-KetThuc {
+                opacity: .65;
+            }
+
+            .gd-card.tt-BiTuChoi {
+                border-color: rgba(255,93,115,.25);
+            }
+
+        .gd-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,.02);
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .gd-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 0;
+        }
+
+        .gd-cell {
+            padding: 14px 16px;
+            border-right: 1px solid var(--border);
+        }
+
+            .gd-cell:last-child {
+                border-right: none;
+            }
+
+        .gd-cell-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--muted2);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .gd-cell-val {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .gd-actions {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            justify-content: center;
+            min-width: 120px;
+        }
+
+        .gd-progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .gd-progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width .4s;
+        }
+
+        .gd-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+            .gd-pill.Draft {
+                background: rgba(255,255,255,.07);
+                color: var(--muted);
+                border: 1px solid var(--border2);
+            }
+
+            .gd-pill.ChoDuyet {
+                background: rgba(246,170,56,.12);
+                color: var(--warn);
+                border: 1px solid rgba(246,170,56,.25);
+            }
+
+            .gd-pill.DaDuyet {
+                background: rgba(108,174,224,.12);
+                color: var(--blue);
+                border: 1px solid rgba(108,174,224,.25);
+            }
+
+            .gd-pill.DangDienRa {
+                background: rgba(0,212,126,.18);
+                color: var(--green2);
+                border: 1px solid rgba(0,212,126,.35);
+                box-shadow: 0 0 10px rgba(0,212,126,.18);
+            }
+
+            .gd-pill.KetThuc {
+                background: rgba(255,255,255,.06);
+                color: var(--muted);
+                border: 1px solid var(--border2);
+            }
+
+            .gd-pill.BiTuChoi {
+                background: rgba(255,93,115,.12);
+                color: var(--danger);
+                border: 1px solid rgba(255,93,115,.25);
+            }
+
+        .gd-empty {
+            text-align: center;
+            padding: 72px 0;
+        }
+
+        .gd-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .gd-empty-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .gd-empty-sub {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        @@keyframes pulse-green {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(0,212,126,.5);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(0,212,126,0);
+            }
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            display: inline-block;
+            animation: pulse-green 1.8s infinite;
+        }
+
+        @@media(max-width:1100px) {
+            .gd-kpi-strip {
+                grid-template-columns: repeat(3,1fr);
+            }
+
+            .gd-body {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .gd-actions {
+                flex-direction: row;
+                min-width: unset;
+                border-top: 1px solid var(--border);
+            }
+        }
+    </style>
+}
+
+<div style="padding:0 0 40px;">
+
+    <!-- PAGE HEADER -->
+    <div class="pg-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div>
+            <div class="pg-label">Admin · Quản lý</div>
+            <h2>Giải đấu <span class="pg-accent">PitchHub</span></h2>
+            <p>Quản lý, phê duyệt và theo dõi toàn bộ giải đấu trong hệ thống</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+            @if (choDuyet > 0)
+            {
+                <a href="?filterTT=ChoDuyet" style="background:rgba(246,170,56,.12);border:1px solid rgba(246,170,56,.3);color:var(--warn);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
+                    ⏳ @choDuyet chờ duyệt
+                </a>
+            }
+            @if (dangDienRa > 0)
+            {
+                <span style="display:flex;align-items:center;gap:6px;background:rgba(0,212,126,.08);border:1px solid rgba(0,212,126,.2);color:var(--green2);padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700;">
+                    <span class="live-dot"></span> @dangDienRa đang diễn ra
+                </span>
+            }
+        </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="gd-kpi-strip">
+        <div class="gd-kpi" style="--kpi-accent:#6caee0;">
+            <div class="gd-kpi-icon">🏆</div>
+            <div class="gd-kpi-val" style="color:var(--blue);">@tongGiai</div>
+            <div class="gd-kpi-label">Tổng giải</div>
+        </div>
+        <div class="gd-kpi" style="--kpi-accent:#f6aa38;">
+            <div class="gd-kpi-icon">⏳</div>
+            <div class="gd-kpi-val" style="color:var(--warn);">@choDuyet</div>
+            <div class="gd-kpi-label">Chờ phê duyệt</div>
+        </div>
+        <div class="gd-kpi" style="--kpi-accent:#00d47e;">
+            <div class="gd-kpi-icon">📋</div>
+            <div class="gd-kpi-val" style="color:var(--green2);">@giaiDaus.Count(g => g.TrangThai == "DaDuyet")</div>
+            <div class="gd-kpi-label">Đã duyệt</div>
+        </div>
+        <div class="gd-kpi" style="--kpi-accent:#00ff99;">
+            <div class="gd-kpi-icon">⚽</div>
+            <div class="gd-kpi-val" style="color:var(--green2);">@dangDienRa</div>
+            <div class="gd-kpi-label">Đang diễn ra</div>
+        </div>
+        <div class="gd-kpi" style="--kpi-accent:#f6aa38;">
+            <div class="gd-kpi-icon">💰</div>
+            <div class="gd-kpi-val" style="color:var(--warn);font-size:22px;">@((tongLePhi / 1_000_000m).ToString("F1"))M</div>
+            <div class="gd-kpi-label">Tổng lệ phí (VNĐ)</div>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC -->
+    <div class="gd-filter">
+        <form method="get" style="display:contents;">
+            <div class="gd-filter-group" style="flex:2;min-width:200px;">
+                <label>🔍 Tìm kiếm</label>
+                <div style="position:relative;">
+                    <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;"></i>
+                    <input type="text" name="search" class="form-control" value="@filterSearch"
+                           placeholder="Tên giải / Owner / Sân..." style="padding-left:32px;" />
+                </div>
+            </div>
+            <div class="gd-filter-group">
+                <label>📋 Trạng thái</label>
+                <select name="trangThai" class="form-select">
+                    <option value="" selected="@(filterTT == "")">Tất cả</option>
+                    <option value="Draft" selected="@(filterTT == "Draft")">📝 Nháp</option>
+                    <option value="ChoDuyet" selected="@(filterTT == "ChoDuyet")">⏳ Chờ duyệt</option>
+                    <option value="DaDuyet" selected="@(filterTT == "DaDuyet")">✅ Đã duyệt</option>
+                    <option value="DangDienRa" selected="@(filterTT == "DangDienRa")">⚽ Đang diễn ra</option>
+                    <option value="KetThuc" selected="@(filterTT == "KetThuc")">🏁 Đã kết thúc</option>
+                    <option value="BiTuChoi" selected="@(filterTT == "BiTuChoi")">❌ Bị từ chối</option>
+                </select>
+            </div>
+            <div class="gd-filter-group">
+                <label>👤 Owner</label>
+                <select name="ownerId" class="form-select">
+                    <option value="">Tất cả Owner</option>
+                    @if (ViewBag.OwnerList != null)
+                    {
+                        foreach (var o in (IEnumerable<Web_Stadium.EFCore.User>)ViewBag.OwnerList)
+                        {
+                            <option value="@o.Id" selected="@(filterOwner == o.Id.ToString())">@o.HoTen</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="gd-filter-group">
+                <label>↕ Sắp xếp</label>
+                <select name="sapXep" class="form-select">
+                    <option value="moi_nhat" selected="@(filterSapXep == "moi_nhat")">Mới nhất</option>
+                    <option value="cu_nhat" selected="@(filterSapXep == "cu_nhat")">Cũ nhất</option>
+                    <option value="le_phi" selected="@(filterSapXep == "le_phi")">Lệ phí cao nhất</option>
+                    <option value="so_doi" selected="@(filterSapXep == "so_doi")">Số đội nhiều nhất</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;align-self:flex-end;">
+                <button type="submit" class="btn btn-success rounded-pill px-4">
+                    <i class="bi bi-search me-1"></i>Lọc
+                </button>
+                <a href="/AdminTournament" class="btn btn-outline-secondary rounded-pill">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- DANH SÁCH -->
+    @if (!giaiDaus.Any())
+    {
+        <div class="gd-empty">
+            <div class="gd-empty-icon">🏆</div>
+            <div class="gd-empty-title">Không tìm thấy giải đấu nào</div>
+            <div class="gd-empty-sub">
+                @if (!string.IsNullOrEmpty(filterSearch) || !string.IsNullOrEmpty(filterTT))
+                {
+                    <span>Thử thay đổi bộ lọc hoặc <a href="/AdminTournament" style="color:var(--green);">xóa lọc</a></span>
+                }
+                else
+                {
+                    <span>Chưa có giải đấu nào được tạo trong hệ thống</span>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+            Hiển thị <strong style="color:var(--text);">@giaiDaus.Count</strong> / @tongGiai giải đấu
+        </div>
+
+        @foreach (var gd in giaiDaus)
+        {
+            var tt = gd.TrangThai ?? "Draft";
+            var soDoiDK = gd.DoiBongs?.Count ?? 0;
+            var soBang = gd.BangDaus?.Count ?? 0;
+            var phanTram = gd.SoDoiToiDa > 0 ? (double)soDoiDK / gd.SoDoiToiDa * 100 : 0;
+            var fillColor = phanTram >= 90 ? "var(--danger)" : phanTram >= 60 ? "var(--warn)" : "var(--green)";
+            var ttLabel = tt switch
+            {
+                "Draft" => "📝 Nháp",
+                "ChoDuyet" => "⏳ Chờ duyệt",
+                "DaDuyet" => "✅ Đã duyệt",
+                "DangDienRa" => "⚽ Đang diễn ra",
+                "KetThuc" => "🏁 Đã kết thúc",
+                "BiTuChoi" => "❌ Bị từ chối",
+                _ => tt
+            };
+
+            <div class="gd-card tt-@tt">
+                <div class="gd-head">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,212,126,.1);border:1px solid rgba(0,212,126,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏆</div>
+                        <div>
+                            <div style="font-weight:800;font-size:16px;">@gd.TenGiai</div>
+                            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                                👤 @(gd.Owner?.HoTen ?? "—") · 🏟️ @(gd.SanBong?.TenSan ?? "—")
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        @if (tt == "DangDienRa")
+                        {
+                            <span class="live-dot"></span>
+                        }
+                        <span class="gd-pill @tt">@ttLabel</span>
+                        <span style="font-size:12px;color:var(--muted2);">#@gd.Id</span>
+                    </div>
+                </div>
+
+                <div class="gd-body">
+                    <!-- Thời gian -->
+                    <div class="gd-cell">
+                        <div class="gd-cell-label">📅 Thời gian</div>
+                        <div class="gd-cell-val">@gd.NgayBatDau.ToString("dd/MM/yyyy")</div>
+                        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">
+                            → @gd.NgayKetThuc.ToString("dd/MM/yyyy")
+                        </div>
+                        @if (gd.ThoiGianDongDanhSach.HasValue)
+                        {
+                            <div style="font-size:11px;color:var(--warn);margin-top:4px;">
+                                🔒 Đóng DS: @gd.ThoiGianDongDanhSach.Value.ToString("dd/MM/yyyy")
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Số đội -->
+                    <div class="gd-cell">
+                        <div class="gd-cell-label">👥 Đội tham gia</div>
+                        <div class="gd-cell-val">
+                            <span style="color:@fillColor;font-size:20px;font-weight:800;">@soDoiDK</span>
+                            <span style="color:var(--muted);font-size:13px;"> / @gd.SoDoiToiDa đội</span>
+                        </div>
+                        <div class="gd-progress-bar">
+                            <div class="gd-progress-fill" style="width:@(phanTram.ToString("F0"))%;background:@fillColor;"></div>
+                        </div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:3px;">@soBang bảng đấu</div>
+                    </div>
+
+                    <!-- Lệ phí & ký quỹ -->
+                    <div class="gd-cell">
+                        <div class="gd-cell-label">💰 Tài chính</div>
+                        <div class="gd-cell-val" style="color:var(--warn);">@gd.LePhiGiai.ToString("N0")đ</div>
+                        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">
+                            Ký quỹ: <strong style="color:var(--text);">@gd.TienKyQuy.ToString("N0")đ</strong>
+                        </div>
+                        <div style="font-size:11px;color:var(--muted2);margin-top:2px;">
+                            Tổng thu: @((gd.LePhiGiai * soDoiDK).ToString("N0"))đ
+                        </div>
+                    </div>
+
+                    <!-- Phạt / thẻ -->
+                    <div class="gd-cell">
+                        <div class="gd-cell-label">🟨 Luật thi đấu</div>
+                        <div style="display:flex;flex-direction:column;gap:3px;margin-top:2px;">
+                            <span style="font-size:12px;color:var(--muted);">
+                                🟨 Vàng: <strong style="color:var(--text);">@gd.TienPhatTheVang.ToString("N0")đ</strong>
+                                · tích @gd.SoTheVangTichLuy thẻ → treo
+                            </span>
+                            <span style="font-size:12px;color:var(--muted);">
+                                🟥 Đỏ: <strong style="color:var(--text);">@gd.TienPhatTheDo.ToString("N0")đ</strong>
+                                · treo @gd.SoTranTreoGioTheDo trận
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="gd-actions">
+                        <a href="/AdminTournament/ChiTiet/@gd.Id"
+                           class="btn btn-outline-success btn-sm rounded-pill"
+                           style="white-space:nowrap;">
+                            👁 Chi tiết
+                        </a>
+
+                        @if (tt == "ChoDuyet")
+                        {
+                            <form method="post" action="/AdminTournament/PheDuyet"
+                                  onsubmit="return confirm('Phê duyệt giải @gd.TenGiai?')">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@gd.Id" />
+                                <button class="btn btn-success btn-sm rounded-pill w-100">✅ Duyệt</button>
+                            </form>
+                            <button class="btn btn-outline-danger btn-sm rounded-pill"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#tuchoi_@gd.Id">
+                                ✕ Từ chối
+                            </button>
+                        }
+                        @if (tt == "DangDienRa" || tt == "DaDuyet")
+                        {
+                            <form method="post" action="/AdminTournament/KetThuc"
+                                  onsubmit="return confirm('Kết thúc giải @gd.TenGiai?')">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@gd.Id" />
+                                <button class="btn btn-outline-secondary btn-sm rounded-pill w-100">🏁 Kết thúc</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+                <!-- Từ chối collapse -->
+                <div class="collapse" id="tuchoi_@gd.Id">
+                    <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(255,93,115,.04);">
+                        <form method="post" action="/AdminTournament/TuChoi">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@gd.Id" />
+                            <div style="display:flex;gap:8px;">
+                                <input type="text" name="lyDo" class="form-control form-control-sm"
+                                       placeholder="Lý do từ chối..." required />
+                                <button type="submit" class="btn btn-danger btn-sm rounded-pill" style="white-space:nowrap;">
+                                    Xác nhận
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

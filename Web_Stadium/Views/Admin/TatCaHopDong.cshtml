@@ -1,322 +1,175 @@
 ﻿@model List<Web_Stadium.EFCore.SanBong>
 @{
     ViewData["Title"] = "Tất cả hợp đồng";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var tuKhoa = ViewBag.TuKhoa as string ?? "";
     var sapXep = ViewBag.SapXep as string ?? "gan_nhat";
     var tongHD = (int)(ViewBag.TongHD ?? Model.Count);
 }
 
-<style>
-    .hd-page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 36px 0 72px;
-    }
-
-    .hd-filter-bar {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 16px 20px;
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-        margin-bottom: 24px;
-    }
-
-    .hd-search-inp {
-        flex: 1;
-        min-width: 220px;
-        padding: 10px 16px;
-        border: 1.5px solid var(--border2);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-        font-family: 'Segoe UI',Arial,sans-serif;
-        transition: border-color .2s;
-    }
-
-        .hd-search-inp:focus {
-            border-color: var(--green);
-            box-shadow: 0 0 0 3px rgba(14,168,106,.10);
+@section Styles {
+    <style>
+        .hd-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: border-color .2s,transform .2s;
+            margin-bottom: 14px;
         }
 
-    .hd-sel {
-        padding: 10px 14px;
-        border: 1.5px solid var(--border2);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        cursor: pointer;
-        min-width: 160px;
-        font-family: 'Segoe UI',Arial,sans-serif;
-    }
+            .hd-card:hover {
+                border-color: rgba(0,212,126,.22);
+                transform: translateY(-1px);
+            }
 
-    .hd-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 22px 24px;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        transition: border-color .2s, box-shadow .2s;
-        margin-bottom: 12px;
-    }
-
-        .hd-card:hover {
-            border-color: rgba(14,168,106,.3);
-            box-shadow: 0 4px 20px rgba(14,168,106,.08);
+        .hd-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,.02);
+            flex-wrap: wrap;
         }
 
-    .hd-num {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(14,168,106,.10);
-        color: var(--green);
-        font-size: 14px;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .hd-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .hd-name {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .hd-meta {
-        font-size: 13px;
-        color: var(--muted);
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .hd-badge {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        padding: 3px 10px;
-        border-radius: 999px;
-        background: rgba(14,168,106,.10);
-        color: var(--green);
-        border: 1px solid rgba(14,168,106,.2);
-    }
-
-    .hd-actions {
-        display: flex;
-        gap: 8px;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-    }
-
-    .btn-xem {
-        padding: 8px 18px;
-        font-size: 13px;
-        font-weight: 700;
-        border-radius: 999px;
-        border: 1.5px solid var(--border2);
-        background: var(--bg);
-        color: var(--text);
-        cursor: pointer;
-        text-decoration: none;
-        font-family: 'Segoe UI',Arial,sans-serif;
-        transition: all .2s;
-    }
-
-        .btn-xem:hover {
-            border-color: var(--green);
-            color: var(--green);
+        .hd-body {
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-    .btn-word {
-        padding: 8px 18px;
-        font-size: 13px;
-        font-weight: 700;
-        border-radius: 999px;
-        border: none;
-        background: var(--green);
-        color: #fff;
-        cursor: pointer;
-        text-decoration: none;
-        font-family: 'Segoe UI',Arial,sans-serif;
-        transition: opacity .2s;
-    }
-
-        .btn-word:hover {
-            opacity: .85;
+        .hd-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 100px;
         }
 
-    .empty-state {
-        text-align: center;
-        padding: 60px 24px;
-    }
+        .hd-stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--muted2);
+            text-transform: uppercase;
+        }
 
-    .stat-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 18px 20px;
-        text-align: center;
-    }
+        .hd-stat-val {
+            font-size: 15px;
+            font-weight: 700;
+        }
 
-    .stat-num {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--green);
-        line-height: 1;
-        margin-bottom: 4px;
-    }
+        .hd-divider {
+            width: 1px;
+            height: 36px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
 
-    .stat-lbl {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: var(--muted);
-    }
-</style>
+        .hd-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+    </style>
+}
 
-<!-- HEADER -->
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin — Quản lý hợp đồng</div>
-        <h1 style="font-style:italic;line-height:0.9">HỢP ĐỒNG<br><span class="text-green">ĐÃ KÝ</span></h1>
-        <p style="color:var(--muted);margin-top:8px;">Tất cả hợp đồng hợp tác kinh doanh với chủ sân trong hệ thống</p>
+<div style="padding:0 0 40px;">
+
+    <div class="pg-header">
+        <div class="pg-label">Admin · Hợp đồng</div>
+        <h2>Hợp đồng <span class="pg-accent">đã ký</span></h2>
+        <p>Tất cả hợp đồng hợp tác kinh doanh với chủ sân trong hệ thống</p>
     </div>
-</div>
 
-<!-- NAV -->
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center align-items-center">
-        <a href="/Admin" class="btn btn-outline-success rounded-pill btn-sm">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-outline-warning rounded-pill btn-sm">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLySan" class="btn btn-success rounded-pill">📍 Quản lý sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-outline-info rounded-pill btn-sm">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-outline-success rounded-pill btn-sm">🗂️ Master Data</a>
-        <a href="/Admin/KhieuNai" class="btn btn-outline-warning rounded-pill btn-sm">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-outline-secondary rounded-pill btn-sm">📈 Báo cáo</a>
-        <a href="/Admin/TatCaHopDong" class="btn btn-success rounded-pill btn-sm">📑 Hợp đồng</a>
-    </div>
-</div>
-
-<div class="container">
-    <div class="hd-page">
-
-        <!-- STATS -->
-        @{
-            var tongSan = Model.Count;
-            var thangNay = Model.Count(s => s.NgayKyHopDong.HasValue
-            && s.NgayKyHopDong.Value.Month == DateTime.Now.Month
-            && s.NgayKyHopDong.Value.Year == DateTime.Now.Year);
-        }
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;">
-            <div class="stat-card">
-                <div class="stat-num">@tongSan</div>
-                <div class="stat-lbl">Tổng hợp đồng</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-num">@thangNay</div>
-                <div class="stat-lbl">Ký trong tháng này</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-num">@(tongSan - thangNay)</div>
-                <div class="stat-lbl">Hợp đồng cũ</div>
-            </div>
-        </div>
-
-        <!-- FILTER BAR -->
-        <form method="get" action="/Admin/TatCaHopDong">
-            <div class="hd-filter-bar">
-                <input type="text" name="tuKhoa" value="@tuKhoa"
-                       class="hd-search-inp"
-                       placeholder="🔍 Tìm tên sân, chủ sân, quận..." />
-                <select name="sapXep" class="hd-sel" onchange="this.form.submit()">
-                    @if (sapXep == "cu_nhat")
-                    {
-                        <option value="gan_nhat">📅 Gần đây nhất</option>
-                        <option value="cu_nhat" selected>🕰️ Cũ nhất trước</option>
-                    }
-                    else
-                    {
-                        <option value="gan_nhat" selected>📅 Gần đây nhất</option>
-                        <option value="cu_nhat">🕰️ Cũ nhất trước</option>
-                    }
-                </select>
-                <button type="submit" class="btn-word">Tìm kiếm</button>
-                @if (!string.IsNullOrEmpty(tuKhoa))
-                {
-                    <a href="/Admin/TatCaHopDong" style="font-size:13px;color:var(--muted);
-                           text-decoration:none;padding:10px 14px;border:1.5px solid var(--border2);
-                           border-radius:10px;">✕ Xóa lọc</a>
-                }
+    <!-- BỘ LỌC -->
+    <div class="section-card mb-4">
+        <form method="get" class="ph-panel-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Tìm kiếm</label>
+                    <input type="text" name="tuKhoa" class="form-control"
+                           placeholder="Tên sân hoặc chủ sân..." value="@tuKhoa" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sắp xếp</label>
+                    <select name="sapXep" class="form-select">
+                        <option value="gan_nhat" selected="@(sapXep == "gan_nhat")">Gần nhất</option>
+                        <option value="cu_nhat" selected="@(sapXep == "cu_nhat")">Cũ nhất</option>
+                        <option value="ten_san" selected="@(sapXep == "ten_san")">Tên sân A–Z</option>
+                        <option value="chu_san" selected="@(sapXep == "chu_san")">Chủ sân A–Z</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-success flex-fill">
+                        <i class="bi bi-search me-1"></i>Tìm
+                    </button>
+                    <a href="/Admin/TatCaHopDong" class="btn btn-outline-secondary flex-fill">Reset</a>
+                </div>
             </div>
         </form>
-
-        <!-- KET QUA -->
-        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">
-            Hiển thị <strong style="color:var(--text)">@tongHD</strong> hợp đồng
-            @if (!string.IsNullOrEmpty(tuKhoa))
-            {
-                <span> — kết quả cho "<strong style="color:var(--green)">@tuKhoa</strong>"</span>
-            }
+        <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+            <span style="font-size:13px;color:var(--muted);">Hiển thị:</span>
+            <strong style="color:var(--text);">@Model.Count</strong>
+            <span style="font-size:13px;color:var(--muted);">/ tổng</span>
+            <strong style="color:var(--green2);">@tongHD</strong>
+            <span style="font-size:13px;color:var(--muted);">hợp đồng</span>
         </div>
+    </div>
 
-        <!-- DANH SACH -->
-        @if (!Model.Any())
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:60px 0;color:var(--muted);">
+            <div style="font-size:2.5rem;margin-bottom:12px;">📄</div>
+            <div style="font-size:16px;">Không tìm thấy hợp đồng nào.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var san in Model)
         {
-            <div class="empty-state">
-                <div style="font-size:48px;opacity:.3;margin-bottom:12px;">📑</div>
-                <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Không tìm thấy hợp đồng nào</div>
-                <div style="font-size:14px;color:var(--muted);">Thử tìm kiếm với từ khóa khác.</div>
-            </div>
-        }
-        else
-        {
-            @for (int i = 0; i < Model.Count; i++)
-            {
-                var san = Model[i];
-                var ngayKy = san.NgayKyHopDong?.ToString("HH:mm — dd/MM/yyyy") ?? "—";
-                var ownerName = san.Owner?.HoTen ?? "—";
-                var ownerSdt = san.Owner?.SoDienThoai ?? "";
-                <div class="hd-card">
-                    <div class="hd-num">@(i + 1)</div>
-                    <div class="hd-info">
-                        <div class="hd-name">@san.TenSan</div>
-                        <div class="hd-meta">
-                            <span>👤 @ownerName @(!string.IsNullOrEmpty(ownerSdt) ? "· " + ownerSdt : "")</span>
-                            <span>📍 @san.DiaChi — @san.Quan</span>
-                            <span>🕐 @ngayKy</span>
+            if (san.NgayKyHopDong == null) { continue; }
+            <div class="hd-card">
+                <div class="hd-head">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:40px;height:40px;border-radius:11px;background:rgba(0,212,126,.1);border:1px solid rgba(0,212,126,.2);display:flex;align-items:center;justify-content:center;font-size:18px;">📄</div>
+                        <div>
+                            <div style="font-weight:800;font-size:15px;">@san.TenSan</div>
+                            <div style="font-size:12px;color:var(--muted);">@san.DiaChi, @san.Quan</div>
                         </div>
                     </div>
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                        <span class="hd-badge">✅ Đã ký điện tử</span>
-                        <div class="hd-actions">
-                            <a href="/Admin/XemHopDong?sanId=@san.Id" class="btn-xem">👁 Xem</a>
-                            <a href="/Admin/XuatWordHopDong?sanId=@san.Id" class="btn-word">📄 Xuất Word</a>
-                        </div>
+                    <span class="status-pill ok">✅ Có hiệu lực</span>
+                </div>
+                <div class="hd-body">
+                    <div class="hd-stat">
+                        <span class="hd-stat-label">👤 Chủ sân</span>
+                        <span class="hd-stat-val">@(san.Owner?.HoTen ?? "—")</span>
+                        <span style="font-size:11.5px;color:var(--muted);">@(san.Owner?.Email ?? "")</span>
+                    </div>
+                    <div class="hd-divider"></div>
+                    <div class="hd-stat">
+                        <span class="hd-stat-label">📅 Ngày ký</span>
+                        <span class="hd-stat-val" style="color:var(--green2);">@san.NgayKyHopDong?.ToString("dd/MM/yyyy")</span>
+                        <span style="font-size:11.5px;color:var(--muted);">@san.NgayKyHopDong?.ToString("HH:mm")</span>
+                    </div>
+                    <div class="hd-divider"></div>
+                    <div class="hd-stat">
+                        <span class="hd-stat-label">⚽ Loại sân</span>
+                        <span class="hd-stat-val">@san.LoaiSan · @san.LoaiCo</span>
+                    </div>
+                    <div class="hd-actions">
+                        <a href="/Admin/XemHopDong/@san.Id" class="btn btn-outline-success btn-sm rounded-pill">
+                            👁 Xem HĐ
+                        </a>
+                        <a href="/Admin/XuatWordHopDong?sanId=@san.Id" class="btn btn-outline-primary btn-sm rounded-pill">
+                            📄 Xuất Word
+                        </a>
                     </div>
                 </div>
-            }
+            </div>
         }
-
-    </div>
+    }
 </div>

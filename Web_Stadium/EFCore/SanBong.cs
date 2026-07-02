@@ -56,4 +56,9 @@ public partial class SanBong
     public virtual ICollection<SanYeuThich> SanYeuThiches { get; set; } = new List<SanYeuThich>();
 
     public virtual ICollection<StaffSanPhanCong> StaffSanPhanCongs { get; set; } = new List<StaffSanPhanCong>();
+
+    public int ThoiGianGiuCho { get; set; } = 15;                     // phút
+    public int ThoiGianHuyTruocGioDa { get; set; } = 120;            // phút
+    public decimal PhanTramHoanCocDungHan { get; set; } = 1.00m;     // 100%
+    public decimal PhanTramHoanCocTreHan { get; set; } = 0.00m;      // 0%
 }

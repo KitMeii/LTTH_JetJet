@@ -1,6 +1,7 @@
 ﻿@model Web_Stadium.EFCore.User
 @{
     ViewData["Title"] = "Hồ sơ Admin";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var tab = ViewBag.Tab as string ?? "suckhoe";
     var auditLogs = ViewBag.AuditLogs as List<Web_Stadium.EFCore.AuditLog> ?? new();
     var canhBao = ViewBag.CanhBao as List<string> ?? new();
@@ -19,7 +20,7 @@
     <style>
         .hs {
             max-width: 960px;
-            margin: 86px auto 60px;
+            margin: 0 auto 48px;
             padding: 0 16px;
         }
 
@@ -64,12 +65,11 @@
         }
 
         .kc {
-            background: #fff;
+            background: var(--card);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 14px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(15,23,42,.05);
             position: relative;
             overflow: hidden;
         }
@@ -81,7 +81,7 @@
                 left: 0;
                 right: 0;
                 height: 3px;
-                background: var(--acc,#4f46e5);
+                background: var(--acc, var(--green));
             }
 
         .kv {
@@ -110,31 +110,31 @@
             border-radius: 999px;
             font-size: .82rem;
             text-decoration: none;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border2);
             color: var(--muted);
-            background: #fff;
+            background: transparent;
             transition: all .18s;
         }
 
             .tb:hover {
-                border-color: #4f46e5;
-                color: #4f46e5;
+                border-color: var(--green);
+                color: var(--green2);
             }
 
             .tb.on {
-                background: #4f46e5;
-                color: #fff;
-                border-color: #4f46e5;
-                font-weight: 600;
+                background: var(--green);
+                color: #07120c;
+                border-color: var(--green);
+                font-weight: 700;
             }
 
         .card {
-            background: #fff;
-            border: 1px solid var(--border);
+            background: var(--card) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 14px;
             padding: 22px;
             margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(15,23,42,.05);
+            color: var(--text) !important;
         }
 
         .ct {
@@ -162,13 +162,13 @@
             padding: 12px 14px;
             border-radius: 10px;
             border: 1px solid rgba(239,68,68,.3);
-            background: rgba(239,68,68,.05);
+            background: rgba(239,68,68,.06);
             margin-bottom: 8px;
         }
 
             .warn-item.yellow {
                 border-color: rgba(245,158,11,.3);
-                background: rgba(245,158,11,.05);
+                background: rgba(245,158,11,.06);
             }
         /* Shortcut */
         .sc-grid {
@@ -181,7 +181,7 @@
             padding: 16px;
             border-radius: 12px;
             border: 1px solid var(--border);
-            background: #f8fafc;
+            background: var(--bg3);
             text-decoration: none;
             text-align: center;
             transition: all .18s;
@@ -189,81 +189,88 @@
         }
 
             .sc:hover {
-                border-color: #4f46e5;
-                background: #eef2ff;
+                border-color: var(--green);
+                background: rgba(0,212,126,.06);
             }
 
-        .sc-ico {
-            font-size: 1.8rem;
-            margin-bottom: 6px;
+    .sc-ico {
+        order-color: #4f46e5;
+        background: #eef2ff;
+        font-size: 1.8rem;
+        margin-bottom: 6px;
+    }
+
+    .sc-lbl {
+        font-size: .83rem;
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .sc-sub {
+        font-size: .72rem;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+    /* Log */
+    .log-r {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: .82rem;
+    }
+
+        .log-r:last-child {
+            border-bottom: none;
         }
 
-        .sc-lbl {
-            font-size: .83rem;
-            color: var(--text);
-            font-weight: 600;
+    .log-act {
+        font-size: .72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: rgba(0,212,126,.1);
+        color: var(--green2);
+        white-space: nowrap;
+    }
+
+    .inp {
+        width: 100%;
+        background: var(--bg3);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: .87rem;
+    }
+
+        .inp:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(0,212,126,.12);
         }
 
-        .sc-sub {
-            font-size: .72rem;
-            color: var(--muted);
-            margin-top: 2px;
-        }
-        /* Log */
-        .log-r {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 9px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: .82rem;
+        .inp:disabled {
+            opacity: .6;
+            cursor: not-allowed;
         }
 
-            .log-r:last-child {
-                border-bottom: none;
-            }
+    .btn-i {
+        background: var(--green);
+        color: #07120c;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-weight: 700;
+        font-size: .87rem;
+        cursor: pointer;
+    }
 
-        .log-act {
-            font-size: .72rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: rgba(79,70,229,.1);
-            color: #4f46e5;
-            white-space: nowrap;
+        .btn-i:hover {
+            opacity: .88;
         }
-
-        .inp {
-            width: 100%;
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 8px;
-            padding: 9px 12px;
-            font-size: .87rem;
-        }
-
-            .inp:focus {
-                outline: none;
-                border-color: #4f46e5;
-                background: #fff;
-            }
-
-        .btn-i {
-            background: #4f46e5;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 9px 20px;
-            font-weight: 600;
-            font-size: .87rem;
-            cursor: pointer;
-        }
-
-            .btn-i:hover {
-                background: #4338ca;
-            }
-    </style>
+</style>
 }
 
 <div class="hs">
@@ -418,7 +425,7 @@
                     <div style="color:var(--muted);font-size:.73rem;white-space:nowrap;flex-shrink:0;margin-left:12px;">@log.ThoiGian.ToString("dd/MM HH:mm")</div>
                 </div>
             }
-            <a href="/Admin/AuditLog" style="color:#4f46e5;font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:12px;">Xem toàn bộ Audit Log →</a>
+            <a href="/Admin/AuditLog" style="color:var(--green2);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:12px;">Xem toàn bộ Audit Log →</a>
         </div>
     }
 
@@ -473,7 +480,7 @@
                     <div class="col-md-6"><label style="font-size:.76rem;color:var(--muted);">Họ và tên</label><input name="hoTen" class="inp mt-1" value="@Model.HoTen" required /></div>
                     <div class="col-md-6"><label style="font-size:.76rem;color:var(--muted);">Email</label><input class="inp mt-1" value="@Model.Email" disabled /></div>
                     <div class="col-md-6"><label style="font-size:.76rem;color:var(--muted);">Số điện thoại</label><input name="soDienThoai" class="inp mt-1" value="@Model.SoDienThoai" /></div>
-                    <div class="col-md-6"><label style="font-size:.76rem;color:var(--muted);">Vai trò</label><input class="inp mt-1" value="⚡ Admin — Quản trị viên hệ thống" disabled style="color:#4f46e5;font-weight:600;" /></div>
+                    <div class="col-md-6"><label style="font-size:.76rem;color:var(--muted);">Vai trò</label><input class="inp mt-1" value="⚡ Admin — Quản trị viên hệ thống" disabled style="color:var(--green2);font-weight:600;" /></div>
                     <div class="col-12"><button type="submit" class="btn-i">✓ Lưu thay đổi</button></div>
                 </div>
             </form>

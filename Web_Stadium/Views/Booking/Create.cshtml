@@ -358,6 +358,17 @@
                 </div>
             }
 
+            <!-- ── MÃ VOUCHER CÔNG KHAI (Owner phát) ─── -->
+            <div class="cb-card">
+                <div class="cb-label">🎟️ Mã voucher công khai (do chủ sân phát hành)</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" name="maVoucherCongKhai" maxlength="50"
+                           placeholder="Nhập mã, ví dụ: GIAM20"
+                           style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid #444; background:#222; color:#fff; text-transform:uppercase;" />
+                </div>
+                <small style="color:#888;">Mã sẽ được kiểm tra khi bấm "Đặt sân". Không dùng cùng lúc với voucher trong kho.</small>
+            </div>
+
             <!-- ── VOUCHER ────────────────────────────── -->
             @if (vouchers.Any())
             {

@@ -1,6 +1,7 @@
 ﻿@model Web_Stadium.EFCore.User
 @{
     ViewData["Title"] = "Hồ sơ chủ sân";
+    ViewData["ActiveNav"] = "";
     var tab = ViewBag.Tab as string ?? "tongquan";
     var sanList = ViewBag.SanList as List<Web_Stadium.EFCore.SanBong> ?? new();
     var staffList = ViewBag.StaffList as List<Web_Stadium.EFCore.User> ?? new();
@@ -18,9 +19,30 @@
 
 @section Styles {
     <style>
+        :root {
+            --db-bg: #f8fafc;
+            --db-surface: #ffffff;
+            --db-border: #e2e8f0;
+            --db-muted: #475569;
+            --db-text: #0f172a;
+            --db-green: #0f6e4a;
+            --db-green-bg: rgba(15,110,74,0.08);
+            --db-green-border: rgba(15,110,74,0.2);
+        }
+        body { background: var(--db-bg); color: var(--db-text); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+        .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+        .nav-btn {
+            font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+            background: transparent; color: var(--db-muted); text-decoration: none;
+            display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+        }
+        .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+        .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
         .hs {
             max-width: 960px;
-            margin: 86px auto 60px;
+            margin: 24px auto 60px;
             padding: 0 16px;
         }
 
@@ -58,8 +80,8 @@
         }
 
         .kc {
-            background: #fff;
-            border: 1px solid var(--border);
+            background: var(--db-surface);
+            border: 1px solid var(--db-border);
             border-radius: 12px;
             padding: 14px;
             text-align: center;
@@ -75,7 +97,7 @@
                 left: 0;
                 right: 0;
                 height: 3px;
-                background: var(--acc,var(--green));
+                background: var(--acc,var(--db-green));
             }
 
         .kv {
@@ -87,7 +109,7 @@
 
         .kl {
             font-size: .65rem;
-            color: var(--muted);
+            color: var(--db-muted);
             letter-spacing: .5px;
             text-transform: uppercase;
         }
@@ -104,38 +126,38 @@
             border-radius: 999px;
             font-size: .82rem;
             text-decoration: none;
-            border: 1px solid var(--border);
-            color: var(--muted);
-            background: #fff;
+            border: 1px solid var(--db-border);
+            color: var(--db-muted);
+            background: var(--db-surface);
             transition: all .18s;
         }
 
             .tb:hover {
-                border-color: var(--green);
-                color: var(--green);
+                border-color: var(--db-green);
+                color: var(--db-green);
             }
 
             .tb.on {
-                background: var(--green);
+                background: var(--db-green);
                 color: #fff;
-                border-color: var(--green);
+                border-color: var(--db-green);
                 font-weight: 600;
             }
 
             .tb.danger {
                 border-color: rgba(239,68,68,.4);
-                color: var(--danger);
+                color: #dc2626;
             }
 
                 .tb.danger.on {
-                    background: var(--danger);
+                    background: #dc2626;
                     color: #fff;
-                    border-color: var(--danger);
+                    border-color: #dc2626;
                 }
 
         .card {
-            background: #fff;
-            border: 1px solid var(--border);
+            background: var(--db-surface);
+            border: 1px solid var(--db-border);
             border-radius: 14px;
             padding: 22px;
             margin-bottom: 16px;
@@ -145,17 +167,17 @@
         .ct {
             font-size: .8rem;
             font-weight: 700;
-            color: var(--text);
+            color: var(--db-text);
             margin-bottom: 16px;
             padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--db-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
             .ct span {
-                color: var(--muted);
+                color: var(--db-muted);
                 font-size: .74rem;
                 font-weight: 400;
             }
@@ -175,16 +197,8 @@
             animation: pulse-border 2s infinite;
         }
         @@keyframes pulse-border {
-            0%,100%
-
-        {
-            border-color: rgba(239,68,68,.35);
-        }
-
-        50% {
-            border-color: rgba(239,68,68,.8);
-        }
-
+            0%,100% { border-color: rgba(239,68,68,.35); }
+            50% { border-color: rgba(239,68,68,.8); }
         }
         /* Lấp đầy */
         .ld-row {
@@ -192,7 +206,7 @@
             align-items: center;
             gap: 10px;
             padding: 9px 0;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--db-border);
             font-size: .83rem;
         }
 
@@ -239,7 +253,7 @@
             gap: 10px;
             padding: 11px;
             border-radius: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--db-border);
             background: #f8fafc;
             margin-bottom: 8px;
         }
@@ -249,7 +263,7 @@
             align-items: center;
             gap: 10px;
             padding: 9px 0;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--db-border);
         }
 
             .stf:last-child {
@@ -265,7 +279,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            color: var(--green);
+            color: var(--db-green);
             font-size: .9rem;
             flex-shrink: 0;
         }
@@ -273,8 +287,8 @@
         .inp {
             width: 100%;
             background: #f8fafc;
-            border: 1px solid var(--border);
-            color: var(--text);
+            border: 1px solid var(--db-border);
+            color: var(--db-text);
             border-radius: 8px;
             padding: 9px 12px;
             font-size: .87rem;
@@ -282,12 +296,12 @@
 
             .inp:focus {
                 outline: none;
-                border-color: var(--green);
+                border-color: var(--db-green);
                 background: #fff;
             }
 
         .btn-g {
-            background: var(--green);
+            background: var(--db-green);
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -298,10 +312,12 @@
         }
 
             .btn-g:hover {
-                background: var(--green-hover);
+                background: #0a5338;
             }
     </style>
 }
+
+
 
 <div class="hs">
     <!-- Header -->
@@ -406,7 +422,7 @@
                 </div>
             }
             <div style="text-align:right;margin-top:8px;">
-                <a href="/Owner/DuyetDon" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;">Xem đầy đủ tại trang Duyệt đơn →</a>
+                <a href="/Owner/DanhSachDonDat" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;">Xem đầy đủ tại trang Duyệt đơn →</a>
             </div>
         </div>
     }
@@ -449,13 +465,18 @@
                             <div style="font-weight:600;font-size:.87rem;color:var(--text);">@dv.TenDichVu</div>
                             <div style="font-size:.76rem;color:var(--muted);">@dv.SanBong?.TenSan</div>
                         </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:1.2rem;font-weight:800;color:@(isRed ? "var(--danger)" : "#f59e0b");">@dv.TonKho</div>
-                            <div style="font-size:.7rem;color:var(--muted);">đơn vị còn lại</div>
+                        <div style="text-align:right;display:flex;align-items:center;gap:10px;">
+                            <div>
+                                <div style="font-size:1.2rem;font-weight:800;color:@(isRed ? "var(--danger)" : "#f59e0b");">@dv.TonKho</div>
+                                <div style="font-size:.7rem;color:var(--muted);">đơn vị còn lại</div>
+                            </div>
+                            <a href="/Owner/KhoDichVu?sanId=@dv.SanBongId" style="font-size:.74rem;padding:5px 11px;border-radius:999px;border:1px solid var(--db-border);color:var(--db-green);text-decoration:none;background:#fff;font-weight:600;">Cập nhật →</a>
                         </div>
                     </div>
                 }
-                <a href="/Owner/KhoDichVu" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:8px;">Cập nhật kho →</a>
+                <div style="margin-top:8px;font-size:.78rem;color:var(--db-muted);">
+                    💡 Bấm "Cập nhật" ngay trên dòng dịch vụ để vào trang quản lý kho của sân tương ứng.
+                </div>
             </div>
         }
 
@@ -472,7 +493,7 @@
                     <span class="badge @(d.TrangThai == "HoanThanh" ? "bg-success" : d.TrangThai == "ChoDuyet" ? "bg-warning text-dark" : d.TrangThai == "DaHuy" ? "bg-danger" : "bg-primary")">@d.TrangThai</span>
                 </div>
             }
-            <a href="/Owner/DuyetDon" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:10px;">Xem tất cả →</a>
+            <a href="/Owner/DanhSachDonDat" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:10px;">Xem tất cả →</a>
         </div>
     }
 
@@ -541,8 +562,35 @@
             </form>
         </div>
         <div class="card">
-            <div class="ct">📄 HỢP ĐỒNG NỀN TẢNG</div>
-            <a href="/Owner/XemHopDong" style="display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#f8fafc;text-decoration:none;color:var(--text);font-size:.87rem;font-weight:600;">📑 Xem & In hợp đồng đã ký →</a>
+            <div class="ct">📄 HỢP ĐỒNG NỀN TẢNG <span>@sanList.Count(s => s.DaKyHopDong) hợp đồng đã ký</span></div>
+            @if (!sanList.Any())
+            {
+                <div style="color:var(--db-muted);font-size:.85rem;">Chưa có sân nào — bạn cần đăng ký sân để ký hợp đồng.</div>
+            }
+            else
+            {
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach (var s in sanList)
+                    {
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;border:1px solid var(--db-border);background:#f8fafc;">
+                            <div>
+                                <div style="font-weight:600;font-size:.87rem;">@s.TenSan</div>
+                                <div style="font-size:.74rem;color:var(--db-muted);">
+                                    @if (s.DaKyHopDong)
+                                    {
+                                        <span>✅ Đã ký ngày @(s.NgayKyHopDong?.ToString("dd/MM/yyyy"))</span>
+                                    }
+                                    else
+                                    {
+                                        <span>⏳ Chưa ký</span>
+                                    }
+                                </div>
+                            </div>
+                            <a href="/Owner/XemHopDong/@s.Id" target="_blank" style="font-size:.78rem;padding:6px 14px;border-radius:999px;border:1px solid var(--db-border);color:var(--db-text);text-decoration:none;background:#fff;">📑 Xem & In →</a>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     }
 

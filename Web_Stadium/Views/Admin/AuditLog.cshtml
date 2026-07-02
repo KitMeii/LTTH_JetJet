@@ -1,68 +1,57 @@
 ﻿@model List<Web_Stadium.EFCore.AuditLog>
 @{
     ViewData["Title"] = "Audit Log";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin — Franchise</div>
-        <h1 style="font-style:italic;line-height:0.9">QUẢN LÝ<br><span class="text-green">NHẬT KÝ HÀNH ĐỘNG</span></h1>
+<div style="padding:0 0 40px;">
+
+    <div class="pg-header">
+        <div class="pg-label">Admin · Bảo mật</div>
+        <h2>Audit Log <span class="pg-accent">hành động</span></h2>
+        <p>Nhật ký toàn bộ thao tác quản trị trong hệ thống</p>
     </div>
-</div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center align-items-center">
-        <a href="/Admin" class="btn btn-outline-green rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLySan" class="btn btn-success rounded-pill">📍 Quản lý sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-outline-info rounded-pill">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-outline-green rounded-pill">🗂️ Master Data</a>
-        <a href="/Admin/KhieuNai" class="btn btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-outline-secondary rounded-pill">📈 Báo cáo</a>
-        <a href="/Admin/AuditLog" class="btn btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
-        <a href="/Admin/TatCaHopDong" class="btn btn-outline-primary rounded-pill">📑 Hợp đồng</a>
+    <!-- BỘ LỌC -->
+    <div class="section-card mb-4">
+        <form method="get" class="ph-panel-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label">Loại hành động</label>
+                    <select name="hanhDong" class="form-select">
+                        <option value="">-- Tất cả --</option>
+                        @foreach (var h in ViewBag.DanhSachHanhDong as List<string>)
+                        {
+                            <option value="@h" selected="@(ViewBag.HanhDong == h)">@h</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Từ ngày</label>
+                    <input type="date" name="tuNgay" class="form-control" value="@ViewBag.TuNgay" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Đến ngày</label>
+                    <input type="date" name="denNgay" class="form-control" value="@ViewBag.DenNgay" />
+                </div>
+                <div class="col-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-search me-1"></i>Lọc
+                    </button>
+                    <a href="/Admin/AuditLog" class="btn btn-outline-secondary">Reset</a>
+                </div>
+                <div class="col-auto ms-auto d-flex align-items-end">
+                    <small style="color:var(--muted);">Tổng: <strong style="color:var(--text);">@ViewBag.TongSo</strong> bản ghi</small>
+                </div>
+            </div>
+        </form>
     </div>
-</div>
 
-<div class="container-fluid py-4">
-    <h4 class="mb-4"><i class="bi bi-shield-check me-2"></i>Nhật ký hành động (Audit Log)</h4>
-
-    <!-- Bộ lọc -->
-    <form method="get" class="row g-2 mb-4 align-items-end">
-        <div class="col-auto">
-            <label class="form-label small">Loại hành động</label>
-            <select name="hanhDong" class="form-select form-select-sm">
-                <option value="">-- Tất cả --</option>
-                @foreach (var h in ViewBag.DanhSachHanhDong as List<string>)
-                {
-                    <option value="@h" selected="@(ViewBag.HanhDong == h)">@h</option>
-                }
-            </select>
-        </div>
-        <div class="col-auto">
-            <label class="form-label small">Từ ngày</label>
-            <input type="date" name="tuNgay" class="form-control form-control-sm" value="@ViewBag.TuNgay" />
-        </div>
-        <div class="col-auto">
-            <label class="form-label small">Đến ngày</label>
-            <input type="date" name="denNgay" class="form-control form-control-sm" value="@ViewBag.DenNgay" />
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-search me-1"></i>Lọc
-            </button>
-            <a href="/Admin/AuditLog" class="btn btn-outline-secondary btn-sm ms-1">Reset</a>
-        </div>
-        <div class="col-auto ms-auto">
-            <small class="text-muted">Tổng: <strong>@ViewBag.TongSo</strong> bản ghi</small>
-        </div>
-    </form>
-
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <table class="table table-hover table-sm align-middle mb-0">
-                <thead class="table-dark">
+    <!-- BẢNG -->
+    <div class="section-card">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead>
                     <tr>
                         <th>Thời gian</th>
                         <th>Người thực hiện</th>
@@ -77,12 +66,10 @@
                     @foreach (var log in Model)
                     {
                         <tr>
-                            <td><small class="text-muted">@log.ThoiGian.ToString("dd/MM HH:mm:ss")</small></td>
+                            <td><small style="color:var(--muted);">@log.ThoiGian.ToString("dd/MM HH:mm:ss")</small></td>
                             <td>
-                                <small>
-                                    <strong>@log.User?.HoTen</strong><br />
-                                    <span class="text-muted">@log.User?.Email</span>
-                                </small>
+                                <div style="font-weight:700;font-size:13px;">@log.User?.HoTen</div>
+                                <small style="color:var(--muted);">@log.User?.Email</small>
                             </td>
                             <td>
                                 @{
@@ -90,7 +77,7 @@
                                     {
                                         "Admin" => "bg-danger",
                                         "Owner" => "bg-primary",
-                                        "Staff" => "bg-warning text-dark",
+                                        "Staff" => "bg-warning",
                                         _ => "bg-secondary"
                                     };
                                 }
@@ -98,25 +85,25 @@
                             </td>
                             <td>
                                 @{
-                                    var actionColor = log.HanhDong.Contains("Khoa") || log.HanhDong.Contains("TuChoi") ? "text-danger" :
-                                    log.HanhDong.Contains("MoKhoa") || log.HanhDong.Contains("PheDuyet") || log.HanhDong.Contains("HoanCoc") ? "text-success" :
-                                    "text-primary";
+                                    var actionColor = log.HanhDong.Contains("Khoa") || log.HanhDong.Contains("TuChoi")
+                                    ? "var(--danger)"
+                                    : log.HanhDong.Contains("MoKhoa") || log.HanhDong.Contains("PheDuyet") || log.HanhDong.Contains("HoanCoc")
+                                    ? "var(--green2)"
+                                    : "var(--blue)";
                                 }
-                                <span class="@actionColor fw-bold small">@log.HanhDong</span>
+                                <span style="color:@actionColor;font-weight:700;font-size:12px;">@log.HanhDong</span>
                             </td>
                             <td>
-                                <small class="badge bg-light text-dark border">
-                                    @log.DoiTuong #@log.DoiTuongId
-                                </small>
+                                <span class="badge bg-light">@log.DoiTuong #@log.DoiTuongId</span>
                             </td>
-                            <td><small>@log.MoTa</small></td>
-                            <td><small class="text-muted">@log.IpAddress</small></td>
+                            <td><small style="color:var(--muted);">@log.MoTa</small></td>
+                            <td><small style="color:var(--muted2);">@log.IpAddress</small></td>
                         </tr>
                     }
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="7" style="text-align:center;color:var(--muted);padding:40px;">
                                 Không có dữ liệu log.
                             </td>
                         </tr>
@@ -126,11 +113,10 @@
         </div>
     </div>
 
-    <!-- Phân trang -->
     @if ((int)ViewBag.TongTrang > 1)
     {
-        <nav class="mt-3">
-            <ul class="pagination pagination-sm justify-content-center">
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
                 @for (int i = 1; i <= (int)ViewBag.TongTrang; i++)
                 {
                     <li class="page-item @(i == (int)ViewBag.Trang ? "active" : "")">
@@ -144,4 +130,3 @@
         </nav>
     }
 </div>
-

@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Đơn vãng lai";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.NavActivePage = "vanglai";
     var danhSachDV = ViewBag.DanhSachDichVu as List<Web_Stadium.EFCore.DichVu> ?? new();
 }
 
@@ -14,31 +15,13 @@
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Staff" class="btn btn-sm btn-outline-light rounded-pill">← Ca trực</a>
-        <a href="/Staff/CheckIn" class="btn btn-sm btn-outline-warning rounded-pill">✅ Check-in</a>
-    </div>
-</div>
+@await Html.PartialAsync("_StaffNav")
 
 <div class="container py-5">
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show mb-4">
-            @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show mb-4">
-            ❌ @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
+    @await Html.PartialAsync("_StaffAlerts")
 
-    <!-- Giải thích -->
+    @*-- Đơn vãng lai: không liên kết booking, chỉ trừ kho + ghi AuditLog --*@
     <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);
                 border-radius:12px;padding:14px 18px;margin-bottom:24px;font-size:13px;color:#aaa;">
         <strong style="color:#818cf8;">📦 Đơn vãng lai là gì?</strong><br>
@@ -133,8 +116,11 @@
     </div>
 </div>
 
+@await Html.PartialAsync("_StaffWidgets")
+
 @section Scripts {
     <script>
+        window.__STAFF_SAN_IDS = [];
         var dvGia = [@Html.Raw(string.Join(",", danhSachDV.Select(d => d.Gia)))];
         var dvTen = [@Html.Raw(string.Join(",", danhSachDV.Select(d => $"\"{d.TenDichVu}\"")))];
         var qtyArr = Array(@danhSachDV.Count).fill(0);

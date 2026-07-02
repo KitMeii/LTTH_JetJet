@@ -1,121 +1,406 @@
-﻿@* ============================================================
-   Views/Owner/QuanLyStaff.cshtml
-   ============================================================ *@
+﻿@* Views/Owner/QuanLyStaff.cshtml *@
 @model List<Web_Stadium.EFCore.User>
 @{
     ViewData["Title"] = "Quản lý Nhân viên";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Staff";
     var danhSachSan = ViewBag.DanhSachSan as List<Web_Stadium.EFCore.SanBong> ?? new();
 }
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container d-flex justify-content-between align-items-end">
-        <div>
-            <div class="section-label">Owner</div>
-            <h1 style="font-style:italic;line-height:0.9;margin:0">NHÂN VIÊN<br><span class="text-green">TRỰC SÂN</span></h1>
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
+        }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .staff-table-wrapper {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .staff-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .staff-table th {
+            background: var(--db-surface);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--db-muted);
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--db-border);
+            text-align: left;
+        }
+
+        .staff-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--db-border);
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .staff-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .staff-table tr:hover {
+            background: rgba(0,0,0,0.01);
+        }
+
+    .badge-staff {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-radius: 30px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        display: inline-block;
+        margin: 2px 4px 2px 0;
+    }
+
+    .badge-staff-inactive {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .btn-outline-sm {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 30px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 500;
+        transition: 0.15s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .btn-outline-sm:hover {
+            background: var(--db-green-bg);
+            border-color: var(--db-green-border);
+            color: var(--db-green);
+        }
+
+    .btn-outline-danger-sm {
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
+        .btn-outline-danger-sm:hover {
+            background: #fef2f2;
+            border-color: #f87171;
+            color: #b91c1c;
+        }
+
+    .btn-outline-success-sm {
+        border-color: #bbf7d0;
+        color: #15803d;
+    }
+
+        .btn-outline-success-sm:hover {
+            background: #f0fdf4;
+            border-color: #4ade80;
+        }
+
+    .btn-green {
+        background: var(--db-green);
+        border: none;
+        border-radius: 40px;
+        padding: 8px 24px;
+        font-weight: 500;
+        color: white;
+        transition: 0.2s;
+    }
+
+        .btn-green:hover {
+            background: #0a5338;
+            transform: translateY(-1px);
+        }
+
+    .modal-content-custom {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 24px;
+    }
+
+    .modal-header, .modal-footer {
+        border-color: var(--db-border);
+    }
+    .btn-remove-assign {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #dc2626;
+        font-size: 12px;
+        padding: 0 4px;
+        border-radius: 50%;
+        transition: 0.2s;
+    }
+
+        .btn-remove-assign:hover {
+            color: #b91c1c;
+            background: rgba(220,38,38,0.1);
+        }
+
+    .form-control-custom, .form-select-custom {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-size: 14px;
+        width: 100%;
+    }
+
+        .form-control-custom:focus, .form-select-custom:focus {
+            border-color: var(--db-green);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
+        }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 0;
+        color: var(--db-muted);
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / NHÂN SỰ</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Nhân viên <span style="color: var(--db-green);">trực sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý tài khoản, phân công và theo dõi trạng thái nhân viên</p>
+            </div>
+            <button class="btn btn-green" data-bs-toggle="modal" data-bs-target="#modalTaoStaff">
+                <i class="fas fa-plus-circle me-2"></i>Tạo nhân viên
+            </button>
         </div>
-        <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#modalTaoStaff">+ Tạo nhân viên</button>
     </div>
 </div>
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center">
-        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
-        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
-        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
-    </div>
-</div>
+
+@await Html.PartialAsync("_OwnerNav")
+
 <div class="container py-5">
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
 
-    <div class="section-card p-0 overflow-hidden">
-        <table class="table table-hover mb-0">
-            <thead style="background:var(--bg3)">
-                <tr>
-                    <th style="color:var(--muted);font-size:11px;padding:12px 16px">Nhân viên</th>
-                    <th style="color:var(--muted);font-size:11px">Sân phụ trách</th>
-                    <th style="color:var(--muted);font-size:11px">Trạng thái</th>
-                    <th style="color:var(--muted);font-size:11px">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var staff in Model)
-                {
-                    <tr style="@(!staff.IsActive ? "opacity:0.5" : "")">
-                        <td style="padding:12px 16px">
-                            <div style="font-weight:600">@staff.HoTen</div>
-                            <div style="font-size:12px;color:var(--muted)">@staff.Email | @staff.SoDienThoai</div>
-                        </td>
-                        <td>
-                            @foreach (var p in staff.StaffSanPhanCongs ?? new List<Web_Stadium.EFCore.StaffSanPhanCong>())
-                            {
-                                <span class="badge b-blue me-1">@p.SanBong?.TenSan</span>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge @(staff.IsActive ? "bg-success" : "bg-secondary")">
-                                @(staff.IsActive ? "Đang làm" : "Đã nghỉ")
-                            </span>
-                        </td>
-                        <td>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap">
-                                <!-- Gán thêm sân -->
-                                <form method="post" action="/Owner/GanSanChoStaff" style="display:flex;gap:4px">
-                                    <input type="hidden" name="staffId" value="@staff.Id" />
-                                    <select name="sanBongId" class="form-select form-select-sm" style="background:var(--bg3);border-color:var(--border);color:white;font-size:12px;width:160px">
-                                        @foreach (var s in danhSachSan)
-                                        {
-                                            <option value="@s.Id">@s.TenSan</option>
-                                        }
-                                    </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill">+ Gán</button>
-                                </form>
-                                <!-- Khoá/mở -->
-                                <form method="post" action="/Owner/KhoaStaff" style="display:inline">
-                                    <input type="hidden" name="staffId" value="@staff.Id" />
-                                    <input type="hidden" name="isActive" value="@(!staff.IsActive)" />
-                                    <button type="submit" class="btn btn-sm @(staff.IsActive ? "btn-outline-danger" : "btn-outline-success") rounded-pill">
-                                        @(staff.IsActive ? "Khoá" : "Mở khoá")
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon" style="font-size: 4rem; opacity: 0.4;">👷</div>
+            <h4 class="fw-semibold">Chưa có nhân viên nào</h4>
+            <p class="text-muted">Hãy tạo tài khoản nhân viên để hỗ trợ quản lý sân</p>
+            <button class="btn btn-green mt-2" data-bs-toggle="modal" data-bs-target="#modalTaoStaff">
+                <i class="fas fa-plus-circle me-2"></i>Tạo nhân viên
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="staff-table-wrapper">
+            <table class="staff-table">
+                <thead>
+                    <tr>
+                        <th>Nhân viên</th>
+                        <th>Sân phụ trách</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
                     </tr>
-                }
-                @if (!Model.Any())
-                {
-                    <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)">Chưa có nhân viên nào</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var staff in Model)
+                    {
+                        var inactiveStyle = !staff.IsActive ? "opacity:0.6;" : "";
+                        <tr style="@inactiveStyle">
+                            <td>
+                                <div class="fw-semibold">@staff.HoTen</div>
+                                <div class="text-muted" style="font-size: 12px;">@staff.Email<br />@staff.SoDienThoai</div>
+                            </td>
+                            <td>
+                                @if (staff.StaffSanPhanCongs != null && staff.StaffSanPhanCongs.Any())
+                                {
+                                    @foreach (var p in staff.StaffSanPhanCongs)
+                                    {
+                                        <span class="badge-staff" style="display: inline-flex; align-items: center; gap: 6px; margin: 2px 4px;">
+                                            🏟️ @(p.SanBong?.TenSan ?? "Đã xóa")
+                                            @if (p.SanBong != null)
+                                            {
+                                                <form method="post" action="/Owner/XoaGanSanChoStaff" style="display: inline;">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="staffId" value="@staff.Id" />
+                                                    <input type="hidden" name="sanBongId" value="@p.SanBongId" />
+                                                    <button type="submit" class="btn-remove-assign"
+                                                            style="background: none; border: none; cursor: pointer; color: #dc2626; font-size: 12px; padding: 0 4px;"
+                                                            onclick="return confirm('Xóa gán sân @p.SanBong.TenSan cho nhân viên @staff.HoTen?')">
+                                                        ✕
+                                                    </button>
+                                                </form>
+                                            }
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="font-size: 12px;">Chưa được gán</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge-staff @(staff.IsActive ? "" : "badge-staff-inactive")">
+                                    @(staff.IsActive ? "● Đang làm" : "○ Đã nghỉ")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <!-- Form gán thêm sân -->
+                                    <form method="post" action="/Owner/GanSanChoStaff" class="d-flex gap-1 align-items-center">
+                                        <input type="hidden" name="staffId" value="@staff.Id" />
+                                        <select name="sanBongId" class="form-select-custom" style="width: 140px; padding: 4px 8px; font-size: 12px;">
+                                            @foreach (var s in danhSachSan)
+                                            {
+                                                <option value="@s.Id">@s.TenSan</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn-outline-sm" style="border-color: var(--db-green-border); color: var(--db-green);">
+                                            + Gán
+                                        </button>
+                                    </form>
+                                    <!-- Form khoá/mở -->
+                                    <form method="post" action="/Owner/KhoaStaff" style="display: inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="staffId" value="@staff.Id" />
+                                        <input type="hidden" name="isActive" value="@(staff.IsActive ? "false" : "true")" />
+                                        <button type="submit" class="btn-outline-sm @(staff.IsActive ? "btn-outline-danger-sm" : "btn-outline-success-sm")">
+                                            @(staff.IsActive ? "🔒 Khoá" : "🔓 Mở khoá")
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
-<!-- Modal Tạo Staff -->
-<div class="modal fade" id="modalTaoStaff" tabindex="-1">
+
+<!-- Modal tạo nhân viên -->
+<div class="modal fade" id="modalTaoStaff" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content" style="background:var(--bg2);border:1px solid var(--border)">
-            <div class="modal-header" style="border-color:var(--border)"><h5 class="modal-title">Tạo Tài khoản Nhân viên</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header">
+                <h5 class="modal-title fw-semibold">Tạo tài khoản nhân viên</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
             <form method="post" action="/Owner/TaoStaff">
                 <div class="modal-body">
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">HỌ TÊN *</label><input type="text" name="hoTen" class="form-control" required style="background:var(--bg3);border-color:var(--border);color:white" /></div>
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">EMAIL *</label><input type="email" name="email" class="form-control" required style="background:var(--bg3);border-color:var(--border);color:white" /></div>
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">MẬT KHẨU *</label><input type="password" name="matKhau" class="form-control" required style="background:var(--bg3);border-color:var(--border);color:white" /></div>
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">SỐ ĐIỆN THOẠI</label><input type="text" name="soDienThoai" class="form-control" style="background:var(--bg3);border-color:var(--border);color:white" /></div>
                     <div class="mb-3">
-                        <label style="color:var(--muted);font-size:12px">GÁN VÀO SÂN *</label>
-                        <select name="sanBongId" class="form-select" required style="background:var(--bg3);border-color:var(--border);color:white">
+                        <label class="form-label">HỌ TÊN *</label>
+                        <input type="text" name="hoTen" class="form-control-custom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">EMAIL *</label>
+                        <input type="email" name="email" class="form-control-custom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">MẬT KHẨU *</label>
+                        <input type="password" name="matKhau" class="form-control-custom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SỐ ĐIỆN THOẠI</label>
+                        <input type="text" name="soDienThoai" class="form-control-custom" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">GÁN VÀO SÂN *</label>
+                        <select name="sanBongId" class="form-select-custom" required>
                             @foreach (var s in danhSachSan)
                             {
-                                <option value="@s.Id">@s.TenSan</option>
+                                <option value="@s.Id">@s.TenSan (@s.LoaiSan người)</option>
                             }
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-color:var(--border)"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Huỷ</button><button type="submit" class="btn btn-success rounded-pill">Tạo</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline-sm" data-bs-dismiss="modal">Huỷ</button>
+                    <button type="submit" class="btn-green">Tạo nhân viên</button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Kích hoạt tooltip nếu cần
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    </script>
+}

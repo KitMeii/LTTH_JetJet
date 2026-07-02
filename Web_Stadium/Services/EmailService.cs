@@ -54,153 +54,66 @@ namespace Web_Stadium.Services
         // ══════════════════════════════════════════════════════════
         public async Task GuiEmailXacNhanDatSan(
             string toEmail, string toName,
-            string tenSan, string loaiSan, string diaChi,
+            string tenSan, string diaChi,
             string khungGio, string ngayThiDau,
-            string soDienThoai, string maXacNhan,
-            decimal giaThue, decimal tongDichVu,
-            List<(string tenDv, int sl, decimal gia)> dichVus,
-            decimal tongGoc,
-            decimal tienGiamSan, string? tenVoucherSan,
-            decimal tienGiamHeThong, string? tenVoucherHT,
-            decimal tongSauGiam, decimal tienCoc, decimal conLai)
+            string maXacNhan, decimal tienCoc)
         {
             var mapsUrl = $"https://maps.google.com/?q={Uri.EscapeDataString(diaChi)}";
             var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={maXacNhan}";
-
-            // Build dịch vụ rows
-            var dvRows = new System.Text.StringBuilder();
-            foreach (var (tenDv, sl, gia) in dichVus)
-            {
-                dvRows.AppendLine($@"
-        <tr>
-          <td style='padding:5px 0;color:#ccc;'>{tenDv}</td>
-          <td style='padding:5px 0;color:#ccc;text-align:center;'>{sl}</td>
-          <td style='padding:5px 0;color:#ccc;text-align:right;'>{gia:N0}đ</td>
-          <td style='padding:5px 0;color:#fff;text-align:right;font-weight:600;'>{sl * gia:N0}đ</td>
-        </tr>");
-            }
-
-            var dvSection = dichVus.Count > 0 ? $@"
-    <!-- Dịch vụ kèm -->
-    <div style='background:#0f1f14;border-radius:12px;padding:18px;margin-bottom:16px;'>
-      <div style='color:#1ed760;font-size:.75rem;letter-spacing:1.5px;font-weight:700;margin-bottom:12px;'>DỊCH VỤ KÈM</div>
-      <table style='width:100%;border-collapse:collapse;font-size:.85rem;'>
-        <thead>
-          <tr style='border-bottom:1px solid rgba(255,255,255,.1);'>
-            <th style='color:#888;font-weight:400;padding-bottom:8px;text-align:left;'>Dịch vụ</th>
-            <th style='color:#888;font-weight:400;padding-bottom:8px;text-align:center;'>SL</th>
-            <th style='color:#888;font-weight:400;padding-bottom:8px;text-align:right;'>Đơn giá</th>
-            <th style='color:#888;font-weight:400;padding-bottom:8px;text-align:right;'>Thành tiền</th>
-          </tr>
-        </thead>
-        <tbody>{dvRows}</tbody>
-      </table>
-    </div>" : "";
-
-            // Build voucher rows
-            var voucherSanRow = tienGiamSan > 0 ? $@"
-        <tr>
-          <td style='padding:6px 0;color:#aaa;'>🏟 Voucher sân ({tenVoucherSan})</td>
-          <td style='padding:6px 0;color:#ef4444;text-align:right;font-weight:600;'>-{tienGiamSan:N0}đ</td>
-        </tr>" : "";
-
-            var voucherHTRow = tienGiamHeThong > 0 ? $@"
-        <tr>
-          <td style='padding:6px 0;color:#aaa;'>🎫 Voucher hệ thống ({tenVoucherHT})</td>
-          <td style='padding:6px 0;color:#ef4444;text-align:right;font-weight:600;'>-{tienGiamHeThong:N0}đ</td>
-        </tr>" : "";
 
             var body = $@"
 <!DOCTYPE html>
 <html lang='vi'>
 <head><meta charset='utf-8'></head>
-<body style='font-family:Arial,sans-serif;background:#0a0f0a;margin:0;padding:20px;'>
-<div style='max-width:600px;margin:0 auto;background:#111;border-radius:16px;overflow:hidden;
-            box-shadow:0 8px 32px rgba(0,0,0,.5);border:1px solid rgba(30,215,96,.15);'>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,.1);'>
 
   <!-- Header -->
-  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:36px 28px;text-align:center;'>
-    <div style='font-size:2.2rem;font-weight:900;color:#fff;letter-spacing:-1px;'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:32px 28px;text-align:center;'>
+    <div style='font-size:2rem;font-weight:900;color:#fff;letter-spacing:-1px;'>
       PITCH<span style='color:#1ed760;'>HUB</span>⚽
     </div>
-    <div style='color:#1ed760;font-size:.85rem;letter-spacing:3px;margin-top:6px;text-transform:uppercase;'>
-      Đặt sân thành công
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>
+      ĐẶT SÂN THÀNH CÔNG
     </div>
   </div>
 
   <!-- Body -->
   <div style='padding:28px;'>
-    <p style='color:#ccc;font-size:1rem;margin-bottom:24px;line-height:1.6;'>
-      Xin chào <strong style='color:#fff;'>{toName}</strong>,<br>
-      Đơn đặt sân của bạn đã được Owner xác nhận. Hẹn gặp bạn trên sân! ⚽
+    <p style='color:#333;font-size:1rem;margin-bottom:20px;'>
+      Xin chào <strong>{toName}</strong>,<br>
+      Đơn đặt sân của bạn đã được xác nhận. Hẹn gặp bạn trên sân! ⚽
     </p>
 
-    <!-- Thông tin booking -->
-    <div style='background:#1a2a1a;border:1px solid rgba(30,215,96,.25);border-radius:12px;padding:20px;margin-bottom:20px;'>
-      <div style='color:#1ed760;font-size:.75rem;letter-spacing:1.5px;font-weight:700;margin-bottom:14px;'>THÔNG TIN ĐẶT SÂN</div>
+    <!-- Info box -->
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin-bottom:20px;'>
       <table style='width:100%;border-collapse:collapse;font-size:.9rem;'>
-        <tr><td style='color:#888;padding:5px 0;width:140px;'>🏟 Sân</td>
-            <td style='color:#fff;font-weight:700;'>{tenSan} ({loaiSan})</td></tr>
-        <tr><td style='color:#888;padding:5px 0;'>📍 Địa chỉ</td>
-            <td style='color:#ddd;'>{diaChi}</td></tr>
-        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td>
-            <td style='color:#fff;font-weight:600;'>{ngayThiDau}</td></tr>
-        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ</td>
-            <td style='color:#fff;font-weight:600;'>{khungGio}</td></tr>
-        <tr><td style='color:#888;padding:5px 0;'>👤 Người đặt</td>
-            <td style='color:#ddd;'>{toName}</td></tr>
-        <tr><td style='color:#888;padding:5px 0;'>📞 SĐT</td>
-            <td style='color:#ddd;'>{(string.IsNullOrEmpty(soDienThoai) ? "—" : soDienThoai)}</td></tr>
-      </table>
-    </div>
-
-    {dvSection}
-
-    <!-- Bảng tính tiền -->
-    <div style='background:#0f1f14;border-radius:12px;padding:20px;margin-bottom:20px;'>
-      <div style='color:#1ed760;font-size:.75rem;letter-spacing:1.5px;font-weight:700;margin-bottom:14px;'>CHI TIẾT THANH TOÁN</div>
-      <table style='width:100%;border-collapse:collapse;font-size:.9rem;'>
-        <tr>
-          <td style='padding:6px 0;color:#aaa;'>Giá thuê sân</td>
-          <td style='padding:6px 0;color:#fff;text-align:right;'>{giaThue:N0}đ</td>
-        </tr>
-        {(tongDichVu > 0 ? $@"<tr>
-          <td style='padding:6px 0;color:#aaa;'>Dịch vụ kèm</td>
-          <td style='padding:6px 0;color:#fff;text-align:right;'>{tongDichVu:N0}đ</td>
-        </tr>" : "")}
-        <tr style='border-top:1px solid rgba(255,255,255,.08);'>
-          <td style='padding:8px 0;color:#ccc;font-weight:600;'>Tổng gốc</td>
-          <td style='padding:8px 0;color:#fff;text-align:right;font-weight:600;'>{tongGoc:N0}đ</td>
-        </tr>
-        {voucherSanRow}
-        {voucherHTRow}
-        {(tienGiamSan + tienGiamHeThong > 0 ? $@"<tr style='border-top:1px solid rgba(30,215,96,.2);'>
-          <td style='padding:8px 0;color:#1ed760;font-weight:700;'>Tổng sau giảm</td>
-          <td style='padding:8px 0;color:#1ed760;text-align:right;font-weight:700;'>{tongSauGiam:N0}đ</td>
-        </tr>" : "")}
-        <tr style='border-top:1px solid rgba(255,255,255,.08);'>
-          <td style='padding:8px 0;color:#aaa;'>Tiền cọc đặt trước</td>
-          <td style='padding:8px 0;color:#1ed760;text-align:right;font-weight:700;'>{tienCoc:N0}đ</td>
-        </tr>
-        <tr>
-          <td style='padding:6px 0;color:#aaa;font-size:.85rem;'>Còn lại khi đến sân</td>
-          <td style='padding:6px 0;color:#ccc;text-align:right;font-size:.85rem;'>{conLai:N0}đ</td>
-        </tr>
+        <tr><td style='color:#888;padding:6px 0;width:130px;'>🏟 Sân</td>
+            <td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>📍 Địa chỉ</td>
+            <td style='color:#111;'>{diaChi}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>📅 Ngày</td>
+            <td style='color:#111;font-weight:600;'>{ngayThiDau}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>⏰ Giờ</td>
+            <td style='color:#111;font-weight:600;'>{khungGio}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>💳 Tiền cọc</td>
+            <td style='color:#1ed760;font-weight:700;'>{tienCoc:N0}đ</td></tr>
       </table>
     </div>
 
     <!-- Mã xác nhận -->
-    <div style='background:#0f1f14;border:1px solid rgba(30,215,96,.3);border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;'>
-      <div style='color:#888;font-size:.75rem;letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;'>Mã xác nhận check-in</div>
-      <div style='font-family:monospace;font-size:1.8rem;font-weight:900;color:#1ed760;letter-spacing:4px;'>
+    <div style='background:#0f1f14;border-radius:12px;padding:18px;text-align:center;margin-bottom:20px;'>
+      <div style='color:#888;font-size:.78rem;letter-spacing:1.5px;margin-bottom:8px;'>MÃ XÁC NHẬN CHECK-IN</div>
+      <div style='font-family:monospace;font-size:1.6rem;font-weight:900;color:#1ed760;letter-spacing:3px;'>
         {maXacNhan}
       </div>
-      <div style='color:#555;font-size:.78rem;margin-top:8px;'>Đưa mã này cho Staff khi đến sân</div>
+      <div style='color:#555;font-size:.75rem;margin-top:6px;'>Đưa mã này cho Staff khi đến sân</div>
     </div>
 
     <!-- QR Code -->
     <div style='text-align:center;margin-bottom:20px;'>
-      <div style='color:#666;font-size:.75rem;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase;'>Hoặc quét QR Code</div>
+      <div style='color:#888;font-size:.78rem;letter-spacing:1px;margin-bottom:10px;'>HOẶC QUÉT QR CODE</div>
       <img src='{qrUrl}' width='160' height='160'
            style='border-radius:12px;border:3px solid #1ed760;' alt='QR Code' />
     </div>
@@ -209,19 +122,19 @@ namespace Web_Stadium.Services
     <div style='text-align:center;margin-bottom:24px;'>
       <a href='{mapsUrl}' target='_blank'
          style='display:inline-block;background:#1ed760;color:#000;font-weight:700;
-                padding:12px 32px;border-radius:10px;text-decoration:none;font-size:.9rem;letter-spacing:.5px;'>
+                padding:12px 28px;border-radius:10px;text-decoration:none;font-size:.9rem;'>
         📍 Chỉ đường đến sân
       </a>
     </div>
 
-    <p style='color:#555;font-size:.8rem;text-align:center;'>
+    <p style='color:#aaa;font-size:.8rem;text-align:center;'>
       Bạn sẽ nhận email nhắc lịch trước 24 giờ và 1 giờ trước trận.
     </p>
   </div>
 
   <!-- Footer -->
-  <div style='background:#0a0a0a;padding:16px;text-align:center;border-top:1px solid rgba(255,255,255,.05);'>
-    <p style='color:#444;font-size:.75rem;margin:0;'>
+  <div style='background:#f8f8f8;padding:16px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>
       © {DateTime.Now.Year} PitchHub.vn &nbsp;·&nbsp; support@pitchhub.vn
     </p>
   </div>

@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 
 namespace Web_Stadium.Controllers

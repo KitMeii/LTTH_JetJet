@@ -28,4 +28,8 @@ public partial class DanhGia
     public virtual SanBong SanBong { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
+
+    public string? PhanHoiOwner { get; set; }
+
+    public DateTime? NgayPhanHoi { get; set; }
 }

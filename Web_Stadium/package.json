@@ -1,0 +1,10 @@
+{
+  "name": "web-stadium",
+  "version": "1.0.0",
+  "scripts": {
+    "start":   "dotnet run",
+    "dev":     "dotnet watch run",
+    "build":   "dotnet build",
+    "migrate": "dotnet ef database update"
+  }
+}

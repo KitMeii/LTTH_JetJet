@@ -1,0 +1,404 @@
+﻿@model List<Web_Stadium.EFCore.AnhSanBong>
+@{
+    ViewData["Title"] = "Quản lý ảnh chi tiết";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "QuanLyAnh";
+    var san = ViewBag.San as Web_Stadium.EFCore.SanBong;
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .image-card { border: 1px solid var(--db-border); border-radius: 12px; overflow: hidden; }
+    .image-card img { width: 100%; height: 140px; object-fit: cover; display: block; cursor: pointer; }
+    .image-info { padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.6); color: white; font-size: 12px; }
+    .badge-primary { background: var(--db-green); color: white; padding: 2px 8px; border-radius: 20px; font-size: 11px; }
+    .badge-secondary { background: #64748b; color: white; padding: 2px 8px; border-radius: 20px; font-size: 11px; }
+    .btn-icon { background: transparent; border: none; color: white; font-size: 14px; cursor: pointer; padding: 0 3px; }
+    .url-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .url-row input { flex: 1; }
+    .btn-remove { background: #fee2e2; border: none; color: #dc2626; border-radius: 8px; padding: 0 10px; cursor: pointer; font-size: 16px; }
+    .btn-remove:hover { background: #fecaca; }
+    .url-preview { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--db-border); display: none; }
+
+    /* ===== Tab switcher ===== */
+    .upload-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid var(--db-border);
+    }
+    .upload-tab {
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--db-muted);
+        cursor: pointer;
+        transition: 0.15s;
+        margin-bottom: -1px;
+    }
+    .upload-tab:hover { color: var(--db-text); }
+    .upload-tab.active {
+        color: var(--db-green);
+        border-bottom-color: var(--db-green);
+    }
+    .upload-pane { display: none; }
+    .upload-pane.active { display: block; }
+
+    /* ===== File dropzone ===== */
+    .dropzone {
+        border: 2px dashed var(--db-border);
+        border-radius: 14px;
+        padding: 28px 20px;
+        text-align: center;
+        background: var(--db-bg);
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+        border-color: var(--db-green);
+        background: var(--db-green-bg);
+    }
+    .dropzone__icon { font-size: 2.4rem; opacity: 0.5; margin-bottom: 6px; }
+    .dropzone__hint { color: var(--db-muted); font-size: 13px; margin-top: 4px; }
+    .dropzone input[type="file"] { display: none; }
+
+    .file-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+    }
+    .file-preview-item {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--db-border);
+        aspect-ratio: 1;
+        background: #f1f5f9;
+    }
+    .file-preview-item img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .file-preview-item .fp-name {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.55); color: white;
+        font-size: 11px; padding: 4px 6px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+</style>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size:11px;letter-spacing:1px;">OWNER / QUẢN LÝ ẢNH / @san?.TenSan?.ToUpper()</div>
+                <h1 style="font-size:2rem;font-weight:700;margin:0;">
+                    Ảnh sân <span style="color:var(--db-green)">@san?.TenSan</span>
+                </h1>
+                <p class="text-muted mt-2 mb-0">Thêm, sắp xếp và chọn ảnh đại diện cho sân</p>
+            </div>
+            <a href="/Owner/QuanLyAnh" class="btn btn-outline-secondary rounded-pill">← Quay lại</a>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-3 mb-3">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-3 mb-3">❌ @TempData["Error"]</div>
+    }
+
+    <!-- THÊM ẢNH -->
+    <div class="card shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-semibold mb-1">📷 Thêm ảnh cho sân</h5>
+        <p class="text-muted small mb-3">Chọn cách upload phù hợp · Có thể upload nhiều ảnh cùng lúc</p>
+
+        <div class="upload-tabs">
+            <button type="button" class="upload-tab active" data-tab="file">💻 Upload từ máy</button>
+            <button type="button" class="upload-tab" data-tab="url">🔗 Dùng URL</button>
+        </div>
+
+        <!-- Tab 1: Upload file từ máy -->
+        <div class="upload-pane active" id="pane-file">
+            <form method="post" action="/Owner/UploadAnhFile" enctype="multipart/form-data" id="formUploadFile">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sanId" value="@san?.Id" />
+
+                <label class="dropzone" id="dropzone" for="fileInput">
+                    <input type="file" id="fileInput" name="files" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
+                    <div class="dropzone__icon">📁</div>
+                    <div><strong>Kéo thả ảnh vào đây</strong> hoặc <span style="color: var(--db-green); text-decoration: underline;">bấm để chọn file</span></div>
+                    <div class="dropzone__hint">JPG, PNG, WebP, GIF · Tối đa 5MB / ảnh · Có thể chọn nhiều ảnh</div>
+                </label>
+
+                <div class="file-preview-grid" id="filePreview"></div>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" id="btnClearFiles" style="display:none;">🗑️ Xóa hết</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4" id="btnSubmitFiles" disabled>⬆️ Upload</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tab 2: Upload bằng URL -->
+        <div class="upload-pane" id="pane-url">
+            <form method="post" action="/Owner/UploadAnhUrl">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="sanId" value="@san?.Id" />
+
+                <p class="text-muted small mb-2">Dán link ảnh từ internet · Hỗ trợ nhiều URL cùng lúc</p>
+
+                <div id="urlList">
+                    <!-- Hàng URL đầu tiên -->
+                    <div class="url-row">
+                        <img class="url-preview" src="" alt="">
+                        <input type="text" name="urls" class="form-control url-input"
+                               placeholder="https://example.com/anh.jpg" />
+                        <button type="button" class="btn-remove" onclick="xoaHang(this)" title="Xóa">✕</button>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill"
+                            onclick="themHang()">+ Thêm URL</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4">⬆️ Lưu tất cả</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="card shadow-sm rounded-4 p-4">
+        <h5 class="fw-semibold mb-3">🖼️ Thư viện ảnh (@Model.Count ảnh)</h5>
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-images fa-3x mb-2 opacity-25 d-block"></i>
+                <p>Chưa có ảnh nào.</p>
+            </div>
+        }
+        else
+        {
+            <div class="image-grid">
+                @foreach (var img in Model.OrderBy(x => x.ThuTu))
+                {
+                    <div class="image-card">
+                        <img src="@img.DuongDan" alt="Ảnh sân" loading="lazy"
+                             onclick="openLightbox('@img.DuongDan')">
+                        <div class="image-info">
+                            <div>
+                                @if (img.ThuTu == 1)
+                                {
+                                    <span class="badge-primary">📌 Đại diện</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-secondary">#@img.ThuTu</span>
+                                }
+                            </div>
+                            <div>
+                                <form method="post" action="/Owner/SetImagePrimaryForm" style="display:inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="imageId" value="@img.Id" />
+                                    <input type="hidden" name="sanId" value="@san?.Id" />
+                                    <button type="submit" class="btn-icon" title="Đặt làm đại diện">⭐</button>
+                                </form>
+                                <form method="post" action="/Owner/XoaAnhForm" style="display:inline"
+                                      onsubmit="return confirm('Xóa ảnh này?')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@img.Id" />
+                                    <input type="hidden" name="sanId" value="@san?.Id" />
+                                    <button type="submit" class="btn-icon" style="color:#ff6b6b" title="Xóa">🗑️</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark border-0 rounded-4">
+            <div class="modal-body p-2 text-center">
+                <img id="lightboxImg" src="" class="img-fluid rounded-3" style="max-height:85vh">
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-light rounded-pill px-4"
+                        data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// ===== Tab switcher =====
+document.querySelectorAll('.upload-tab').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const target = this.dataset.tab;
+        document.querySelectorAll('.upload-tab').forEach(b => b.classList.toggle('active', b === this));
+        document.querySelectorAll('.upload-pane').forEach(p => {
+            p.classList.toggle('active', p.id === 'pane-' + target);
+        });
+    });
+});
+
+// ===== File upload + dropzone + preview =====
+(function () {
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('filePreview');
+    const btnSubmit = document.getElementById('btnSubmitFiles');
+    const btnClear = document.getElementById('btnClearFiles');
+    if (!dropzone || !fileInput) return;
+
+    // DataTransfer giúp giữ danh sách file để user có thể bỏ ảnh cụ thể
+    let dt = new DataTransfer();
+
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+    function renderPreview() {
+        preview.innerHTML = '';
+        Array.from(dt.files).forEach((f, idx) => {
+            const url = URL.createObjectURL(f);
+            const item = document.createElement('div');
+            item.className = 'file-preview-item';
+            item.innerHTML = `
+                <img src="${url}" alt="${f.name}" />
+                <div class="fp-name" title="${f.name}">${f.name}</div>
+                <button type="button" class="btn-remove" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;padding:0;font-size:12px;" title="Bỏ ảnh này">✕</button>
+            `;
+            item.querySelector('button').addEventListener('click', () => {
+                const newDt = new DataTransfer();
+                Array.from(dt.files).forEach((file, i) => { if (i !== idx) newDt.items.add(file); });
+                dt = newDt;
+                fileInput.files = dt.files;
+                renderPreview();
+            });
+            preview.appendChild(item);
+        });
+        btnSubmit.disabled = dt.files.length === 0;
+        btnClear.style.display = dt.files.length > 0 ? 'inline-block' : 'none';
+    }
+
+    function addFiles(fileList) {
+        let added = 0, skipped = 0;
+        Array.from(fileList).forEach(f => {
+            if (!ALLOWED.includes(f.type)) { skipped++; return; }
+            if (f.size > MAX_SIZE) { skipped++; return; }
+            dt.items.add(f);
+            added++;
+        });
+        fileInput.files = dt.files;
+        renderPreview();
+        if (skipped > 0) {
+            alert(`Bỏ qua ${skipped} file không hợp lệ (sai định dạng hoặc quá 5MB).`);
+        }
+    }
+
+    fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+    ['dragenter', 'dragover'].forEach(evt =>
+        dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+        dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); })
+    );
+    dropzone.addEventListener('drop', e => {
+        if (e.dataTransfer?.files) addFiles(e.dataTransfer.files);
+    });
+
+    btnClear.addEventListener('click', () => {
+        dt = new DataTransfer();
+        fileInput.files = dt.files;
+        renderPreview();
+    });
+})();
+
+// ===== URL upload (giữ logic cũ) =====
+// Thêm hàng URL mới
+function themHang() {
+    const div = document.createElement('div');
+    div.className = 'url-row';
+    div.innerHTML = `
+        <img class="url-preview" src="" alt="">
+        <input type="text" name="urls" class="form-control url-input"
+               placeholder="https://example.com/anh.jpg" />
+        <button type="button" class="btn-remove" onclick="xoaHang(this)" title="Xóa">✕</button>`;
+    document.getElementById('urlList').appendChild(div);
+    div.querySelector('.url-input').addEventListener('blur', previewUrl);
+    div.querySelector('.url-input').focus();
+}
+
+function xoaHang(btn) {
+    const list = document.getElementById('urlList');
+    if (list.children.length <= 1) {
+        btn.closest('.url-row').querySelector('input').value = '';
+        btn.closest('.url-row').querySelector('.url-preview').style.display = 'none';
+        return;
+    }
+    btn.closest('.url-row').remove();
+}
+
+function previewUrl(e) {
+    const input = e.target;
+    const url   = input.value.trim();
+    const img   = input.closest('.url-row').querySelector('.url-preview');
+    if (!url) { img.style.display = 'none'; return; }
+    img.src = url;
+    img.style.display = 'block';
+    img.onerror = () => { img.style.display = 'none'; };
+}
+
+document.querySelectorAll('.url-input').forEach(input => {
+    input.addEventListener('blur', previewUrl);
+});
+
+// ===== Lightbox =====
+window.openLightbox = function(src) {
+    document.getElementById('lightboxImg').src = src;
+    new bootstrap.Modal(document.getElementById('lightboxModal')).show();
+};
+</script>
+}

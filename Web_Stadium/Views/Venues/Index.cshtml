@@ -5,6 +5,8 @@
     var yeuThichIds = ViewBag.YeuThichIds as System.Collections.Generic.HashSet<int>
                    ?? new System.Collections.Generic.HashSet<int>();
     var currentUserId = ViewBag.UserId as int?;
+    var anhDaiDien = ViewBag.AnhDaiDien as System.Collections.Generic.Dictionary<int, string>
+                  ?? new System.Collections.Generic.Dictionary<int, string>();
 }
 @* AntiForgery token ẩn để JS dùng cho bookmark *@
 <form id="afForm" style="display:none">@Html.AntiForgeryToken()</form>
@@ -450,13 +452,17 @@
                          data-loaico="@san.LoaiCo"
                          onclick="focusMap(@san.Id)">
                         <div class="san-item-img">
-                            @if (!string.IsNullOrEmpty(san.HinhAnh))
+                            @{
+                                var imgUrl = anhDaiDien.TryGetValue(san.Id, out var u) && !string.IsNullOrEmpty(u)
+                                              ? u
+                                              : san.HinhAnh;
+                            }
+                            @if (!string.IsNullOrEmpty(imgUrl))
                             {
-                                <img src="@san.HinhAnh" alt="@san.TenSan" />
+                                <img src="@imgUrl" alt="@san.TenSan" />
                             }
                             else
                             {
-
                                 <span>⚽</span>
                             }
                         </div>

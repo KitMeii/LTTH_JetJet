@@ -1,0 +1,559 @@
+﻿@model Web_Stadium.EFCore.GiaiDau
+@{
+    ViewData["Title"] = "Chi tiết giải — " + Model.TenGiai;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var bxh = ViewBag.BangXepHang
+              as Dictionary<int, List<Web_Stadium.Services.StandingRow>> ?? new Dictionary<int, List<Web_Stadium.Services.StandingRow>>();
+    var soDoiDK = Model.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
+    var (spClass, spLabel) = Model.TrangThai switch
+    {
+        "Draft" => ("sp-draft", "⚪ Draft"),
+        "Approved" => ("sp-approved", "✅ Đã duyệt"),
+        "RegistrationOpen" => ("sp-open", "📋 Đang đăng ký"),
+        "RegistrationClosed" => ("sp-closed", "🔒 Đã đóng"),
+        "Active" => ("sp-active", "🟢 Đang diễn ra"),
+        "Finished" => ("sp-finished", "🏁 Kết thúc"),
+        _ => ("sp-draft", Model.TrangThai)
+    };
+}
+
+@section Styles {
+    <style>
+        .sp-draft {
+            background: rgba(15,23,42,.08);
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .sp-approved {
+            background: rgba(14,168,106,.1);
+            color: var(--green);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .sp-open {
+            background: rgba(14,165,233,.1);
+            color: #0EA5E9;
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .sp-closed {
+            background: rgba(245,158,11,.1);
+            color: #F59E0B;
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .sp-active {
+            background: rgba(14,168,106,.18);
+            color: var(--green);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .sp-finished {
+            background: rgba(15,23,42,.06);
+            color: var(--muted2);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .t-tabs {
+            display: flex;
+            gap: 2px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        .t-tab {
+            padding: 10px 20px;
+            font-family: var(--ff-h);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all .2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+
+            .t-tab:hover {
+                color: var(--green);
+            }
+
+            .t-tab.active {
+                color: var(--green);
+                border-bottom-color: var(--green);
+            }
+
+        .t-panel {
+            display: none;
+        }
+
+            .t-panel.active {
+                display: block;
+            }
+
+        .bxh-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .bxh-table thead th {
+                font-family: var(--ff-h);
+                font-size: 10px;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: var(--muted);
+                padding: 10px 14px;
+                border-bottom: 1px solid rgba(14,168,106,.18);
+                font-weight: 400;
+                white-space: nowrap;
+            }
+
+            .bxh-table tbody tr {
+                border-bottom: 1px solid var(--border);
+            }
+
+                .bxh-table tbody tr:hover {
+                    background: rgba(14,168,106,.02);
+                }
+
+            .bxh-table tbody td {
+                padding: 11px 14px;
+                font-size: 13px;
+            }
+
+        .rank-1 td:first-child {
+            color: #FFD700;
+            font-weight: 800;
+        }
+
+        .rank-2 td:first-child {
+            color: #C0C0C0;
+            font-weight: 700;
+        }
+
+        .rank-3 td:first-child {
+            color: #CD7F32;
+            font-weight: 700;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+            .info-row:last-child {
+                border-bottom: none;
+            }
+
+        .match-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+    </style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 32px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <a href="/AdminTournament"
+           style="color:var(--muted);font-size:13px;text-decoration:none;
+                  display:inline-flex;align-items:center;gap:6px;margin-bottom:12px">
+            ← Tất cả giải đấu
+        </a>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="section-label">Admin — Chi tiết giải đấu</div>
+                <h1 style="font-style:italic;line-height:.9;margin:0 0 10px">
+                    @Model.TenGiai.ToUpper()
+                </h1>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span class="@spClass">@spLabel</span>
+                    <span style="font-size:13px;color:var(--muted)">
+                        🏟️ @Model.SanBong?.TenSan &nbsp;·&nbsp;
+                        👤 @Model.Owner?.HoTen
+                    </span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                @if (Model.TrangThai is "Active" or "Finished")
+                {
+                    <a href="/AdminTournament/ExcelDoiSoat/@Model.Id"
+                       class="btn-outline-green">📊 Tải Excel</a>
+                }
+                @if (Model.TrangThai == "Draft")
+                {
+                    <button type="button" class="btn btn-success rounded-pill"
+                            onclick="moModalPheDuyet(@Model.Id, '@Model.TenGiai.Replace("'", "\\'")')">
+                        ✅ Phê duyệt ngay
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/AdminTournament" class="btn btn-outline-success rounded-pill">← Danh sách</a>
+        <a href="/Admin" class="btn btn-outline-secondary rounded-pill">📊 Dashboard</a>
+        <a href="/Admin/AuditLog" class="btn btn-outline-info rounded-pill">📋 Audit Log</a>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-4">
+            ✅ @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            ❌ @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- KPI bar -->
+    <div class="row g-3 mb-4">
+        @foreach (var (ico, val, lbl) in new[]{
+                ("⚽", $"{soDoiDK}/{Model.SoDoiToiDa}", "Đội đăng ký"),
+                ("📊", $"{Model.SoBang} bảng",          "Thể thức"),
+                ("💰", Model.LePhiGiai.ToString("N0")+"đ","Lệ phí/đội"),
+                ("🔒", Model.TienKyQuy.ToString("N0")+"đ","Ký quỹ/đội"),
+                ("📅", Model.NgayBatDau.ToString("dd/MM/yy"),"Bắt đầu"),
+                ("🏁", Model.NgayKetThuc.ToString("dd/MM/yy"),"Kết thúc"),
+                })
+        {
+            <div class="col-6 col-md-2">
+                <div style="background:var(--card);border:1px solid var(--border);
+                                    border-radius:var(--r);padding:14px;text-align:center;
+                                    box-shadow:var(--shadow-sm)">
+                    <div style="font-size:1.1rem;margin-bottom:4px">@ico</div>
+                    <div style="font-weight:800;font-size:.9rem;color:var(--green)">@val</div>
+                    <div style="font-size:10px;color:var(--muted)">@lbl</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- TABs -->
+    <div class="t-tabs">
+        <button class="t-tab active" onclick="showTab('lichsu',this)">📋 Thông tin</button>
+        <button class="t-tab" onclick="showTab('lich',this)">📅 Lịch thi đấu</button>
+        <button class="t-tab" onclick="showTab('bxh',this)">📊 BXH</button>
+        <button class="t-tab" onclick="showTab('doi',this)">👥 Đội tham dự</button>
+        <button class="t-tab" onclick="showTab('vpl',this)">⚽ Vua phá lưới</button>
+    </div>
+
+    <!-- TAB: THÔNG TIN -->
+    <div class="t-panel active" id="tab-lichsu">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div style="background:var(--card);border:1px solid var(--border);
+                            border-radius:var(--r);padding:20px">
+                    <div style="font-family:var(--ff-h);font-size:11px;letter-spacing:2px;
+                                text-transform:uppercase;color:var(--muted);margin-bottom:14px">
+                        THÔNG TIN CHUNG
+                    </div>
+                    @foreach (var (l, v) in new[]{
+                                        ("Sân",          Model.SanBong?.TenSan + " — " + Model.SanBong?.Quan),
+                                        ("Chủ sở hữu",  Model.Owner?.HoTen + " / " + Model.Owner?.Email),
+                                        ("Tạo lúc",      Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")),
+                                        ("Đóng đăng ký", Model.ThoiGianDongDanhSach?.ToString("dd/MM/yyyy") ?? "—"),
+                                        ("Mô tả",        string.IsNullOrEmpty(Model.MoTa) ? "—" : Model.MoTa),
+                                        })
+                    {
+                        <div class="info-row">
+                            <span style="color:var(--muted)">@l</span>
+                            <span style="font-weight:600;max-width:55%;text-align:right;font-size:12px">@v</span>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div style="background:var(--card);border:1px solid var(--border);
+                            border-radius:var(--r);padding:20px">
+                    <div style="font-family:var(--ff-h);font-size:11px;letter-spacing:2px;
+                                text-transform:uppercase;color:var(--muted);margin-bottom:14px">
+                        CHẾ TÀI & TÀI CHÍNH
+                    </div>
+                    @foreach (var (l, v) in new[]{
+                                        ("Lệ phí/đội",   Model.LePhiGiai.ToString("N0") + "đ"),
+                                        ("Ký quỹ/đội",   Model.TienKyQuy.ToString("N0") + "đ"),
+                                        ("Tổng lệ phí",  (Model.LePhiGiai * soDoiDK).ToString("N0") + "đ"),
+                                        ("Phạt thẻ vàng",Model.TienPhatTheVang.ToString("N0") + "đ"),
+                                        ("Phạt thẻ đỏ",  Model.TienPhatTheDo.ToString("N0") + "đ"),
+                                        ("Treo giò đỏ",  Model.SoTranTreoGioTheDo + " trận"),
+                                        ("Vàng tích lũy",Model.SoTheVangTichLuy + " thẻ"),
+                                        })
+                    {
+                        <div class="info-row">
+                            <span style="color:var(--muted)">@l</span>
+                            <span style="font-weight:700;color:var(--green)">@v</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: LỊCH THI ĐẤU -->
+    <div class="t-panel" id="tab-lich">
+        @if (!Model.TranDaus?.Any() == true)
+        {
+            <p style="color:var(--muted);text-align:center;padding:40px">Chưa có lịch thi đấu.</p>
+        }
+        else
+        {
+            @foreach (var vong in (Model.TranDaus ?? new List<Web_Stadium.EFCore.TranDau>()).GroupBy(t => t.VongDau).OrderBy(g => g.Key))
+            {
+                <div style="font-family:var(--ff-h);font-size:10px;letter-spacing:3px;
+                                            text-transform:uppercase;color:var(--muted);
+                                            margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+                    VÒNG @vong.Key
+                </div>
+                @foreach (var t in vong.OrderBy(x => x.NgayThiDau))
+                {
+                    var tyso = t.BanThangNha.HasValue
+                    ? $"{t.BanThangNha} – {t.BanThangKhach}" : "VS";
+                    <div class="match-row">
+                        <span style="font-weight:600;flex:1;text-align:right;font-size:13px">
+                            @t.DoiNha?.TenDoi
+                        </span>
+                        <span style="font-family:var(--ff-h);font-size:1.1rem;
+                                                             color:var(--green);min-width:60px;text-align:center">
+                            @tyso
+                        </span>
+                        <span style="font-weight:600;flex:1;font-size:13px">
+                            @t.DoiKhach?.TenDoi
+                        </span>
+                        <span style="font-size:11px;color:var(--muted);white-space:nowrap">
+                            @t.NgayThiDau.ToString("dd/MM")
+                        </span>
+                        <span style="font-size:10px;padding:2px 8px;border-radius:999px;
+                                                             background:var(--bg3);color:var(--muted);white-space:nowrap">
+                            @t.TrangThai
+                        </span>
+                    </div>
+                }
+            }
+        }
+    </div>
+
+    <!-- TAB: BXH -->
+    <div class="t-panel" id="tab-bxh">
+        @foreach (var bang in Model.BangDaus ?? new List<Web_Stadium.EFCore.BangDau>())
+        {
+            <div style="margin-bottom:28px">
+                <div style="font-family:var(--ff-h);font-size:12px;letter-spacing:2px;
+                                    text-transform:uppercase;color:var(--green);margin-bottom:10px">
+                    🏆 @bang.TenBang
+                </div>
+                @if (bxh.TryGetValue(bang.Id, out var rows) && rows.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="bxh-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Đội</th>
+                                    <th>Trận</th>
+                                    <th>T</th>
+                                    <th>H</th>
+                                    <th>B</th>
+                                    <th>BT</th>
+                                    <th>BB</th>
+                                    <th>HS</th>
+                                    <th>Điểm</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in rows)
+                                {
+                                    <tr class="rank-@r.ThuHang">
+                                        <td><strong>@r.ThuHang</strong></td>
+                                        <td style="font-weight:600">@r.TenDoi</td>
+                                        <td>@r.SoTran</td>
+                                        <td style="color:var(--green)">@r.Thang</td>
+                                        <td>@r.Hoa</td>
+                                        <td style="color:var(--danger)">@r.Thua</td>
+                                        <td>@r.BanThang</td>
+                                        <td>@r.BanThua</td>
+                                        <td style="color:@(r.HieuSo > 0 ? "var(--green)" : r.HieuSo < 0 ? "var(--danger)" : "var(--muted)")">
+                                            @(r.HieuSo > 0 ? "+" : "")@r.HieuSo
+                                        </td>
+                                        <td><strong style="font-family:var(--ff-h);font-size:15px;color:var(--green)">@r.Diem</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- TAB: ĐỘI -->
+    <div class="t-panel" id="tab-doi">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+            @foreach (var doi in Model.DoiBongs?.Where(d => d.DaThanhToan) ?? new List<Web_Stadium.EFCore.DoiBong>())
+            {
+                <div style="background:var(--card);border:1px solid var(--border);
+                                    border-radius:var(--r);padding:14px;
+                                    display:flex;align-items:center;gap:10px">
+                    <div style="width:38px;height:38px;border-radius:50%;
+                                        background:var(--green);color:#fff;
+                                        font-family:var(--ff-h);font-size:15px;
+                                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        @doi.TenDoi.FirstOrDefault()
+                    </div>
+                    <div style="min-width:0">
+                        <div style="font-weight:700;font-size:13px;
+                                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                            @doi.TenDoi
+                        </div>
+                        <div style="font-size:11px;color:var(--muted)">
+                            @doi.ThanhViens?.Count người &nbsp;·&nbsp; @doi.Bang?.TenBang
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- TAB: VUA PHÁ LƯỚI -->
+    <div class="t-panel" id="tab-vpl">
+        @{
+            var vpl = (Model.DoiBongs ?? new List<Web_Stadium.EFCore.DoiBong>())
+            .SelectMany(d => d.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>())
+            .Where(tv => tv.TongBanThang > 0)
+            .OrderByDescending(tv => tv.TongBanThang)
+            .Take(10).ToList();
+        }
+        @if (!vpl.Any())
+        {
+            <p style="color:var(--muted);text-align:center;padding:40px">Chưa có bàn thắng.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="bxh-table">
+                    <thead>
+                        <tr><th>#</th><th>Cầu thủ</th><th>Đội</th><th>⚽ Bàn</th><th>💛 Vàng</th><th>🟥 Đỏ</th></tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int r = 1;
+                        }
+                        @foreach (var tv in vpl)
+                        {
+                            <tr class="rank-@r">
+                                <td><strong>@r</strong></td>
+                                <td style="font-weight:600">@tv.HoTen</td>
+                                <td style="color:var(--muted);font-size:12px">@tv.Doi?.TenDoi</td>
+                                <td><strong style="font-family:var(--ff-h);font-size:16px;color:var(--green)">@tv.TongBanThang</strong></td>
+                                <td style="color:#F59E0B;font-weight:700">@tv.TongTheVang</td>
+                                <td style="color:var(--danger);font-weight:700">@tv.TongTheDo</td>
+                            </tr>
+                            r++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal Phê duyệt (inline trong Details) -->
+<div class="modal fade" id="modalPheDuyet" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:var(--r-lg);border:1px solid var(--border)">
+            <div class="modal-header" style="border-bottom:1px solid var(--border)">
+                <h5 class="modal-title" style="font-family:var(--ff-h)">✅ PHÊ DUYỆT GIẢI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formPheDuyet">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p style="color:var(--muted);font-size:14px">
+                        Phê duyệt giải <strong>@Model.TenGiai</strong>?
+                        Owner sẽ có thể mở đăng ký sau khi phê duyệt.
+                    </p>
+                    <textarea name="ghiChu" class="form-control" rows="2"
+                              placeholder="Ghi chú (tùy chọn)"></textarea>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border)">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill"
+                            data-bs-dismiss="modal">
+                        Hủy
+                    </button>
+                    <button type="submit" class="btn btn-success rounded-pill">✅ Phê duyệt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showTab(name, el) {
+            document.querySelectorAll('.t-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.t-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            if (el) el.classList.add('active');
+        }
+        function moModalPheDuyet(id) {
+            document.getElementById('formPheDuyet').action = '/AdminTournament/PheDuyet/' + id;
+            new bootstrap.Modal(document.getElementById('modalPheDuyet')).show();
+        }
+    </script>
+}

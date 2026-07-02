@@ -1,0 +1,315 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PitchHub Admin</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+
+    <style>
+        /* Layout-critical overrides not in admin-dashboard.css */
+        .admin-wrap {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .admin-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 256px;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 200;
+            background: linear-gradient(180deg,#0d1219,#0b0f14);
+            border-right: 1px solid rgba(255,255,255,.07);
+            padding: 22px 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .admin-main {
+            margin-left: 256px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            width: calc(100% - 256px);
+        }
+
+        .admin-topbar {
+            background: rgba(13,18,25,.96);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,.07);
+            padding: 12px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 16px;
+        }
+
+        .admin-content {
+            flex: 1;
+            padding: 26px 28px 40px;
+        }
+
+        .admin-toast-wrap {
+            position: fixed;
+            top: 72px;
+            right: 22px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .admin-toast {
+            padding: 11px 16px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 260px;
+            box-shadow: 0 8px 40px rgba(0,0,0,.55);
+        }
+
+            .admin-toast.success {
+                background: rgba(0,212,126,.14);
+                border: 1px solid rgba(0,212,126,.28);
+                color: #00ff99;
+            }
+
+            .admin-toast.error {
+                background: rgba(255,93,115,.14);
+                border: 1px solid rgba(255,93,115,.28);
+                color: #ff5d73;
+            }
+
+        @@keyframes slideIn {
+            from {
+                transform: translateX(110%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .admin-toast {
+            animation: slideIn .28s ease;
+        }
+
+        @@media(max-width:900px) {
+            .admin-sidebar {
+                display: none;
+            }
+
+            .admin-main {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    @{
+        var isIndexActive = ViewContext.RouteData.Values["action"]?.ToString() == "Index"
+        && ViewContext.RouteData.Values["controller"]?.ToString() == "Admin";
+        var choDuyet = ViewBag.ChoPheDuyet as int?;
+        var soKhieuNai = ViewBag.KhieuNaiChoXuLy as int?;
+        var kn = soKhieuNai;
+        var cd = choDuyet;
+    }
+
+    <div class="admin-wrap">
+
+        <!-- ══ SIDEBAR ══ -->
+        <aside class="admin-sidebar">
+            <div class="brand">
+                <div class="brand-logo">P</div>
+                <div class="brand-text">
+                    <h1>PITCHHUB</h1>
+                    <p>Admin Control Center</p>
+                </div>
+            </div>
+
+            <nav>
+                <div class="side-section-label">Tổng quan</div>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" && ViewContext.RouteData.Values["controller"]?.ToString() == "Admin" ? "active" : "")"
+                   href="/Admin">
+                    <div class="side-link-left">
+                        <i class="bi bi-grid-1x2"></i> Trung tâm
+                    </div>
+
+                    @if (isIndexActive)
+                    {
+                        <span class="side-dot"></span>
+                    }
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AdminTournament" ? "active" : "")"
+                   href="/AdminTournament">
+                    <div class="side-link-left"><i class="bi bi-trophy"></i> Giải đấu</div>
+                </a>
+
+                <div class="side-section-label">Quản lý</div>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "DuyetSan" ? "active" : "")"
+                   href="/Admin/DuyetSan">
+                    <div class="side-link-left"><i class="bi bi-building-check"></i> Duyệt sân</div>
+
+                    @if (choDuyet > 0)
+                    {
+                        <span class="side-badge">@choDuyet</span>
+                    }
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "QuanLySan" ? "active" : "")"
+                   href="/Admin/QuanLySan">
+                    <div class="side-link-left"><i class="bi bi-pin-map"></i> Quản lý sân</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "QuanLyUser" ? "active" : "")"
+                   href="/Admin/QuanLyUser">
+                    <div class="side-link-left"><i class="bi bi-people"></i> Tài khoản</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "MasterData" ? "active" : "")"
+                   href="/Admin/MasterData">
+                    <div class="side-link-left"><i class="bi bi-database"></i> Master Data</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "KhieuNai" ? "active" : "")"
+                   href="/Admin/KhieuNai">
+                    <div class="side-link-left"><i class="bi bi-exclamation-triangle"></i> Khiếu nại</div>
+
+                    @if (soKhieuNai > 0)
+                    {
+                        <span class="side-badge">@soKhieuNai</span>
+                    }
+                </a>
+
+                <div class="side-section-label">Báo cáo</div>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "BaoCao" ? "active" : "")"
+                   href="/Admin/BaoCao">
+                    <div class="side-link-left"><i class="bi bi-bar-chart-line"></i> Báo cáo</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "AuditLog" ? "active" : "")"
+                   href="/Admin/AuditLog">
+                    <div class="side-link-left"><i class="bi bi-shield-check"></i> Audit Log</div>
+                </a>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "TatCaHopDong" ? "active" : "")"
+                   href="/Admin/TatCaHopDong">
+                    <div class="side-link-left"><i class="bi bi-file-earmark-text"></i> Hợp đồng</div>
+                </a>
+
+                <div class="side-section-label">Hồ sơ</div>
+                <a class="side-link @(ViewContext.RouteData.Values["action"]?.ToString() == "HoSo" ? "active" : "")"
+                   href="/Admin/HoSo">
+                    <div class="side-link-left"><i class="bi bi-file-person"></i> Hồ sơ</div>
+                </a>
+
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="/" class="side-link" style="font-size:12px;">
+                    <div class="side-link-left">
+                        <i class="bi bi-box-arrow-left"></i> Về trang chủ
+                    </div>
+                </a>
+                <a href="/Auth/Logout" class="side-link" style="color:#ff5d73;font-size:12px;">
+                    <div class="side-link-left">
+                        <i class="bi bi-power"></i> Đăng xuất
+                    </div>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ══ MAIN ══ -->
+        <div class="admin-main">
+
+            <!-- TOPBAR -->
+            <div class="admin-topbar">
+                <div class="topbar-title">@(ViewData["Title"] ?? "Admin")</div>
+                <div class="topbar-right">
+
+                    @if (cd > 0)
+                    {
+                        <a href="/Admin/DuyetSan" class="topbar-badge">
+                            🏟️ @cd chờ duyệt
+                        </a>
+                    }
+                    @if (kn > 0)
+                    {
+                        <a href="/Admin/KhieuNai" class="topbar-badge">
+                            ⚠️ @kn khiếu nại
+                        </a>
+                    }
+                    <div class="topbar-user">
+                        <div class="topbar-avatar">A</div>
+                        <span>Admin</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOAST -->
+            <div class="admin-toast-wrap">
+                @if (TempData["Success"] != null)
+                {
+                    <div class="admin-toast success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        @TempData["Success"]
+                    </div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="admin-toast error">
+                        <i class="bi bi-x-circle-fill"></i>
+                        @TempData["Error"]
+                    </div>
+                }
+            </div>
+
+            <!-- NỘI DUNG TRANG -->
+            <div class="admin-content">
+                @RenderBody()
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Tự ẩn toast sau 4 giây
+        setTimeout(function() {
+            document.querySelectorAll('.admin-toast').forEach(function(el) {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity .5s';
+                setTimeout(function() { el.remove(); }, 500);
+            });
+        }, 4000);
+
+        // Badge sidebar realtime
+        fetch('/Admin/GetSoKhieuNai')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.soKhieuNai > 0) {
+                    document.querySelectorAll('.badge-kn').forEach(function(el) {
+                        el.textContent = data.soKhieuNai;
+                        el.style.display = 'inline';
+                    });
+                }
+            }).catch(function(){});
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

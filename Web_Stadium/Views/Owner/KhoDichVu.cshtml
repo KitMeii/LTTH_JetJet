@@ -1,105 +1,341 @@
-﻿@* ============================================================
-   Views/Owner/KhoDichVu.cshtml
-   ============================================================ *@
+﻿@* Views/Owner/KhoDichVu.cshtml - Phiên bản sửa lỗi thẻ tr *@
 @model List<Web_Stadium.EFCore.DichVu>
 @{
     ViewData["Title"] = "Kho dịch vụ";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DanhSachSan";
     var san = ViewBag.San as Web_Stadium.EFCore.SanBong;
     var dmChuaBat = ViewBag.DanhMucChuaBat as List<Web_Stadium.EFCore.DanhMucDichVu> ?? new();
 }
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">@san?.TenSan</div>
-        <h1 style="font-style:italic;line-height:0.9">KHO<br><span class="text-green">DỊCH VỤ</span></h1>
-        <p style="color:var(--muted)">Quản lý dịch vụ kèm theo đơn đặt sân — User chọn khi booking</p>
-    </div>
-</div>
-<<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex justify-content-between align-items-center gap-2">
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-success rounded-pill">← Danh sách sân</a>
-        @if (dmChuaBat.Any())
-        {
-            <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#modalBatDV">+ Bật dịch vụ</button>
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
         }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .breadcrumb-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--db-muted);
+        text-decoration: none;
+        margin-bottom: 8px;
+    }
+        .breadcrumb-back:hover { color: var(--db-green); }
+
+    .btn-green {
+        background: var(--db-green);
+        border: none;
+        border-radius: 40px;
+        padding: 6px 20px;
+        font-weight: 500;
+        color: white;
+    }
+
+    .btn-outline-sm {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 30px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+        .btn-outline-sm:hover {
+            background: var(--db-green-bg);
+            border-color: var(--db-green-border);
+            color: var(--db-green);
+        }
+
+    .table-wrapper {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        overflow-x: auto;
+    }
+
+    .service-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+    }
+
+        .service-table th {
+            background: var(--db-surface);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--db-muted);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--db-border);
+            text-align: left;
+        }
+
+        .service-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--db-border);
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .service-table tr:last-child td {
+            border-bottom: none;
+        }
+
+    .badge-stock {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-radius: 30px;
+        padding: 3px 10px;
+        font-size: 11px;
+        display: inline-block;
+    }
+
+    .badge-stock-low {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .badge-stock-out {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .form-control-inline {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 12px;
+        width: 95px;
+    }
+
+    .flex-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 0;
+        color: var(--db-muted);
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <a href="/Owner/DanhSachSan" class="breadcrumb-back"><i class="fas fa-arrow-left"></i> Danh sách sân</a>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">DỊCH VỤ / @san?.TenSan</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Kho <span style="color: var(--db-green);">dịch vụ</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý giá, tồn kho và trạng thái dịch vụ</p>
+            </div>
+            @if (dmChuaBat.Any())
+            {
+                <button class="btn btn-green" data-bs-toggle="modal" data-bs-target="#modalBatDV">
+                    <i class="fas fa-plus-circle me-2"></i>Bật dịch vụ
+                </button>
+            }
+        </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_OwnerNav")
+
 <div class="container py-5">
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-exclamation-triangle me-2"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
 
-    <!-- Danh sách dịch vụ đang bật -->
-    <div class="section-card p-0 overflow-hidden mb-4">
-        <div style="padding:14px 20px;font-family:var(--ff-h);font-size:14px;border-bottom:1px solid var(--border)">Dịch vụ đang cung cấp</div>
-        <table class="table table-hover mb-0">
-            <thead style="background:var(--bg3)">
-                <tr>
-                    <th style="color:var(--muted);font-size:11px;padding:10px 16px">Dịch vụ</th>
-                    <th style="color:var(--muted);font-size:11px">Giá</th>
-                    <th style="color:var(--muted);font-size:11px">Tồn kho</th>
-                    <th style="color:var(--muted);font-size:11px">Trạng thái</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var dv in Model)
-                {
-                    <tr style="@(!dv.IsActive ? "opacity:0.5" : "")">
-                        <td style="padding:10px 16px">
-                            <span style="font-size:18px">@dv.DanhMucDichVu?.Icon</span>
-                            <strong style="margin-left:8px">@dv.TenDichVu</strong>
-                        </td>
-                        <td>@dv.Gia.ToString("N0")đ</td>
-                        <td>
-                            <span style="color:@(dv.TonKho < 5 ? "#e74c3c" : dv.TonKho < 20 ? "#f39c12" : "var(--green)")">
-                                @dv.TonKho
-                            </span>
-                        </td>
-                        <td><span class="badge @(dv.IsActive ? "bg-success" : "bg-secondary")">@(dv.IsActive ? "Đang bán" : "Tạm tắt")</span></td>
-                        <td>
-                            <form method="post" action="/Owner/CapNhatDichVu" style="display:flex;gap:4px;align-items:center">
-                                <input type="hidden" name="dichVuId" value="@dv.Id" />
-                                <input type="number" name="gia" value="@dv.Gia" style="width:90px;background:var(--bg3);border:1px solid var(--border);color:white;border-radius:4px;padding:2px 6px;font-size:12px" />
-                                <input type="number" name="tonKho" value="@dv.TonKho" style="width:60px;background:var(--bg3);border:1px solid var(--border);color:white;border-radius:4px;padding:2px 6px;font-size:12px" />
-                                <input type="hidden" name="isActive" value="@(!dv.IsActive)" />
-                                <button type="submit" class="btn btn-sm @(dv.IsActive ? "btn-outline-warning" : "btn-outline-success") rounded-pill" style="font-size:11px">
-                                    @(dv.IsActive ? "Tắt" : "Bật")
-                                </button>
-                            </form>
-                        </td>
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon" style="font-size: 4rem; opacity: 0.4;">📦</div>
+            <h4 class="fw-semibold">Chưa có dịch vụ nào</h4>
+            <p class="text-muted">Bật dịch vụ từ danh mục để bán kèm đơn đặt sân</p>
+            @if (dmChuaBat.Any())
+            {
+                <button class="btn btn-green mt-2" data-bs-toggle="modal" data-bs-target="#modalBatDV">
+                    <i class="fas fa-plus-circle me-2"></i>Bật dịch vụ đầu tiên
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th>Dịch vụ</th>
+                        <th>Giá (đ)</th>
+                        <th>Tồn kho</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
                     </tr>
-                }
-                @if (!Model.Any())
-                {
-                    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Chưa có dịch vụ nào. Bật dịch vụ từ danh mục bên trên.</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var dv in Model)
+                    {
+                        var stockBadge = dv.TonKho <= 0 ? "badge-stock-out" : (dv.TonKho < 5 ? "badge-stock-low" : "badge-stock");
+                        <tr style="@(!dv.IsActive ? "opacity:0.6" : "")">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 1.3rem;">@dv.DanhMucDichVu?.Icon</span>
+                                    <strong>@dv.TenDichVu</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <span>@dv.Gia.ToString("N0")</span>
+                            </td>
+                            <td>
+                                <span class="@stockBadge">@dv.TonKho</span>
+                            </td>
+                            <td>
+                                <span class="badge-stock @(dv.IsActive ? "badge-stock" : "badge-stock-out")" style="background: @(dv.IsActive ? "var(--db-green-bg)" : "#fee2e2"); color: @(dv.IsActive ? "var(--db-green)" : "#b91c1c");">
+                                    @(dv.IsActive ? "● Đang bán" : "○ Tạm dừng")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex-actions">
+                                    <!-- Form cập nhật giá + tồn kho (giữ nguyên trạng thái) -->
+                                    <form method="post" action="/Owner/CapNhatDichVu" class="d-flex gap-2 align-items-center">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="dichVuId" value="@dv.Id" />
+                                        <input type="number" name="gia" value="@dv.Gia" step="1000" class="form-control-inline" />
+                                        <input type="number" name="tonKho" value="@dv.TonKho" class="form-control-inline" />
+                                        <!-- THÊM DÒNG NÀY: giữ nguyên isActive hiện tại -->
+                                        <input type="hidden" name="isActive" value="@(dv.IsActive ? "true" : "false")" />
+                                        <button type="submit" class="btn-outline-sm" title="Cập nhật giá và tồn kho">
+                                            <i class="fas fa-save"></i> Cập nhật
+                                        </button>
+                                    </form>
+
+                                    <!-- Form bật/tắt trạng thái (giữ nguyên giá và tồn kho) -->
+                                    <form method="post" action="/Owner/CapNhatDichVu" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="dichVuId" value="@dv.Id" />
+                                        <input type="hidden" name="gia" value="@dv.Gia" />
+                                        <input type="hidden" name="tonKho" value="@dv.TonKho" />
+                                        <input type="hidden" name="isActive" value="@(dv.IsActive ? "false" : "true")" />
+                                        <button type="submit" class="btn-outline-sm @(dv.IsActive ? "btn-outline-warning-sm" : "btn-outline-success-sm")">
+                                            @(dv.IsActive ? "🔻 Tắt" : "🟢 Bật")
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
-<!-- Modal Bật dịch vụ mới -->
-<div class="modal fade" id="modalBatDV" tabindex="-1">
+
+<!-- Modal bật dịch vụ mới -->
+<div class="modal fade" id="modalBatDV" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content" style="background:var(--bg2);border:1px solid var(--border)">
-            <div class="modal-header" style="border-color:var(--border)"><h5 class="modal-title">Bật dịch vụ mới</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-content" style="border-radius: 24px; background: var(--db-surface); border: 1px solid var(--db-border);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--db-border);">
+                <h5 class="modal-title fw-semibold">Bật dịch vụ mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <form method="post" action="/Owner/BatDichVu">
+                @Html.AntiForgeryToken()
                 <input type="hidden" name="sanId" value="@san?.Id" />
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label style="color:var(--muted);font-size:12px">CHỌN DỊCH VỤ</label>
-                        <select name="danhMucId" class="form-select" required style="background:var(--bg3);border-color:var(--border);color:white">
+                        <label class="form-label">CHỌN DỊCH VỤ</label>
+                        <select name="danhMucId" class="form-select" required style="width:100%; padding:8px; border-radius:12px; border:1px solid var(--db-border);">
                             @foreach (var dm in dmChuaBat)
                             {
                                 <option value="@dm.Id">@dm.Icon @dm.TenDichVu</option>
                             }
                         </select>
                     </div>
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">GIÁ BÁN (đ) *</label><input type="number" name="gia" class="form-control" required min="0" style="background:var(--bg3);border-color:var(--border);color:white" /></div>
-                    <div class="mb-3"><label style="color:var(--muted);font-size:12px">TỒN KHO BAN ĐẦU</label><input type="number" name="tonKho" class="form-control" value="0" min="0" style="background:var(--bg3);border-color:var(--border);color:white" /></div>
+                    <div class="mb-3">
+                        <label class="form-label">GIÁ BÁN (đ)</label>
+                        <input type="number" name="gia" class="form-control" required min   ="0" step="1000" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">TỒN KHO BAN ĐẦU</label>
+                        <input type="number" name="tonKho" class="form-control" value="0" min="0" />
+                    </div>
                 </div>
-                <div class="modal-footer" style="border-color:var(--border)"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Huỷ</button><button type="submit" class="btn btn-success rounded-pill">Bật</button></div>
+                <div class="modal-footer" style="border-top: 1px solid var(--db-border);">
+                    <button type="button" class="btn-outline-sm" data-bs-dismiss="modal">Huỷ</button>
+                    <button type="submit" class="btn-green">Bật dịch vụ</button>
+                </div>
             </form>
         </div>
     </div>

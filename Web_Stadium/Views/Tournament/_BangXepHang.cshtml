@@ -1,0 +1,56 @@
+@{
+    var bxh = ViewData["BangXepHang"]
+              as Dictionary<int, List<Web_Stadium.Services.StandingRow>>
+              ?? new Dictionary<int, List<Web_Stadium.Services.StandingRow>>();
+    var bangs = ViewData["Bangs"] as IEnumerable<Web_Stadium.EFCore.BangDau>
+                ?? new List<Web_Stadium.EFCore.BangDau>();
+}
+
+@foreach (var bang in bangs)
+{
+    <div class="tour-card mb-3">
+        <div class="tour-card__header">
+            <div>
+                <div class="tour-card__title">🏆 @bang.TenBang</div>
+                <div class="tour-card__sub">Tie-breakers: Điểm → Đối đầu → Hiệu số → Bàn thắng</div>
+            </div>
+        </div>
+        @if (bxh.TryGetValue(bang.Id, out var rows) && rows.Any())
+        {
+            <div class="table-responsive">
+                <table class="tour-table">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Đội</th><th>Trận</th>
+                            <th>T</th><th>H</th><th>B</th>
+                            <th>BT</th><th>BB</th><th>HS</th><th>Điểm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in rows)
+                        {
+                            <tr class="rank-@r.ThuHang">
+                                <td><strong>@r.ThuHang</strong></td>
+                                <td style="font-weight:600">@r.TenDoi</td>
+                                <td>@r.SoTran</td>
+                                <td style="color:var(--db-green)">@r.Thang</td>
+                                <td>@r.Hoa</td>
+                                <td style="color:#dc2626">@r.Thua</td>
+                                <td>@r.BanThang</td>
+                                <td>@r.BanThua</td>
+                                <td style="color:@(r.HieuSo > 0 ? "var(--db-green)" : r.HieuSo < 0 ? "#dc2626" : "var(--db-muted)")">
+                                    @(r.HieuSo > 0 ? "+" : "")@r.HieuSo
+                                </td>
+                                <td><strong style="font-size:15px;color:var(--db-green)">@r.Diem</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="tour-hint mb-0">Chưa có kết quả nào.</p>
+        }
+    </div>
+}

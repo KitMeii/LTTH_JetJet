@@ -1,0 +1,24 @@
+@{
+    var active = ViewData["ActiveNav"] as string ?? "";
+    string A(string key) => active == key ? "nav-btn nav-btn-active" : "nav-btn";
+}
+<div class="sticky-nav">
+    <div class="container">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/Owner" class="@A("TongQuan")">📊 Tổng quan</a>
+            <a href="/Owner/DanhSachSan" class="@A("DanhSachSan")">🏟️ Danh sách sân</a>
+            <a href="/Owner/DangKySan" class="@A("DangKySan")">➕ Đăng ký sân</a>
+            <a href="/Tournament" class="@A("Tournament")">🏆 Giải đấu</a>
+            <a href="/Owner/DanhSachDonDat" class="@A("DonDat")">📋 Duyệt lịch</a>
+            <a href="/Owner/QuanLyAnh" class="@A("QuanLyAnh")">🖼️ Quản lý ảnh</a>
+            <a href="/Owner/GoiYGiaSan" class="@A("GoiYGiaSan")">💡 Gợi ý giá sân</a>
+            <a href="/Owner/QuanLyStaff" class="@A("Staff")">👷 Nhân viên</a>
+            <a href="/Owner/BaoCao" class="@A("BaoCao")">📈 Báo cáo</a>
+            <a href="/Owner/DanhSachDanhGia" class="@A("DanhGia")">⭐ Đánh giá</a>
+            <a href="/Owner/VoucherSan" class="@A("VoucherSan")">🎟️ Voucher</a>
+            <a href="/Owner/YeuCauDoiGio" class="@A("DoiGio")">🕐 Đổi giờ</a>
+            <a href="/Owner/YeuCauDoiSan" class="@A("DoiSan")">🔁 Đổi sân</a>
+            <a href="/Owner/ChuyenNhuong" class="@A("ChuyenNhuong")">👥 Chuyển nhượng</a>
+        </div>
+    </div>
+</div>

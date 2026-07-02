@@ -30,9 +30,10 @@ namespace Web_Stadium.Services
                     await using var scope = _scopeFactory.CreateAsyncScope();
                     var context = scope.ServiceProvider.GetRequiredService<SanBongContext>();
                     var email = scope.ServiceProvider.GetRequiredService<EmailService>();
+                    var hoanCocService = scope.ServiceProvider.GetRequiredService<HoanCocService>();
 
-                    await XuLyHuyDonQuaHan(context, email);
-                    await XuLyNoShow(context, email);
+                    await XuLyHuyDonQuaHan(context, email, hoanCocService);
+                    await XuLyNoShow(context, email, hoanCocService);
                     await GuiNhacLich24h(context, email);
                     await GuiNhacLich1h(context, email);
                     await GuiMoiDanhGia(context, email);
@@ -49,7 +50,7 @@ namespace Web_Stadium.Services
         // ══════════════════════════════════════════════════════════
         // JOB 1: Hủy đơn ChoDuyet quá 6 giờ Owner không phản hồi
         // ══════════════════════════════════════════════════════════
-        private async Task XuLyHuyDonQuaHan(SanBongContext context, EmailService email)
+        private async Task XuLyHuyDonQuaHan(SanBongContext context, EmailService email, HoanCocService hoanCocService)
         {
             var nguongHuy = DateTime.Now.AddHours(-6);
 
@@ -62,13 +63,20 @@ namespace Web_Stadium.Services
 
             foreach (var don in donQuaHan)
             {
+                await hoanCocService.ThucHienHoanCocAsync(
+                    don,
+                    nguonHuy: "SystemTimeout",
+                    vaiTroNguoiKhoiTao: "System",
+                    nguoiKhoiTaoId: null,
+                    ghiChu: "Owner không xác nhận trong 6 giờ — hệ thống tự động hủy"
+                );
+
                 don.TrangThai = "DaHuy";
                 if (don.KhungGio != null)
                     don.KhungGio.TrangThai = "Trong";
 
                 _logger.LogInformation("⏰ Tự hủy đơn {Ma} — quá 6h Owner không duyệt", don.MaXacNhan);
 
-                // Gửi email thông báo cho User
                 if (don.User != null && !string.IsNullOrEmpty(don.User.Email))
                 {
                     var tenSan = don.KhungGio?.SanBong?.TenSan ?? "Không rõ";
@@ -78,7 +86,7 @@ namespace Web_Stadium.Services
                         tenSan,
                         don.NgayThiDau.ToString("dd/MM/yyyy"),
                         lyDo: "Owner không xác nhận trong 6 giờ — hệ thống tự động hủy",
-                        soTienHoan: don.TienCoc // hoàn 100%
+                        soTienHoan: don.TienCoc
                     );
                 }
             }
@@ -90,7 +98,7 @@ namespace Web_Stadium.Services
         // ══════════════════════════════════════════════════════════
         // JOB 2: No-show — đơn DaXacNhan quá 30 phút chưa check-in
         // ══════════════════════════════════════════════════════════
-        private async Task XuLyNoShow(SanBongContext context, EmailService email)
+        private async Task XuLyNoShow(SanBongContext context, EmailService email, HoanCocService hoanCocService)
         {
             var now = DateTime.Now;
 
@@ -104,13 +112,20 @@ namespace Web_Stadium.Services
             {
                 if (don.KhungGio == null) continue;
 
-                // Tính giờ bắt đầu trận
                 var gioBD = don.KhungGio.GioBatDau.ToTimeSpan();
                 var gioBatDauTran = don.NgayThiDau.Date.Add(gioBD);
 
-                // Quá 30 phút kể từ giờ bắt đầu mà vẫn chưa check-in
                 if (now >= gioBatDauTran.AddMinutes(30))
                 {
+                    await hoanCocService.ThucHienHoanCocAsync(
+                        don,
+                        nguonHuy: "SystemNoShow",
+                        vaiTroNguoiKhoiTao: "System",
+                        nguoiKhoiTaoId: null,
+                        soTienHoanTuyChon: 0m,
+                        ghiChu: "Tự động ghi nhận No-show sau 30 phút"
+                    );
+
                     don.TrangThai = "DaHuy";
                     don.LoaiSuCo = "NoShow";
                     don.GhiChuSuCo = "Tự động ghi nhận No-show sau 30 phút";

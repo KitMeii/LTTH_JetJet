@@ -1,0 +1,77 @@
+﻿@{
+    var tran = ViewData["tran"] as Web_Stadium.EFCore.TranDau;
+    var isOwner = ViewData["isOwner"] as bool? ?? false;
+    if (tran == null) return;
+
+    bool isPending = tran.TrangThai == "Pending";
+    bool isClosed = tran.TrangThai == "Closed";
+
+    int? nha = tran.BanThangNha;
+    int? khach = tran.BanThangKhach;
+
+    bool nhaThang = isClosed && nha > khach;
+    bool khachThang = isClosed && khach > nha;
+}
+
+<div class="bk-match @(isPending ? "pending" : isClosed ? "" : "")"
+     id="match-@tran.Id">
+
+    @* Đội nhà *@
+    <div class="bk-team @(nhaThang ? "win" : isClosed && !nhaThang ? "lose" : "")">
+        @if (tran.DoiNhaId > 0)
+        {
+            <span class="bk-team-name">@tran.DoiNha?.TenDoi</span>
+        }
+        else
+        {
+            <span class="bk-team-tbd">TBD</span>
+        }
+        @if (isClosed)
+        {
+            <span class="bk-team-score">@nha</span>
+        }
+    </div>
+
+    @* Đội khách *@
+    <div class="bk-team @(khachThang ? "win" : isClosed && !khachThang ? "lose" : "")">
+        @if (tran.DoiKhachId > 0)
+        {
+            <span class="bk-team-name">@tran.DoiKhach?.TenDoi</span>
+        }
+        else
+        {
+            <span class="bk-team-tbd">TBD</span>
+        }
+        @if (isClosed)
+        {
+            <span class="bk-team-score">@khach</span>
+        }
+    </div>
+
+    @* Meta: giờ + nút gán *@
+    <div class="bk-meta">
+        <span id="meta-@tran.Id">
+            @if (tran.KhungGioId.HasValue)
+            {
+                @($"{tran.KhungGio?.GioBatDau.ToString("HH:mm")} | {tran.NgayThiDau:dd/MM}")
+            }
+            else if (isPending)
+            {
+                <span>Chờ xác định đội</span>
+            }
+            else
+            {
+                <span style="color:var(--danger)">Chưa có lịch</span>
+            }
+        </span>
+        @if (isOwner && !isClosed && !isPending)
+        {
+            <button class="assign-btn" id="assign-@tran.Id"
+                    onclick="moModalGanGio(@tran.Id,
+                            '@(tran.DoiNha?.TenDoi ?? "TBD")',
+                            '@(tran.DoiKhach?.TenDoi ?? "TBD")')">
+                ⏰ Gán giờ
+            </button>
+        }
+    </div>
+</div>

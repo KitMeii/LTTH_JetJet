@@ -1,139 +1,290 @@
-﻿@model Web_Stadium.EFCore.SanBong?
+﻿@model Web_Stadium.EFCore.SanBong
 @{
-    ViewData["Title"] = "Xem hợp đồng";
+    ViewData["Title"] = "Hợp đồng điện tử";
     Layout = "~/Views/Shared/_Layout.cshtml";
-
-    // GET flow: doc tu Model (hop dong da ky)
-    // POST flow: doc tu TempData (dang ky moi)
-    var laDaKy = Model != null && Model.DaKyHopDong;
-    var hopDong = laDaKy ? Model!.NoiDungHopDong : TempData["HopDong"]?.ToString() ?? "";
-    var tenSan = laDaKy ? Model!.TenSan : TempData["San_TenSan"]?.ToString() ?? "";
-    var tenVung = laDaKy ? "" : TempData["San_TenVung"]?.ToString() ?? "";
-    var tyLeHH = laDaKy ? "" : TempData["San_TyLeHH"]?.ToString() ?? "0.10";
-    var tyLePct = laDaKy ? 0 : (int)(decimal.Parse(tyLeHH) * 100);
-    if (!laDaKy) TempData.Keep();
+    var isPreview = ViewBag.IsPreview == true;
+    var tyLeHH = ViewBag.TyLeHH ?? (Model.Id > 0 ? ViewBag.TyLeHoaHong ?? 0.10m : 0.10m);
+    var tenVung = ViewBag.TenVung ?? "";
+    var ownerName = ViewBag.OwnerName ?? Model.Owner?.HoTen;
+    var ownerEmail = ViewBag.OwnerEmail ?? Model.Owner?.Email;
+    var ownerPhone = ViewBag.OwnerPhone ?? Model.Owner?.SoDienThoai;
+    var ngayKy = isPreview ? DateTime.Now : (Model.NgayKyHopDong ?? DateTime.Now);
+    string soHopDong = isPreview ? "[...]" : $"PITCHHUB/{Model.Id}/{Model.NgayKyHopDong:yyyyMMdd}/HĐHTKD";
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Owner — @(laDaKy ? "Hợp đồng đã ký" : "Bước 2/2")</div>
-        <h1 style="font-style:italic;line-height:0.9">
-            HỢP ĐỒNG<br>
-            <span class="text-green">@(laDaKy ? "ĐÃ KÝ" : "ĐIỆN TỬ")</span>
-        </h1>
-        <p style="color:var(--muted)">
-            @(laDaKy ? "Hợp đồng đã có hiệu lực pháp lý" : "Đọc kỹ toàn bộ điều khoản trước khi xác nhận")
-        </p>
+<style>
+    /* Ẩn hoàn toàn các thành phần giao diện khi in */
+    @@media print {
+        /* Ẩn toàn bộ header, nav, footer, button, và các phần tử không phải hợp đồng */
+        header, nav, footer, .sticky-nav, .page-header, .db-hero, .db-nav,
+        .navbar, .btn, button, .no-print, .action-buttons, .modal, .modal-backdrop,
+        [class*="sticky"], [class*="navbar"], [class*="btn"], .alert, .container > .no-print {
+            display: none !important;
+        }
+        /* Đảm bảo body và container in chỉ có nội dung hợp đồng */
+        body {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .contract-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            box-shadow: none !important;
+            border: none !important;
+        }
+            /* Ngăn ngắt trang giữa các đoạn */
+            .contract-content p, .contract-content h3, .contract-content h4, .contract-content div {
+                page-break-inside: avoid;
+            }
+    }
+    /* Font chữ giống Word */
+    .contract-content {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #000;
+        background: white;
+        padding: 2rem;
+    }
+
+        .contract-content h3, .contract-content h4 {
+            font-weight: bold;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .contract-content strong {
+            font-weight: bold;
+        }
+
+        .contract-content .signature {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+            .contract-content .signature div {
+                width: 45%;
+                text-align: center;
+            }
+
+        .contract-content .alert {
+            margin-top: 1.5rem;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+        }
+
+        .contract-content .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .contract-content .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+</style>
+
+<div class="container py-4 no-print">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold">📄 @(isPreview ? "Xem trước hợp đồng" : "Hợp đồng điện tử")</h2>
+        <button onclick="window.print()" class="btn btn-primary rounded-pill">🖨️ In hợp đồng</button>
+    </div>
+    <div class="text-end">
+        <a href="/Owner/DanhSachSan" class="btn btn-outline-secondary rounded-pill">← Quay lại danh sách sân</a>
     </div>
 </div>
 
-@if (laDaKy)
-{
-    <!-- Nav cho trang xem hợp đồng đã ký -->
-    <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
-        <div class="container d-flex justify-content-between align-items-center gap-2">
-            <a href="/Owner/DanhSachSan" class="btn btn-outline-success rounded-pill">← Danh sách sân</a>
-            <div class="d-flex gap-2">
-                <a href="/Owner/SuaSan?sanId=@Model!.Id" class="btn btn-outline-secondary rounded-pill">✏️ Sửa sân</a>
-                <a href="/Owner/QuanLyAnh?sanId=@Model!.Id" class="btn btn-outline-info rounded-pill">📷 Quản lý ảnh</a>
-                <button onclick="window.print()" class="btn btn-outline-success rounded-pill">🖨 In hợp đồng</button>
-            </div>
+<div class="container contract-content" style="max-width: 1000px; margin: 0 auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+    <!-- Nội dung hợp đồng -->
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+        <strong>CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br />
+        Độc lập – Tự do – Hạnh phúc
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <strong style="font-size: 18px;">HỢP ĐỒNG HỢP TÁC KINH DOANH</strong><br />
+        <em>Số: @soHopDong</em>
+    </div>
+
+    <p>Căn cứ vào Bộ Luật Dân Sự số 91/2015/QH13 ngày 24 tháng 11 năm 2015;</p>
+    <p>Căn cứ vào Luật Thương Mại số 36/2005/QH11 ngày 14 tháng 06 năm 2005;</p>
+    <p>Căn cứ vào tình hình thực tế và nhu cầu hợp tác của Hai bên;</p>
+    <p>Dựa trên tinh thần trung thực và thiện chí hợp tác;</p>
+
+    <p><strong>Chúng tôi gồm có:</strong></p>
+
+    <p>
+        <strong>BÊN A (Đơn vị vận hành nền tảng):</strong><br />
+        Tên đơn vị : Công ty TNHH PitchHub Việt Nam<br />
+        Địa chỉ : Thành phố Hồ Chí Minh, Việt Nam<br />
+        Đại diện : Giám đốc điều hành PitchHub<br />
+        Email : contact@pitchhub.vn<br />
+        Điện thoại : 1800-PITCH<br />
+        (Sau đây gọi tắt là Bên A)
+    </p>
+
+    <p>
+        <strong>BÊN B (Chủ sân bóng):</strong><br />
+        Họ và tên : @ownerName<br />
+        Địa chỉ : @Model.DiaChi<br />
+        Điện thoại : @ownerPhone<br />
+        Email : @ownerEmail<br />
+        (Sau đây gọi tắt là Bên B)
+    </p>
+
+    <p>Cùng thỏa thuận ký hợp đồng hợp tác kinh doanh với những điều khoản sau:</p>
+
+    <h4>Điều 1. MỤC TIÊU VÀ PHẠM VI HỢP TÁC</h4>
+    <p>
+        <strong>1.1. Mục tiêu hợp tác</strong><br />
+        Bên A và Bên B nhất trí hợp tác kinh doanh, điều hành và chia sẻ lợi nhuận từ hoạt động cho thuê sân bóng thông qua nền tảng trực tuyến PitchHub.
+    </p>
+    <p>
+        <strong>1.2. Phạm vi hợp tác</strong><br />
+        Bên B đăng ký đưa cơ sở thể thao "<strong>@Model.TenSan</strong>" lên hệ thống PitchHub:<br />
+        - Địa chỉ sân : @Model.DiaChi, @Model.Quan, @Model.ThanhPho<br />
+        - Loại sân : @Model.LoaiSan người<br />
+        - Loại cỏ : @Model.LoaiCo<br />
+        - Khu vực : @tenVung
+    </p>
+    <p>
+        Phạm vi Bên A: Vận hành nền tảng đặt sân, tiếp thị, hỗ trợ thanh toán.<br />
+        Phạm vi Bên B: Quản lý, vận hành cơ sở vật chất và dịch vụ tại sân.
+    </p>
+
+    <h4>Điều 2. THỜI HẠN HỢP ĐỒNG</h4>
+    <p>
+        Thời hạn hợp đồng: 1 năm (12 tháng) kể từ ngày ký.<br />
+        - Bắt đầu : @ngayKy.ToString("dd/MM/yyyy")<br />
+        - Kết thúc : @ngayKy.AddYears(1).ToString("dd/MM/yyyy")
+    </p>
+    <p>Gia hạn hợp đồng: Hết thời hạn trên, hai bên có thể thỏa thuận gia hạn thêm 12 tháng hoặc ký hợp đồng mới. Nếu không có thông báo chấm dứt trước 30 ngày, hợp đồng tự động gia hạn.</p>
+
+    <h4>Điều 3. PHÍ HOA HỒNG VÀ PHÂN CHIA LỢI NHUẬN</h4>
+    <p>
+        <strong>3.1. Tỷ lệ hoa hồng</strong><br />
+        Căn cứ khu vực @Model.Quan thuộc vùng "@tenVung", tỷ lệ áp dụng:<br />
+        - Bên A (PitchHub) được hưởng : @((tyLeHH * 100).ToString("F0"))% trên doanh thu thực phát sinh<br />
+        - Bên B (Chủ sân) được hưởng : @((100 - tyLeHH * 100).ToString("F0"))% trên doanh thu thực phát sinh
+    </p>
+    <p>
+        <strong>3.2. Phương thức tính</strong><br />
+        - Khách hủy đặt sân: Hoa hồng Bên A = Tiền cọc đã thu × @((tyLeHH * 100).ToString("F0"))%<br />
+        &nbsp;&nbsp;Bên B nhận = Tiền cọc - Hoa hồng Bên A<br />
+        - Khách sử dụng đủ: Hoa hồng Bên A = Tổng tiền thuê sân × @((tyLeHH * 100).ToString("F0"))%<br />
+        &nbsp;&nbsp;Bên B nhận = Tổng tiền thuê sân - Hoa hồng Bên A
+    </p>
+    <p>
+        <strong>3.3. Thanh toán</strong><br />
+        Định kỳ hàng tháng, chậm nhất ngày 10 tháng kế tiếp qua chuyển khoản ngân hàng.
+    </p>
+
+    <h4>Điều 4. CÁC NGUYÊN TẮC TÀI CHÍNH</h4>
+    <p>
+        4.1. Hai bên tuân thủ nguyên tắc tài chính kế toán theo quy định pháp luật Cộng hoà Xã hội chủ nghĩa Việt Nam.<br />
+        4.2. Mọi khoản thu chi đều được ghi chép rõ ràng, đầy đủ, xác thực.<br />
+        4.3. Hệ thống PitchHub ghi nhận tự động toàn bộ giao dịch đặt sân.
+    </p>
+
+    <h4>Điều 5. QUYỀN VÀ NGHĨA VỤ CỦA BÊN A</h4>
+    <p>
+        <strong>5.1. Quyền của Bên A</strong><br />
+        - Được hưởng @((tyLeHH * 100).ToString("F0"))% hoa hồng theo Điều 3.<br />
+        - Tạm ngưng hoặc gỡ sân khỏi hệ thống nếu Bên B vi phạm các điều khoản.<br />
+        - Điều chỉnh tỷ lệ hoa hồng sau khi thông báo trước 30 ngày.
+    </p>
+    <p>
+        <strong>5.2. Nghĩa vụ của Bên A</strong><br />
+        - Cung cấp nền tảng đặt sân ổn định, hỗ trợ kỹ thuật 24/7.<br />
+        - Quảng bá sân đến khách hàng trên toàn hệ thống.<br />
+        - Thanh toán phần doanh thu sau khi trừ hoa hồng đúng hạn quy định.<br />
+        - Bảo mật thông tin kinh doanh của Bên B.
+    </p>
+
+    <h4>Điều 6. QUYỀN VÀ NGHĨA VỤ CỦA BÊN B</h4>
+    <p>
+        <strong>6.1. Quyền của Bên B</strong><br />
+        - Được hưởng @((100 - tyLeHH * 100).ToString("F0"))% doanh thu sau khi trừ hoa hồng.<br />
+        - Tự quản lý lịch đặt sân, khung giờ và giá thuê trên hệ thống.<br />
+        - Yêu cầu hỗ trợ kỹ thuật từ Bên A khi cần thiết.
+    </p>
+    <p>
+        <strong>6.2. Nghĩa vụ của Bên B</strong><br />
+        - Cung cấp thông tin sân trung thực, đầy đủ và cập nhật kịp thời.<br />
+        - Đảm bảo chất lượng cơ sở vật chất phù hợp với mô tả trên hệ thống.<br />
+        - Không hủy đặt sân của khách hàng quá 3 lần/tháng không có lý do.<br />
+        - Thực hiện đúng chính sách hoàn cọc theo quy định của PitchHub.<br />
+        - Không tự ý liên hệ khách hàng để giao dịch ngoài hệ thống.
+    </p>
+
+    <h4>Điều 7. ĐIỀU KHOẢN CHUNG</h4>
+    <p>
+        7.1. Hợp đồng chịu sự điều chỉnh của pháp luật Cộng hoà xã hội chủ nghĩa Việt Nam.<br />
+        7.2. Bên vi phạm gây thiệt hại phải bồi thường toàn bộ và chịu phạt 8% giá trị hợp đồng bị vi phạm (trừ trường hợp bất khả kháng).<br />
+        7.3. Trong quá trình thực hiện, bên có khó khăn phải thông báo cho bên kia trong vòng 30 ngày.<br />
+        7.4. Mọi sửa đổi, bổ sung phải bằng văn bản và có chữ ký của hai bên.<br />
+        7.5. Tranh chấp được giải quyết qua thương lượng, hoà giải; nếu không thành sẽ giải quyết tại Toà án có thẩm quyền.
+    </p>
+
+    <h4>Điều 8. HIỆU LỰC HỢP ĐỒNG</h4>
+    <p>
+        8.1. Hợp đồng chấm dứt khi hết thời hạn tại Điều 2 hoặc theo quy định pháp luật. Khi kết thúc, hai bên lập biên bản thanh lý hợp đồng.<br />
+        8.2. Hợp đồng được lập điện tử và bản cứng gồm: Có 02 (hai) bản bằng tiếng Việt, mỗi bên giữ 01 (một) bản có giá trị pháp lý như nhau.<br />
+        8.3. Hợp đồng có hiệu lực kể từ ngày được Admin PitchHub phê duyệt.
+    </p>
+
+    <p style="text-align: right; margin-top: 2rem;">
+        <em>@($"{Model.Quan}, ngày {ngayKy:dd} tháng {ngayKy:MM} năm {ngayKy:yyyy}")</em>
+    </p>
+
+    <div class="signature">
+        <div>
+            <strong>ĐẠI DIỆN BÊN A</strong><br />
+            (Ký, ghi rõ họ tên, đóng dấu)<br /><br /><br />
+            <strong>Công ty TNHH PitchHub</strong><br />
+            <em>Giám đốc điều hành</em>
+        </div>
+        <div>
+            <strong>ĐẠI DIỆN BÊN B</strong><br />
+            (Ký, ghi rõ họ tên)<br /><br /><br />
+            <strong>@ownerName</strong><br />
+            <em>Chủ sân @Model.TenSan</em>
         </div>
     </div>
-}
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-9">
-
-            @if (TempData["Error"] != null)
-            {
-                <div class="alert alert-danger alert-dismissible fade show">
-                    ❌ @TempData["Error"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            }
-
-            @if (laDaKy)
-            {
-                <!-- Thông tin hợp đồng đã ký -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;">
-                    <div style="padding:16px 20px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);">
-                        <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Sân bóng</div>
-                        <div style="font-weight:700;font-size:16px;">@Model!.TenSan</div>
-                        <div style="font-size:13px;color:var(--muted);margin-top:3px;">@Model.DiaChi — @Model.Quan</div>
-                    </div>
-                    <div style="padding:16px 20px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);">
-                        <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Ngày ký</div>
-                        <div style="font-weight:700;font-size:16px;color:var(--green);">@(Model.NgayKyHopDong?.ToString("dd/MM/yyyy") ?? "—")</div>
-                        <div style="font-size:13px;color:var(--muted);margin-top:3px;">✅ Đã xác nhận và có hiệu lực</div>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <!-- Tóm tắt khi đăng ký mới -->
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;">
-                    <div style="padding:16px 18px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);text-align:center;">
-                        <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Khu vực</div>
-                        <div style="font-weight:700;color:var(--green);font-size:15px;">@tenVung</div>
-                    </div>
-                    <div style="padding:16px 18px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);text-align:center;">
-                        <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Hoa hồng PitchHub</div>
-                        <div style="font-family:var(--ff-h);font-size:2rem;color:var(--green);line-height:1;">@tyLePct%</div>
-                    </div>
-                    <div style="padding:16px 18px;border-radius:12px;background:rgba(14,168,106,0.06);border:1px solid rgba(14,168,106,0.25);text-align:center;">
-                        <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Bạn nhận</div>
-                        <div style="font-family:var(--ff-h);font-size:2rem;color:var(--green);line-height:1;">@(100 - tyLePct)%</div>
-                    </div>
-                </div>
-            }
-
-            <!-- Nội dung hợp đồng -->
-            <div class="section-card p-0 overflow-hidden mb-4">
-                <div style="background:#1a1a2e;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;">
-                    <span style="font-family:var(--ff-h);font-size:13px;letter-spacing:1px;">📄 NỘI DUNG HỢP ĐỒNG — @tenSan</span>
-                    <button onclick="window.print()" style="font-size:12px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;">🖨 In</button>
-                </div>
-                <div style="padding:32px;max-height:560px;overflow-y:auto;
-                            font-family:'Courier New',monospace;font-size:13px;
-                            line-height:2.0;color:var(--muted2);
-                            white-space:pre-wrap;background:rgba(0,0,0,0.25);">
-                    @hopDong
-                </div>
-            </div>
-
-            @if (laDaKy)
-            {
-                <!-- Trạng thái đã ký -->
-                <div style="text-align:center;padding:20px;border:1px solid rgba(14,168,106,.3);border-radius:12px;background:rgba(14,168,106,.05);">
-                    <div style="font-size:22px;margin-bottom:8px;">✅</div>
-                    <div style="font-weight:700;font-size:15px;color:var(--green);margin-bottom:4px;">Hợp đồng đã ký kết và có hiệu lực</div>
-                    <div style="font-size:13px;color:var(--muted);">Ký lúc @(Model!.NgayKyHopDong?.ToString("HH:mm — dd/MM/yyyy") ?? "—")</div>
-                </div>
-            }
-            else
-            {
-                <!-- Form xác nhận ký -->
-                <form method="post" action="/Owner/XacNhanDangKy">
-                    <div style="padding:20px 22px;border:1px solid var(--border);border-radius:12px;margin-bottom:20px;background:var(--card);">
-                        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
-                            <input type="checkbox" name="daDocVaDongY" value="true" required
-                                   style="width:18px;height:18px;margin-top:2px;accent-color:var(--green);flex-shrink:0;" />
-                            <span style="font-size:14px;line-height:1.6;color:var(--text);">
-                                Tôi <strong>@tenSan</strong> đã đọc kỹ, hiểu rõ và
-                                <strong>đồng ý toàn bộ</strong> các điều khoản trong Hợp đồng hợp tác kinh doanh.
-                                Hợp đồng điện tử này có giá trị pháp lý tương đương hợp đồng giấy có chữ ký.
-                            </span>
-                        </label>
-                    </div>
-                    <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;">
-                        <a href="javascript:history.back()" class="btn btn-outline-secondary rounded-pill" style="padding:10px 24px;">← Quay lại chỉnh sửa</a>
-                        <button type="submit" class="btn-primary-glow" style="padding:13px 36px;font-size:15px;font-weight:700;">✅ Xác nhận ký hợp đồng & Đăng ký sân</button>
-                    </div>
-                </form>
-            }
-
+    @if (!isPreview && Model.Id > 0 && Model.DaKyHopDong)
+    {
+        <div class="alert alert-success mt-4">
+            ✅ Hợp đồng đã được ký điện tử vào lúc @Model.NgayKyHopDong?.ToString("dd/MM/yyyy HH:mm")
         </div>
-    </div>
+
+
+    }
+    else
+    {
+        <div class="alert alert-info mt-4">
+            📝 Hợp đồng sẽ được ký điện tử sau khi Admin phê duyệt.
+        </div>
+        <div class="text-center mt-4 no-print">
+            <form method="post" action="/Owner/XacNhanDangKy">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="daDocVaDongY" value="true" />
+                <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Bạn đã đọc và đồng ý với các điều khoản hợp đồng?')">
+                    ✅ Đồng ý và gửi đăng ký
+                </button>
+            </form>
+        </div>
+    }
 </div>

@@ -1,0 +1,268 @@
+﻿@model List<Web_Stadium.EFCore.TranDau>
+@{
+    ViewData["Title"] = "Điều phối trận đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var loc       = ViewBag.Loc as string ?? "hom_nay";
+    var ttFilter  = ViewBag.TrangThai as string;
+    var soHomNay  = (int)(ViewBag.SoTranHomNay ?? 0);
+    var soChuaBD  = (int)(ViewBag.SoTranChuaBatDau ?? 0);
+}
+
+@section Styles {
+<style>
+.tran-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r-lg); overflow: hidden;
+    transition: box-shadow .2s, transform .15s;
+}
+.tran-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.tran-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(14,168,106,.04), transparent);
+}
+.tran-body { padding: 16px 20px; }
+.tran-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    background: var(--bg3); display: flex; gap: 8px; justify-content: flex-end;
+}
+.team-vs {
+    display: flex; align-items: center; gap: 10px;
+    justify-content: center; margin: 10px 0;
+}
+.team-name {
+    font-family: var(--ff-h); font-size: 1rem; text-transform: uppercase;
+    color: var(--text); flex: 1;
+}
+.vs-score {
+    font-family: var(--ff-h); font-size: 1.4rem; font-weight: 800;
+    color: var(--green); min-width: 70px; text-align: center;
+}
+.tt-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.tt-scheduled  { background: rgba(14,165,233,.12); color: #0EA5E9; }
+.tt-inprogress { background: rgba(14,168,106,.18); color: var(--green);
+                 box-shadow: 0 0 0 2px rgba(14,168,106,.2); }
+.tt-closed     { background: rgba(15,23,42,.06); color: var(--muted); }
+.loc-btn {
+    padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--bg3); color: var(--muted);
+    cursor: pointer; transition: all .18s; text-decoration: none;
+}
+.loc-btn:hover, .loc-btn.active {
+    background: var(--green); color: #fff; border-color: var(--green);
+}
+.kpi-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px 20px; text-align: center;
+}
+.live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    display: inline-block; margin-right: 5px;
+    box-shadow: 0 0 0 3px rgba(14,168,106,.2);
+    animation: pulse-dot 2s infinite;
+}
+</style>
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end flex-wrap gap-3">
+        <div>
+            <div class="section-label">Staff — Giải đấu</div>
+            <h1 style="font-style:italic;line-height:.9;margin:0">
+                ĐIỀU PHỐI<br><span class="text-green">TRẬN ĐẤU</span>
+            </h1>
+            <p style="color:var(--muted);margin-top:8px">
+                Hôm nay <strong style="color:var(--text)">@DateTime.Today.ToString("dd/MM/yyyy")</strong>
+                &nbsp;·&nbsp; @soHomNay trận &nbsp;·&nbsp;
+                <span style="color:var(--danger)">@soChuaBD chưa bắt đầu</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- NAV Staff -->
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/Staff"                         class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Staff/CheckIn"                 class="btn btn-outline-info rounded-pill">✅ Check-In</a>
+        <a href="/TournamentStaff/DanhSach"      class="btn btn-success rounded-pill">🏆 Trận đấu</a>
+        <a href="/Staff/POS"                     class="btn btn-outline-warning rounded-pill">🧾 POS</a>
+        <a href="/Staff/VangLai"                 class="btn btn-outline-secondary rounded-pill">👤 Vắng lại</a>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-4">
+            ✅ @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            ❌ @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- KPI -->
+    <div class="row g-3 mb-4">
+        @foreach (var (ico, val, lbl, col) in new[]{
+            ("🏆", Model.Count.ToString(), "Tổng trận", "var(--text)"),
+            ("⏳", Model.Count(t => t.TrangThai == "Scheduled").ToString(), "Chờ bắt đầu", "#0EA5E9"),
+            ("🟢", Model.Count(t => t.TrangThai == "InProgress").ToString(), "Đang diễn ra", "var(--green)"),
+            ("✅", Model.Count(t => t.TrangThai == "Closed").ToString(), "Đã kết thúc", "var(--muted)"),
+        })
+        {
+            <div class="col-6 col-md-3">
+                <div class="kpi-box">
+                    <div style="font-size:1.3rem;margin-bottom:6px">@ico</div>
+                    <div style="font-family:var(--ff-h);font-size:1.5rem;color:@col">@val</div>
+                    <div style="font-size:11px;color:var(--muted);letter-spacing:.5px">@lbl</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Filter bar -->
+    <div class="d-flex gap-2 flex-wrap align-items-center mb-4">
+        <div class="d-flex gap-2">
+            @foreach (var (key, lbl) in new[]{
+                ("hom_nay","Hôm nay"), ("tuan_nay","Tuần này"), ("","Tất cả")
+            })
+            {
+                <a href="/TournamentStaff/DanhSach?loc=@key&trangThai=@ttFilter"
+                   class="loc-btn @(loc == key || (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(loc)) ? "active" : "")">
+                    @lbl
+                </a>
+            }
+        </div>
+        <div style="margin-left:auto">
+            <select onchange="location.href='/TournamentStaff/DanhSach?loc=@loc&trangThai='+this.value"
+                    style="background:var(--card);border:1px solid var(--border);
+                           color:var(--text);border-radius:var(--r);padding:7px 12px;font-size:13px">
+                <option value="" selected="@(string.IsNullOrEmpty(ttFilter))">Tất cả trạng thái</option>
+                <option value="Scheduled" selected="@(ttFilter == "Scheduled")">⏳ Chưa bắt đầu</option>
+                <option value="InProgress" selected="@(ttFilter == "InProgress")">🟢 Đang diễn ra</option>
+                <option value="Closed" selected="@(ttFilter == "Closed")">✅ Đã kết thúc</option>
+            </select>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:80px 0;color:var(--muted)">
+            <div style="font-size:3.5rem;margin-bottom:14px">🏆</div>
+            <div style="font-size:1.1rem;margin-bottom:6px">Không có trận đấu nào</div>
+            <div style="font-size:13px">
+                @if (loc == "hom_nay") { <span>Hôm nay không có trận nào được phân công.</span> }
+                else { <span>Không có trận nào khớp với bộ lọc.</span> }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Group theo ngày -->
+        @foreach (var nhom in Model.GroupBy(t => t.NgayThiDau.Date).OrderBy(g => g.Key))
+        {
+            <div style="font-family:var(--ff-h);font-size:11px;letter-spacing:3px;
+                        text-transform:uppercase;color:var(--muted);
+                        margin:24px 0 12px;padding-bottom:8px;
+                        border-bottom:1px solid var(--border)">
+                @(nhom.Key == DateTime.Today ? "🔥 HÔM NAY" :
+                  nhom.Key == DateTime.Today.AddDays(1) ? "NGÀY MAI" :
+                  nhom.Key.ToString("dddd, dd/MM/yyyy").ToUpper())
+                &nbsp;·&nbsp; @nhom.Count() trận
+            </div>
+
+            <div class="row g-3">
+                @foreach (var tran in nhom.OrderBy(t => t.TrangThai == "Closed"))
+                {
+                    var (ttClass, ttLabel) = tran.TrangThai switch {
+                        "InProgress" => ("tt-inprogress", "🟢 Đang diễn ra"),
+                        "Closed"     => ("tt-closed",     "✅ Đã kết thúc"),
+                        _            => ("tt-scheduled",  "⏳ Chưa bắt đầu")
+                    };
+                    var banNha   = tran.BanThangNha?.ToString()   ?? "—";
+                    var banKhach = tran.BanThangKhach?.ToString() ?? "—";
+
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="tran-card">
+                            <div class="tran-header">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span style="font-size:12px;color:var(--muted)">
+                                        @tran.GiaiDau?.TenGiai &nbsp;·&nbsp; Vòng @tran.VongDau
+                                    </span>
+                                    <span class="tt-badge @ttClass">
+                                        @if (tran.TrangThai == "InProgress")
+                                        {
+                                            <span class="live-dot"></span>
+                                        }
+                                        @ttLabel
+                                    </span>
+                                </div>
+                                <div style="font-size:12px;color:var(--muted2)">
+                                    🏟️ @tran.GiaiDau?.SanBong?.TenSan
+                                </div>
+                            </div>
+
+                            <div class="tran-body">
+                                <div class="team-vs">
+                                    <div class="team-name" style="text-align:right">
+                                        @tran.DoiNha?.TenDoi
+                                    </div>
+                                    <div class="vs-score">
+                                        @if (tran.TrangThai == "Closed")
+                                        {
+                                            @($"{banNha} – {banKhach}")
+                                        }
+                                        else
+                                        {
+                                            <span style="font-size:.9rem;color:var(--muted)">VS</span>
+                                        }
+                                    </div>
+                                    <div class="team-name">@tran.DoiKhach?.TenDoi</div>
+                                </div>
+                            </div>
+
+                            <div class="tran-footer">
+                                @if (tran.TrangThai == "Scheduled")
+                                {
+                                    <a href="/TournamentStaff/CheckIn/@tran.Id"
+                                       class="btn btn-sm btn-success rounded-pill">
+                                        ✅ Bắt đầu & Check-in
+                                    </a>
+                                }
+                                @if (tran.TrangThai == "InProgress")
+                                {
+                                    <a href="/TournamentStaff/SuKien/@tran.Id"
+                                       class="btn btn-sm btn-warning rounded-pill">
+                                        ⚽ Ghi sự kiện
+                                    </a>
+                                    <a href="/TournamentStaff/KetThuc/@tran.Id"
+                                       class="btn btn-sm btn-danger rounded-pill">
+                                        🏁 Kết thúc
+                                    </a>
+                                }
+                                @if (tran.TrangThai == "Closed")
+                                {
+                                    <span style="font-size:12px;color:var(--muted)">
+                                        Đã chốt kết quả
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>

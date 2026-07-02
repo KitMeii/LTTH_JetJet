@@ -1,166 +1,403 @@
-﻿@{
+@{
     ViewData["Title"] = "Check-in";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var ketQua = ViewBag.KetQua as Web_Stadium.EFCore.DatSan;
+    ViewBag.NavActivePage = "checkin";
+    var ketQua   = ViewBag.KetQua  as Web_Stadium.EFCore.DatSan;
+    var sapDen   = ViewBag.SapDen  as List<Web_Stadium.EFCore.DatSan> ?? new();
+    var dangDien = ViewBag.DangDien as List<Web_Stadium.EFCore.DatSan> ?? new();
+    int lichSuKhach = (int)(ViewBag.LichSuKhach ?? 0);
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Staff — Nghiệp vụ</div>
-        <h1 style="font-style:italic;line-height:0.9">CHECK-IN<br><span class="text-green">XÁC NHẬN KHÁCH ĐẾN SÂN</span></h1>
+<div style="background:var(--bg2);padding:100px 0 28px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end flex-wrap gap-2">
+        <div>
+            <div class="section-label">Staff — Nghiệp vụ</div>
+            <h1 style="font-style:italic;line-height:0.9;margin:0">CHECK-IN<br>
+                <span class="text-green">XÁC NHẬN KHÁCH ĐẾN SÂN</span>
+            </h1>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+            <div style="text-align:center;background:rgba(22,196,127,.12);border:1px solid var(--green);border-radius:10px;padding:8px 18px">
+                <div style="font-size:1.6rem;font-weight:800;color:var(--green);font-family:var(--ff-h)">@sapDen.Count</div>
+                <div style="font-size:10px;color:var(--muted);letter-spacing:.5px">CHỜ CHECK-IN</div>
+            </div>
+            <div style="text-align:center;background:rgba(142,68,173,.1);border:1px solid #8E44AD;border-radius:10px;padding:8px 18px">
+                <div style="font-size:1.6rem;font-weight:800;color:#8E44AD;font-family:var(--ff-h)">@dangDien.Count</div>
+                <div style="font-size:10px;color:var(--muted);letter-spacing:.5px">ĐANG ĐÁNH</div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Staff" class="btn btn-sm btn-outline-light rounded-pill">📋 Ca trực</a>
-        <a href="/Staff/CheckIn" class="btn btn-sm btn-warning rounded-pill">✅ Check-in</a>
-        <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Sự cố</a>
-    </div>
-</div>
+@await Html.PartialAsync("_StaffNav")
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-6">
+<div class="container py-4">
 
-            @if (TempData["Success"] != null)
+    @await Html.PartialAsync("_StaffAlerts")
+
+    <div class="row g-4">
+
+        <!-- ══ CỘT TRÁI: Lịch hôm nay ══ -->
+        <div class="col-lg-7">
+
+            <!-- Đang đánh -->
+            @if (dangDien.Any())
             {
-                <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-            }
-            @if (TempData["Error"] != null)
-            {
-                <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                <div style="margin-bottom:24px">
+                    <div style="font-size:11px;letter-spacing:1px;color:#8E44AD;margin-bottom:10px;font-weight:600">
+                        🟣 ĐANG SỬ DỤNG (@dangDien.Count)
+                    </div>
+                    @foreach (var don in dangDien)
+                    {
+                        <div style="background:rgba(142,68,173,.07);border:1px solid rgba(142,68,173,.4);border-radius:12px;
+                                    padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div style="width:42px;height:42px;border-radius:10px;background:#8E44AD;display:flex;align-items:center;
+                                        justify-content:center;color:white;font-weight:800;font-size:1.1rem;flex-shrink:0">
+                                @(don.User?.HoTen?.FirstOrDefault())
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:700;font-size:14px">@don.User?.HoTen</div>
+                                <div style="font-size:12px;color:var(--muted)">
+                                    @don.KhungGio?.SanBong?.TenSan
+                                    &nbsp;·&nbsp; @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                    &nbsp;·&nbsp; <code style="color:#8E44AD;font-size:12px">@don.MaXacNhan</code>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-shrink:0">
+                                <a href="/Staff/POS/@don.Id" class="btn btn-sm btn-outline-warning rounded-pill" style="font-size:12px">🛒 POS</a>
+                                <a href="/Staff/CheckOut/@don.Id" class="btn btn-sm btn-success rounded-pill" style="font-size:12px">✓ Check-out</a>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
 
-            <!-- Form tra cứu -->
-            <div class="section-card p-4 mb-4">
-                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:16px">TRA CỨU ĐƠN ĐẶT SÂN</div>
-                <form method="get" action="/Staff/CheckIn">
-                    <div style="display:flex;gap:8px">
-                        <input type="text" name="tuKhoa"
+            <!-- Sắp đến -->
+            <div>
+                <div style="font-size:11px;letter-spacing:1px;color:var(--green);margin-bottom:10px;font-weight:600">
+                    🟢 LỊCH HÔM NAY — CHỜ CHECK-IN (@sapDen.Count)
+                </div>
+
+                @if (!sapDen.Any() && !dangDien.Any())
+                {
+                    <div style="text-align:center;padding:40px;background:var(--bg2);border-radius:12px;border:1px solid var(--border);color:var(--muted)">
+                        <div style="font-size:2rem;margin-bottom:8px">📋</div>
+                        Không có lịch đặt sân hôm nay tại sân bạn phụ trách.
+                    </div>
+                }
+
+                @foreach (var don in sapDen)
+                {
+                    var dvCount = don.DatSanDichVus?.Count ?? 0;
+                    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+                                padding:14px 16px;margin-bottom:10px;transition:border-color .2s"
+                         onmouseenter="this.style.borderColor='var(--green)'"
+                         onmouseleave="this.style.borderColor='var(--border)'">
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div style="width:42px;height:42px;border-radius:10px;background:rgba(22,196,127,.2);display:flex;
+                                        align-items:center;justify-content:center;color:var(--green);font-weight:800;font-size:1.1rem;flex-shrink:0">
+                                @(don.User?.HoTen?.FirstOrDefault())
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:700;font-size:14px">
+                                    @don.User?.HoTen
+                                    <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">📞 @don.User?.SoDienThoai</span>
+                                </div>
+                                <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                                    🏟 @don.KhungGio?.SanBong?.TenSan
+                                    &nbsp;·&nbsp; ⏰ @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                </div>
+                                <div style="font-size:11px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">
+                                    <span>Mã: <code style="color:var(--green);font-size:11px">@don.MaXacNhan</code></span>
+                                    <span style="color:var(--green)">Cọc: <strong>@don.TienCoc.ToString("N0")đ</strong></span>
+                                    <span style="color:var(--muted)">Sân: <strong style="color:var(--text)">@don.KhungGio?.Gia.ToString("N0")đ</strong></span>
+                                    @if (dvCount > 0)
+                                    {
+                                        <span style="background:rgba(22,196,127,.15);color:var(--green);padding:1px 7px;border-radius:8px">
+                                            📦 @dvCount dịch vụ đặt trước
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+                                <form method="post" action="/Staff/ThucHienCheckIn" style="display:inline">
+                                    <input type="hidden" name="datSanId" value="@don.Id" />
+                                    <button type="submit" class="btn btn-sm btn-warning rounded-pill"
+                                            style="font-size:12px;font-weight:700"
+                                            onclick="return confirm('Check-in cho @don.User?.HoTen?')">
+                                        ✅ Check-in
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill"
+                                        style="font-size:12px"
+                                        onclick="document.getElementById('inputTuKhoa').value='@don.MaXacNhan';document.getElementById('formTraCuu').submit()">
+                                    🔍 Chi tiết
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (dvCount > 0)
+                        {
+                            <div style="margin-top:10px;padding:8px 10px;background:rgba(22,196,127,.05);border-radius:8px;
+                                        border:1px solid rgba(22,196,127,.15);font-size:12px">
+                                @foreach (var dv in don.DatSanDichVus!)
+                                {
+                                    <span style="display:inline-block;margin-right:10px;color:var(--muted)">
+                                        @dv.DichVu?.TenDichVu ×@dv.SoLuong
+                                        <strong style="color:var(--green)">@(((dv.DichVu?.Gia ?? 0) * dv.SoLuong).ToString("N0"))đ</strong>
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ══ CỘT PHẢI: Tìm kiếm + kết quả ══ -->
+        <div class="col-lg-5">
+
+            <div class="section-card p-4 mb-3" style="position:sticky;top:60px">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">TRA CỨU / QUÉT QR</div>
+                <form method="get" action="/Staff/CheckIn" id="formTraCuu">
+                    <div style="display:flex;gap:8px;margin-bottom:8px">
+                        <input type="text" name="tuKhoa" id="inputTuKhoa"
                                value="@ViewBag.TuKhoa"
                                class="form-control"
-                               placeholder="Nhập mã xác nhận (VD: ABC12345) hoặc số điện thoại..."
-                               style="background:var(--bg3);border-color:var(--border);color:white;font-size:14px"
-                               autofocus />
-                        <button type="submit" class="btn btn-warning rounded-pill px-3">Tìm</button>
+                               placeholder="Mã xác nhận hoặc SĐT..."
+                               style="background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px" />
+                        <button type="submit" class="btn btn-warning rounded-pill px-3" style="font-size:13px">Tìm</button>
                     </div>
+                    <button type="button" class="btn btn-outline-info rounded-pill w-100" onclick="moQuetQR()" id="btnMoQR" style="font-size:12px">
+                        📷 Quét QR từ điện thoại khách
+                    </button>
                 </form>
-                <div style="font-size:12px;color:var(--muted);margin-top:8px">
-                    Có thể tìm bằng <strong>Mã xác nhận</strong> hoặc <strong>Số điện thoại</strong> của khách
+                <div style="font-size:11px;color:var(--muted);margin-top:8px">
+                    💡 Hoặc click <strong>🔍 Chi tiết</strong> từ lịch bên trái
+                </div>
+
+                <div id="qr-scanner-box" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--green);border-radius:10px;background:rgba(22,196,127,0.05)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <span style="font-size:11px;color:var(--green);font-weight:600">🎥 Đưa QR vào khung hình</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="dongQuetQR()">✕ Đóng</button>
+                    </div>
+                    <div id="qr-reader" style="width:100%;border-radius:8px;overflow:hidden"></div>
+                    <div id="qr-result" style="margin-top:8px;font-size:12px;color:var(--muted);text-align:center"></div>
                 </div>
             </div>
 
-            <!-- Kết quả tra cứu -->
             @if (ViewBag.TuKhoa != null && ketQua == null)
             {
                 <div class="section-card p-4 text-center" style="border:1px solid #e74c3c">
                     <div style="font-size:2rem;margin-bottom:8px">🔍</div>
                     <div style="color:#e74c3c;font-weight:600">@ViewBag.ThongBao</div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:6px">Kiểm tra lại mã hoặc SĐT</div>
                 </div>
             }
 
             @if (ketQua != null)
             {
-                var statusColor = ketQua.TrangThai switch
-                {
-                    "DaXacNhan" => "var(--green)",
+                var sc = ketQua.TrangThai switch {
+                    "DaXacNhan"  => "var(--green)",
                     "DangSuDung" => "#8E44AD",
-                    "HoanThanh" => "var(--muted)",
-                    "DaHuy" => "#e74c3c",
-                    _ => "var(--muted)"
+                    "HoanThanh"  => "var(--muted)",
+                    "DaHuy"      => "#e74c3c",
+                    _            => "var(--muted)"
                 };
+                var tongDV    = ketQua.DatSanDichVus?.Sum(x => (x.DichVu?.Gia ?? 0) * x.SoLuong) ?? 0;
+                var tongTatCa = (ketQua.KhungGio?.Gia ?? 0) + tongDV;
+                var conLai    = tongTatCa - ketQua.TienCoc;
 
-                <div class="section-card p-0 overflow-hidden" style="border:1px solid var(--green)">
-                    <!-- Header -->
-                    <div style="background:rgba(30,215,96,0.08);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-                        <div>
-                            <div style="font-family:var(--ff-h);font-size:16px">@ketQua.KhungGio?.SanBong?.TenSan</div>
-                            <div style="font-size:13px;color:var(--muted)">
-                                @ketQua.KhungGio?.GioBatDau.ToString("HH:mm") – @ketQua.KhungGio?.GioKetThuc.ToString("HH:mm")
-                                | @ketQua.NgayThiDau.ToString("dd/MM/yyyy")
+                <div class="section-card p-0 overflow-hidden" style="border:2px solid @sc">
+
+                    <div style="background:rgba(22,196,127,0.08);padding:14px 18px;border-bottom:1px solid var(--border)">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                            <div>
+                                <div style="font-family:var(--ff-h);font-size:15px">@ketQua.KhungGio?.SanBong?.TenSan</div>
+                                <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                                    ⏰ @ketQua.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@ketQua.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                    &nbsp;·&nbsp; @ketQua.NgayThiDau.ToString("dd/MM/yyyy")
+                                </div>
+                            </div>
+                            <span style="color:@sc;font-weight:700;font-size:11px;padding:3px 10px;border:1px solid @sc;border-radius:20px">
+                                @ketQua.TrangThai
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+                            <div style="width:44px;height:44px;border-radius:10px;background:rgba(22,196,127,.2);
+                                        display:flex;align-items:center;justify-content:center;
+                                        color:var(--green);font-weight:800;font-size:1.2rem">
+                                @(ketQua.User?.HoTen?.FirstOrDefault())
+                            </div>
+                            <div>
+                                <div style="font-weight:700">@ketQua.User?.HoTen</div>
+                                <div style="font-size:12px;color:var(--muted)">
+                                    📞 @ketQua.User?.SoDienThoai
+                                    @if (lichSuKhach > 0)
+                                    {
+                                        <span style="margin-left:8px;background:rgba(99,102,241,.15);color:#818cf8;
+                                                     padding:1px 7px;border-radius:8px;font-size:11px">
+                                            @lichSuKhach lần đặt trước
+                                        </span>
+                                    }
+                                </div>
                             </div>
                         </div>
-                        <span style="color:@statusColor;font-weight:700;font-size:13px">@ketQua.TrangThai</span>
-                    </div>
 
-                    <!-- Thông tin khách -->
-                    <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-                            <div><span style="color:var(--muted)">Khách hàng:</span><br /><strong>@ketQua.User?.HoTen</strong></div>
-                            <div><span style="color:var(--muted)">SĐT:</span><br /><strong>@ketQua.User?.SoDienThoai</strong></div>
-                            <div><span style="color:var(--muted)">Mã đơn:</span><br /><code style="color:var(--green);font-size:14px">@ketQua.MaXacNhan</code></div>
-                            <div><span style="color:var(--muted)">Tiền cọc đã trả:</span><br /><strong style="color:var(--green)">@ketQua.TienCoc.ToString("N0")đ</strong></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+                            <div style="background:var(--bg3);padding:8px 10px;border-radius:8px">
+                                <div style="color:var(--muted);margin-bottom:2px">Mã đơn</div>
+                                <code style="color:var(--green);font-size:13px">@ketQua.MaXacNhan</code>
+                            </div>
+                            <div style="background:var(--bg3);padding:8px 10px;border-radius:8px">
+                                <div style="color:var(--muted);margin-bottom:2px">Tiền cọc đã trả</div>
+                                <strong style="color:var(--green)">@ketQua.TienCoc.ToString("N0")đ</strong>
+                            </div>
+                            <div style="background:var(--bg3);padding:8px 10px;border-radius:8px">
+                                <div style="color:var(--muted);margin-bottom:2px">Tiền sân</div>
+                                <strong>@ketQua.KhungGio?.Gia.ToString("N0")đ</strong>
+                            </div>
+                            <div style="background:var(--bg3);padding:8px 10px;border-radius:8px">
+                                <div style="color:var(--muted);margin-bottom:2px">Còn lại phải thu</div>
+                                <strong style="color:@(conLai > 0 ? "#f59e0b" : "var(--muted)")">@conLai.ToString("N0")đ</strong>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Dịch vụ đặt trước -->
                     @if (ketQua.DatSanDichVus?.Any() == true)
                     {
-                        <div style="padding:12px 20px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15)">
-                            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">DỊCH VỤ ĐẶT TRƯỚC</div>
+                        <div style="padding:12px 18px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.1)">
+                            <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">📦 DỊCH VỤ ĐẶT TRƯỚC</div>
                             @foreach (var dv in ketQua.DatSanDichVus)
                             {
-                                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-                                    <span>@dv.DichVu?.TenDichVu × @dv.SoLuong</span>
-                                    <span style="color:var(--green)">@((dv.DichVu?.Gia ?? 0) * dv.SoLuong).ToString("N0")đ</span>
+                                <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+                                    <span style="color:var(--muted)">@dv.DichVu?.TenDichVu <strong style="color:var(--text)">×@dv.SoLuong</strong></span>
+                                    <span style="color:var(--green)">@(((dv.DichVu?.Gia ?? 0) * dv.SoLuong).ToString("N0"))đ</span>
                                 </div>
                             }
                         </div>
                     }
 
-                    <!-- Hành động -->
-                    <div style="padding:16px 20px">
+                    <div style="padding:14px 18px">
                         @if (ketQua.TrangThai == "DaXacNhan")
                         {
                             <form method="post" action="/Staff/ThucHienCheckIn">
-                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="datSanId" value="@ketQua.Id" />
                                 <button type="submit" class="btn btn-success w-100 rounded-pill"
-                                        style="font-size:14px;padding:10px"
+                                        style="font-size:14px;padding:11px;font-weight:700"
                                         onclick="return confirm('Xác nhận check-in cho @ketQua.User?.HoTen?')">
-                                    ✅ Xác nhận Check-in — Chuyển sang Đang sử dụng
+                                    ✅ Xác nhận Check-in
                                 </button>
                             </form>
                         }
                         else if (ketQua.TrangThai == "DangSuDung")
                         {
                             <div style="display:flex;gap:8px">
-                                <a href="/Staff/POS/@ketQua.Id" class="btn btn-warning rounded-pill flex-fill">🛒 POS mini</a>
-                                <a href="/Staff/CheckOut/@ketQua.Id" class="btn btn-success rounded-pill flex-fill">✓ Check-out</a>
-                            </div>
-                        }
-                        else if (ketQua.TrangThai == "ChoDuyet")
-                        {
-                            <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);
-                                                border-radius:10px;padding:14px;text-align:center;">
-                                <div style="color:#f59e0b;font-weight:700;margin-bottom:6px;">
-                                    ⏳ Đơn đang chờ Owner xác nhận
-                                </div>
-                                <div style="color:#aaa;font-size:13px;line-height:1.6;">
-                                    Khách đã thanh toán cọc nhưng Owner chưa duyệt.<br>
-                                    Hướng dẫn khách liên hệ trực tiếp với Owner để được duyệt nhanh.<br>
-                                    <strong style="color:#f59e0b;">Staff không có quyền tự duyệt thay Owner.</strong>
-                                </div>
-                            </div>
-                        }
-                        else if (ketQua.TrangThai == "DaHuy")
-                        {
-                            <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);
-                                                border-radius:10px;padding:14px;text-align:center;color:#ef4444;">
-                                ❌ Đơn này đã bị hủy — không thể check-in
+                                <a href="/Staff/POS/@ketQua.Id" class="btn btn-warning rounded-pill flex-fill" style="font-size:13px">🛒 POS</a>
+                                <a href="/Staff/CheckOut/@ketQua.Id" class="btn btn-success rounded-pill flex-fill" style="font-size:13px">💰 Check-out</a>
                             </div>
                         }
                         else
                         {
-                            <div style="text-align:center;color:var(--muted);font-size:13px;padding:10px;">
+                            <div style="text-align:center;color:var(--muted);font-size:13px;padding:6px">
                                 Đơn ở trạng thái <strong>@ketQua.TrangThai</strong> — không thể thao tác
                             </div>
                         }
                     </div>
+
                 </div>
             }
 
         </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+    <script>
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SanIds ?? new List<int>()));
+
+        // Voice context
+        window.voiceContext = {
+            checkIns: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                sapDen.Select(d => new {
+                    id        = d.Id,
+                    maXacNhan = d.MaXacNhan,
+                    tenKhach  = d.User != null ? d.User.HoTen : "",
+                    tenSan    = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId     = d.KhungGio != null ? d.KhungGio.SanBongId : 0
+                })
+            )),
+            checkOuts: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                dangDien.Select(d => new {
+                    id        = d.Id,
+                    maXacNhan = d.MaXacNhan,
+                    tenKhach  = d.User != null ? d.User.HoTen : "",
+                    tenSan    = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId     = d.KhungGio != null ? d.KhungGio.SanBongId : 0
+                })
+            ))
+        };
+
+        // Lệnh camera + xác nhận kết quả hiện tại
+        window.voiceCommands = [
+            { re:/(mở|mo|bật|bat).*(camera|qr|quét|quet)/, label:'Mở camera quét', action:()=>moQuetQR() },
+            { re:/(đóng|dong|tắt|tat).*(camera|qr)/, label:'Đóng camera', action:()=>dongQuetQR() },
+            {
+                re:/(xác nhận|xac nhan|check.?in).*(kết quả|ket qua|đơn này|don nay|hiện tại)/,
+                label:'Check-in kết quả hiện tại',
+                action:() => {
+                    const btn = document.querySelector('form[action*="ThucHienCheckIn"] button[type="submit"]');
+                    if (btn) { btn.onclick = null; btn.click(); }
+                    else document.getElementById('voice-status').textContent = '❓ Chưa có đơn nào được tra cứu';
+                }
+            }
+        ];
+
+        let qrScanner = null;
+        const $box    = document.getElementById('qr-scanner-box');
+        const $btn    = document.getElementById('btnMoQR');
+        const $result = document.getElementById('qr-result');
+
+        async function moQuetQR() {
+            $box.style.display = 'block';
+            $btn.disabled = true;
+            $result.textContent = 'Đang khởi động camera...';
+            try {
+                qrScanner = new Html5Qrcode('qr-reader');
+                await qrScanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 220, height: 220 } },
+                    onScanSuccess, () => {}
+                );
+                $result.textContent = 'Đưa mã QR vào khung hình...';
+            } catch (err) {
+                $result.innerHTML = '<span style="color:#e74c3c">Không truy cập được camera</span>';
+                $btn.disabled = false;
+            }
+        }
+
+        async function dongQuetQR() {
+            if (qrScanner && qrScanner.isScanning) {
+                try { await qrScanner.stop(); await qrScanner.clear(); } catch(e){}
+            }
+            qrScanner = null;
+            $box.style.display = 'none';
+            $btn.disabled = false;
+            $result.textContent = '';
+        }
+
+        function onScanSuccess(decodedText) {
+            $result.innerHTML = '<span style="color:#16C47F">✅ ' + decodedText + '</span>';
+            document.getElementById('inputTuKhoa').value = decodedText.trim();
+            setTimeout(() => { dongQuetQR(); document.getElementById('formTraCuu').submit(); }, 800);
+        }
+
+        window.addEventListener('beforeunload', dongQuetQR);
+    </script>
+}

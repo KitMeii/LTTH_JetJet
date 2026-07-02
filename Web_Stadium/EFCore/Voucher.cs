@@ -19,7 +19,6 @@ public partial class Voucher
 
     public decimal? GiamToiDa { get; set; }
 
-    // Hệ thống đổi điểm (giữ nguyên)
     public int DiemCanDoi { get; set; }
 
     public int SoNgayHieuLuc { get; set; }
@@ -28,35 +27,17 @@ public partial class Voucher
 
     public DateTime NgayTao { get; set; }
 
-    // ── Fields mới ──────────────────────────────────────
-    // "HeThong" = Admin tạo, "Owner" = Owner tạo
-    public string LoaiVoucher { get; set; } = "HeThong";
-
-    // null = voucher hệ thống; có giá trị = voucher của sân cụ thể
-    public int? SanBongId { get; set; }
-
     public int? OwnerId { get; set; }
 
-    // 0 = không giới hạn
-    public int SoLuong { get; set; } = 0;
+    public int? SanBongId { get; set; }
 
-    public int DaDung { get; set; } = 0;
+    public string LoaiPhatHanh { get; set; } = "HeThong";
 
-    public DateTime NgayBatDau { get; set; }
-
-    public DateTime NgayHetHan { get; set; }
-
-    // Đơn tối thiểu mới được áp dụng voucher
-    public decimal DieuKienToiThieu { get; set; } = 0;
-
-    // ── Navigations ──────────────────────────────────────
-    public virtual SanBong? SanBong { get; set; }
+    public int? SoLuotConLai { get; set; }
 
     public virtual User? Owner { get; set; }
 
+    public virtual SanBong? SanBong { get; set; }
+
     public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
-
-    public virtual ICollection<DatSan> DatSanAsSan { get; set; } = new List<DatSan>();
-
-    public virtual ICollection<DatSan> DatSanAsHeThong { get; set; } = new List<DatSan>();
 }

@@ -1,212 +1,742 @@
-﻿@model List<Web_Stadium.EFCore.DatSan>
+@model List<Web_Stadium.EFCore.DatSan>
+@using Web_Stadium.EFCore
 @{
     ViewData["Title"] = "Dashboard Ca Trực";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var dangDien = ViewBag.DangDien as List<Web_Stadium.EFCore.DatSan> ?? new();
-    var sapDen = ViewBag.SapDen as List<Web_Stadium.EFCore.DatSan> ?? new();
-    var hoanThanh = ViewBag.HoanThanh as List<Web_Stadium.EFCore.DatSan> ?? new();
-    var choDuyet = Model.Where(d => d.TrangThai == "ChoDuyet").ToList();
-    var danhSachSan = ViewBag.DanhSachSan as List<Web_Stadium.EFCore.SanBong> ?? new();
-    var now = (DateTime)(ViewBag.Now ?? DateTime.Now);
+    ViewBag.NavActivePage = "index";
+    var dangDien   = ViewBag.DangDien   as List<DatSan> ?? new();
+    var sapDen     = ViewBag.SapDen     as List<DatSan> ?? new();
+    var hoanThanh  = ViewBag.HoanThanh  as List<DatSan> ?? new();
+    var danhSachSan= ViewBag.DanhSachSan as List<SanBong> ?? new();
+    var nhatKy     = ViewBag.NhatKyCa   as List<AuditLog> ?? new();
+    var suCo       = ViewBag.SuCoHomNay as List<DatSan> ?? new();
+    decimal doanhThu  = (decimal)(ViewBag.DoanhThuCa  ?? 0m);
+    int soCheckin  = (int)(ViewBag.SoCheckinCa  ?? 0);
+    int soCheckout = (int)(ViewBag.SoCheckoutCa ?? 0);
+    var now        = (DateTime)(ViewBag.Now ?? DateTime.Now);
+    string tenStaff = ViewBag.TenStaff as string ?? "Staff";
+    int tlStartMins = 6 * 60;
+    int tlRangeMins = 16 * 60; // 6:00 → 22:00
+    double TlPct(double mins) => Math.Max(0, Math.Min(100, (mins - tlStartMins) / tlRangeMins * 100));
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container d-flex justify-content-between align-items-end">
+<div style="background:var(--bg2);padding:100px 0 28px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end flex-wrap gap-3">
         <div>
             <div class="section-label">Nhân viên trực sân</div>
             <h1 style="font-style:italic;line-height:0.9;margin:0">
                 CA TRỰC<br><span class="text-green">@now.ToString("dd/MM/yyyy")</span>
             </h1>
         </div>
-        <div style="text-align:right;font-family:var(--ff-h);font-size:2rem;color:var(--green)" id="dongHo">
-            @now.ToString("HH:mm")
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <div style="font-family:var(--ff-h);font-size:2.4rem;color:var(--green)" id="dongHo">
+                @now.ToString("HH:mm")
+            </div>
+            <button onclick="document.getElementById('printModal').style.display='flex'"
+                    class="btn btn-sm btn-outline-secondary rounded-pill"
+                    style="font-size:11px;padding:3px 12px">
+                📊 Báo cáo ca
+            </button>
         </div>
     </div>
 </div>
 
-<!-- MENU STAFF — chỉ có 4 mục, không có báo cáo tài chính -->
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap">
-        <a href="/Staff" class="btn btn-sm btn-success rounded-pill">📋 Ca trực</a>
-        <a href="/Staff/CheckIn" class="btn btn-sm btn-outline-warning rounded-pill">✅ Check-in</a>
-        <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Báo sự cố</a>
-    </div>
-</div>
+@await Html.PartialAsync("_StaffNav")
 
 <div class="container py-4">
 
-    <!-- KPI nhanh -->
+    @await Html.PartialAsync("_StaffAlerts")
+    @Html.AntiForgeryToken()
+
+    <!-- ══ KPI cards ══ -->
     <div class="row g-3 mb-4">
-        <div class="col-4">
+        <div class="col-6 col-md-3">
             <div class="section-card text-center p-3" style="border:1px solid #8E44AD">
-                <div style="font-size:2rem;font-family:var(--ff-h);color:#8E44AD" id="badgeDang">@dangDien.Count</div>
-                <div style="font-size:12px;color:var(--muted)">Đang sử dụng</div>
+                <div style="font-size:2rem;font-family:var(--ff-h);color:#8E44AD">@dangDien.Count</div>
+                <div style="font-size:11px;color:var(--muted)">Đang sử dụng</div>
             </div>
         </div>
-        <div class="col-4">
+        <div class="col-6 col-md-3">
             <div class="section-card text-center p-3" style="border:1px solid var(--green)">
                 <div style="font-size:2rem;font-family:var(--ff-h);color:var(--green)">@sapDen.Count</div>
-                <div style="font-size:12px;color:var(--muted)">Sắp đến hôm nay</div>
+                <div style="font-size:11px;color:var(--muted)">Sắp đến hôm nay</div>
             </div>
         </div>
-        <div class="col-4">
-            <div class="section-card text-center p-3">
-                <div style="font-size:2rem;font-family:var(--ff-h);color:var(--muted2)">@hoanThanh.Count</div>
-                <div style="font-size:12px;color:var(--muted)">Đã xong hôm nay</div>
+        <div class="col-6 col-md-3">
+            <div class="section-card text-center p-3" style="border:1px solid #f59e0b">
+                <div style="font-size:1.5rem;font-family:var(--ff-h);color:#f59e0b">@doanhThu.ToString("N0")đ</div>
+                <div style="font-size:11px;color:var(--muted)">💰 Đã thu ca này</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="section-card text-center p-3" style="border:1px solid @(suCo.Any() ? "#e74c3c" : "var(--border)")">
+                <div style="font-size:2rem;font-family:var(--ff-h);color:@(suCo.Any() ? "#e74c3c" : "var(--muted2)")">@suCo.Count</div>
+                <div style="font-size:11px;color:var(--muted)">⚠️ Sự cố hôm nay</div>
             </div>
         </div>
     </div>
 
-    @if (TempData["Success"] != null)
+    <!-- ══ #3 Trạng thái sân ══ -->
+    @if (danhSachSan.Any())
     {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+            @foreach (var san in danhSachSan)
+            {
+                var donDang = dangDien.FirstOrDefault(d => d.KhungGio?.SanBongId == san.Id);
+                var donSap  = sapDen.FirstOrDefault(d => d.KhungGio?.SanBongId == san.Id);
+                var (dot, status, bc) = donDang != null
+                    ? ("#8E44AD", $"Đang đá đến {donDang.KhungGio?.GioKetThuc.ToString(@"hh\:mm")}", "rgba(142,68,173,.25)")
+                    : donSap != null
+                        ? ("var(--green)", $"Sắp đến {donSap.KhungGio?.GioBatDau.ToString(@"hh\:mm")}", "rgba(22,196,127,.15)")
+                        : ("var(--muted2)", "Đang trống", "var(--border)");
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;
+                             border:1px solid @bc;border-radius:10px;background:var(--bg2)">
+                    <span style="width:8px;height:8px;border-radius:50%;background:@dot;flex-shrink:0;
+                                 box-shadow:0 0 6px @dot"></span>
+                    <div>
+                        <div style="font-size:12px;font-weight:700;color:var(--text)">@san.TenSan</div>
+                        <div style="font-size:10px;color:var(--muted)">@status</div>
+                    </div>
+                </div>
+            }
+        </div>
     }
 
-    <!-- CHỜ DUYỆT — cảnh báo cho Staff -->
-    @if (choDuyet.Any())
-    {
-        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);
-                        border-radius:12px;padding:14px 18px;margin-bottom:20px;">
-            <div style="font-size:11px;color:#f59e0b;letter-spacing:1px;margin-bottom:8px;">
-                ⏳ ĐƠN ĐANG CHỜ OWNER DUYỆT (@choDuyet.Count)
+    <!-- ══ #1 Timeline Gantt ══ -->
+    @{
+        double nowPctTl = TlPct(now.Hour * 60 + now.Minute);
+    }
+    <div class="section-card p-0 overflow-hidden mb-4">
+        <div style="background:var(--bg3);padding:10px 16px;border-bottom:1px solid var(--border);
+                     display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:700">📅 TIMELINE HÔM NAY</div>
+            <div style="font-size:11px;color:var(--muted)">06:00 → 22:00</div>
+        </div>
+
+        @* Trục giờ *@
+        <div style="padding:8px 16px 2px">
+            <div style="position:relative;height:16px;margin-left:88px">
+                @for (int h = 6; h <= 22; h += 2)
+                {
+                    double pct = TlPct(h * 60);
+                    <span style="position:absolute;left:@pct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;
+                                  transform:translateX(-50%);font-size:9px;color:var(--muted);white-space:nowrap">
+                        @h:00
+                    </span>
+                }
             </div>
-            @foreach (var don in choDuyet)
-            {
-                <div style="font-size:13px;color:#ccc;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-                    <strong>@don.User?.HoTen</strong> —
-                    @don.KhungGio?.SanBong?.TenSan
-                    <span style="color:#888;margin-left:8px;">
-                        @don.KhungGio?.GioBatDau.ToString("HH:mm") | Mã:
-                        <code style="color:#f59e0b;">@don.MaXacNhan</code>
-                    </span>
-                    <span style="color:#f59e0b;font-size:12px;margin-left:8px;">
-                        → Hướng dẫn khách liên hệ Owner để được duyệt
-                    </span>
-                </div>
-            }
         </div>
-    }
 
-    <!-- ĐANG SỬ DỤNG -->
-    @if (dangDien.Any())
-    {
-        <div style="margin-bottom:28px">
-            <div style="font-size:11px;color:#8E44AD;letter-spacing:1px;margin-bottom:12px">🟣 ĐANG SỬ DỤNG (@dangDien.Count)</div>
-            @foreach (var don in dangDien)
+        @* Hàng sân *@
+        <div style="padding:2px 16px 10px">
+            @if (!danhSachSan.Any())
             {
-                <div class="section-card p-0 overflow-hidden mb-3" style="border:1px solid #8E44AD">
-                    <div style="background:rgba(142,68,173,0.1);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-                        <div>
-                            <strong>@don.KhungGio?.SanBong?.TenSan</strong>
-                            <span style="color:var(--muted);font-size:13px;margin-left:10px">
-                                @don.KhungGio?.GioBatDau.ToString("HH:mm") – @don.KhungGio?.GioKetThuc.ToString("HH:mm")
-                            </span>
-                        </div>
-                        <span style="background:#8E44AD;color:white;padding:2px 10px;border-radius:10px;font-size:12px">Đang đá</span>
-                    </div>
-                    <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                        <div style="font-size:13px">
-                            <span style="color:var(--muted)">Khách:</span> <strong>@don.User?.HoTen</strong>
-                            <span style="color:var(--muted);margin-left:12px">Mã:</span> <code style="color:var(--green)">@don.MaXacNhan</code>
-                        </div>
-                        <div style="display:flex;gap:6px">
-                            <a href="/Staff/POS/@don.Id" class="btn btn-sm btn-outline-warning rounded-pill">🛒 POS</a>
-                            <a href="/Staff/CheckOut/@don.Id" class="btn btn-sm btn-success rounded-pill">✓ Check-out</a>
-                        </div>
-                    </div>
-                </div>
+                <div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Không có sân phụ trách</div>
             }
-        </div>
-    }
-
-    <!-- SẮP ĐẾN -->
-    @if (sapDen.Any())
-    {
-        <div style="margin-bottom:28px">
-            <div style="font-size:11px;color:var(--green);letter-spacing:1px;margin-bottom:12px">🟢 SẮP ĐẾN HÔM NAY (@sapDen.Count)</div>
-            @foreach (var don in sapDen)
+            @foreach (var san in danhSachSan)
             {
-                <div class="section-card p-0 overflow-hidden mb-2">
-                    <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                        <div>
-                            <strong style="font-size:13px">@don.KhungGio?.SanBong?.TenSan</strong>
-                            <span style="color:var(--muted);font-size:12px;margin-left:8px">
-                                @don.KhungGio?.GioBatDau.ToString("HH:mm") – @don.KhungGio?.GioKetThuc.ToString("HH:mm")
-                            </span>
-                            <br />
-                            <span style="font-size:12px;color:var(--muted2)">
-                                @don.User?.HoTen — <code style="color:#6caee0">@don.MaXacNhan</code>
-                                — Cọc: <span style="color:var(--green)">@don.TienCoc.ToString("N0")đ</span>
-                            </span>
-                        </div>
-                        <div style="display:flex;gap:6px">
-                            <form method="post" action="/Staff/ThucHienCheckIn">
-                                <input type="hidden" name="datSanId" value="@don.Id" />
-                                <button type="submit" class="btn btn-sm btn-warning rounded-pill"
-                                        onclick="return confirm('Check-in cho @don.User?.HoTen?')">
-                                    ✅ Check-in
-                                </button>
-                            </form>
-                            <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Sự cố</a>
-                        </div>
+                var donRow = Model.Where(d => d.KhungGio?.SanBongId == san.Id).ToList();
+                <div style="display:flex;align-items:center;gap:0;margin-bottom:5px">
+                    <div style="width:88px;font-size:11px;font-weight:600;color:var(--muted);
+                                 padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0"
+                         title="@san.TenSan">@san.TenSan</div>
+                    <div style="flex:1;position:relative;height:26px;background:rgba(255,255,255,.03);
+                                 border-radius:4px;border:1px solid var(--border);overflow:visible">
+                        @* Đường hiện tại *@
+                        @if (nowPctTl > 0 && nowPctTl < 100)
+                        {
+                            <div style="position:absolute;left:@nowPctTl.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;
+                                         top:-3px;bottom:-3px;width:2px;background:var(--green);z-index:3;border-radius:1px;
+                                         box-shadow:0 0 6px var(--green)"></div>
+                        }
+                        @* Booking blocks *@
+                        @foreach (var don in donRow)
+                        {
+                            int batM = don.KhungGio is null ? 0 : don.KhungGio.GioBatDau.Hour * 60 + don.KhungGio.GioBatDau.Minute;
+                            int ketM = don.KhungGio is null ? 0 : don.KhungGio.GioKetThuc.Hour * 60 + don.KhungGio.GioKetThuc.Minute;
+                            double lft = TlPct(batM);
+                            double wdt = Math.Max(1, Math.Min(100 - lft, (ketM - batM) / (double)tlRangeMins * 100));
+                            var bg = don.TrangThai switch {
+                                "DangSuDung" => "#8E44AD",
+                                "DaXacNhan"  => "#16C47F",
+                                "HoanThanh"  => "#374151",
+                                _            => "#555"
+                            };
+                            var shortName = don.User?.HoTen?.Split(' ').LastOrDefault() ?? "";
+                            var batStr = don.KhungGio?.GioBatDau.ToString(@"hh\:mm") ?? "";
+                            var ketStr = don.KhungGio?.GioKetThuc.ToString(@"hh\:mm") ?? "";
+                            var tip = $"{don.User?.HoTen} | {batStr}–{ketStr} | {don.TrangThai}";
+                            <a href="@(don.TrangThai == "DangSuDung" ? $"/Staff/CheckOut/{don.Id}" : "#")"
+                               title="@tip"
+                               style="position:absolute;left:@lft.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;
+                                      width:@wdt.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;
+                                      top:2px;bottom:2px;background:@bg;border-radius:3px;
+                                      display:flex;align-items:center;padding:0 4px;overflow:hidden;
+                                      font-size:9px;color:white;white-space:nowrap;text-decoration:none;
+                                      cursor:@(don.TrangThai == "DangSuDung" ? "pointer" : "default")">
+                                @shortName
+                            </a>
+                        }
                     </div>
                 </div>
             }
         </div>
-    }
 
-    <!-- ĐÃ HOÀN THÀNH -->
-    @if (hoanThanh.Any())
-    {
-        <div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">✓ ĐÃ XONG HÔM NAY (@hoanThanh.Count)</div>
-            @foreach (var don in hoanThanh)
+        @* Legend *@
+        <div style="padding:6px 16px 10px 106px;border-top:1px solid var(--border);
+                     display:flex;gap:16px;font-size:11px;color:var(--muted);flex-wrap:wrap;align-items:center">
+            <span><i style="display:inline-block;width:10px;height:8px;border-radius:2px;background:#16C47F;margin-right:3px;vertical-align:middle"></i>Đặt chỗ</span>
+            <span><i style="display:inline-block;width:10px;height:8px;border-radius:2px;background:#8E44AD;margin-right:3px;vertical-align:middle"></i>Đang đá</span>
+            <span><i style="display:inline-block;width:10px;height:8px;border-radius:2px;background:#374151;margin-right:3px;vertical-align:middle"></i>Hoàn thành</span>
+            <span style="margin-left:auto">
+                <i style="display:inline-block;width:2px;height:10px;background:var(--green);margin-right:4px;vertical-align:middle;border-radius:1px"></i>Bây giờ
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ══ CỘT TRÁI: Đơn đặt sân ══ -->
+        <div class="col-lg-7">
+
+            @if (dangDien.Any())
             {
-                <div style="padding:10px 16px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;opacity:0.6;display:flex;justify-content:space-between;font-size:13px">
-                    <span>@don.KhungGio?.SanBong?.TenSan — @don.User?.HoTen</span>
-                    <span style="color:var(--muted)">@don.KhungGio?.GioBatDau.ToString("HH:mm") – @don.KhungGio?.GioKetThuc.ToString("HH:mm")</span>
+                <div style="margin-bottom:24px">
+                    <div style="font-size:11px;color:#8E44AD;letter-spacing:1px;margin-bottom:10px;font-weight:600">🟣 ĐANG SỬ DỤNG (@dangDien.Count)</div>
+                    @{ int sttDang = 0; }
+                    @foreach (var don in dangDien)
+                    {
+                        sttDang++;
+                        var dvThem = don.DatSanDichVus?.Where(x => x.DichVu != null).ToList() ?? new();
+                        <div class="section-card p-0 overflow-hidden mb-3 voice-card-dang"
+                             style="border:1px solid #8E44AD;transition:border-color .3s,box-shadow .3s"
+                             data-stt="@sttDang"
+                             data-gio-ket="@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")">
+                            <div style="background:rgba(142,68,173,0.1);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+                                <div>
+                                    <span style="background:#8E44AD;color:white;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-right:8px">#@sttDang</span>
+                                    <strong>@don.KhungGio?.SanBong?.TenSan</strong>
+                                    <span style="color:var(--muted);font-size:13px;margin-left:10px">
+                                        @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                    </span>
+                                </div>
+                                <span style="background:#8E44AD;color:white;padding:2px 10px;border-radius:10px;font-size:11px">Đang đá</span>
+                            </div>
+                            <div style="padding:10px 16px;font-size:13px;border-bottom:1px solid var(--border)">
+                                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+                                    <span><span style="color:var(--muted)">Khách:</span> <strong>@don.User?.HoTen</strong>
+                                          <span style="color:var(--muted);margin-left:8px">📞 @don.User?.SoDienThoai</span></span>
+                                    <span>Mã: <code style="color:#8E44AD">@don.MaXacNhan</code></span>
+                                </div>
+                                @if (dvThem.Any())
+                                {
+                                    <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+                                        📦 DV đã gọi:
+                                        @foreach (var dv in dvThem)
+                                        {
+                                            <span style="margin-right:8px;color:var(--text)">@dv.DichVu!.TenDichVu ×@dv.SoLuong</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div style="padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                                <a href="/Staff/POS/@don.Id" class="btn btn-sm btn-outline-warning rounded-pill voice-pos" style="font-size:12px">🛒 POS thêm DV</a>
+                                <a href="/Staff/CheckOut/@don.Id" class="btn btn-sm btn-success rounded-pill voice-checkout" style="font-size:12px">✓ Check-out & thu tiền</a>
+                                <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill" style="font-size:12px">⚠️ Sự cố</a>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size:12px;margin-left:auto"
+                                        onclick="toggleNote(@don.Id)">📝 Ghi chú</button>
+                            </div>
+                            <div id="note-box-@don.Id" style="display:none;padding:0 16px 12px">
+                                @if (!string.IsNullOrEmpty(don.GhiChuStaff))
+                                {
+                                    <div style="font-size:11px;color:#f59e0b;margin-bottom:4px">📌 @don.GhiChuStaff</div>
+                                }
+                                <div style="display:flex;gap:6px">
+                                    <input type="text" id="note-input-@don.Id"
+                                           value="@don.GhiChuStaff"
+                                           placeholder="Ghi chú nhanh về đơn này..."
+                                           style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+                                                  border-radius:8px;padding:5px 10px;font-size:12px" />
+                                    <button type="button" class="btn btn-sm btn-warning rounded-pill"
+                                            onclick="luuGhiChu(@don.Id)" style="font-size:12px">Lưu</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (sapDen.Any())
+            {
+                <div style="margin-bottom:24px">
+                    <div style="font-size:11px;color:var(--green);letter-spacing:1px;margin-bottom:10px;font-weight:600">🟢 SẮP ĐẾN HÔM NAY (@sapDen.Count)</div>
+                    @{ int sttSap = 0; }
+                    @foreach (var don in sapDen)
+                    {
+                        sttSap++;
+                        <div class="section-card p-0 overflow-hidden mb-2 voice-card-sap"
+                             data-stt="@sttSap"
+                             data-gio-bat="@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")"
+                             style="border:1px solid var(--border);transition:border-color .3s,box-shadow .3s">
+                            <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                                <div>
+                                    <span style="background:var(--green);color:white;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-right:8px">#@sttSap</span>
+                                    <strong style="font-size:13px">@don.KhungGio?.SanBong?.TenSan</strong>
+                                    <span style="color:var(--muted);font-size:12px;margin-left:8px">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</span>
+                                    <br />
+                                    <span style="font-size:12px;color:var(--muted2)">
+                                        @don.User?.HoTen — <code style="color:#6caee0;font-size:11px">@don.MaXacNhan</code>
+                                        — Cọc: <span style="color:var(--green)">@don.TienCoc.ToString("N0")đ</span>
+                                    </span>
+                                </div>
+                                <div style="display:flex;gap:6px">
+                                    <form method="post" action="/Staff/ThucHienCheckIn" class="voice-checkin-form">
+                                        <input type="hidden" name="datSanId" value="@don.Id" />
+                                        <button type="submit" class="btn btn-sm btn-warning rounded-pill voice-checkin"
+                                                style="font-size:12px"
+                                                onclick="return confirm('Check-in cho @don.User?.HoTen?')">
+                                            ✅ Check-in
+                                        </button>
+                                    </form>
+                                    <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill" style="font-size:12px">⚠️</a>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill"
+                                            style="font-size:11px;padding:2px 8px"
+                                            onclick="toggleNote(@don.Id)">📝</button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(don.GhiChuStaff))
+                            {
+                                <div style="padding:4px 16px 8px;font-size:11px;color:#f59e0b">📌 @don.GhiChuStaff</div>
+                            }
+                            <div id="note-box-@don.Id" style="display:none;padding:0 12px 10px">
+                                <div style="display:flex;gap:6px">
+                                    <input type="text" id="note-input-@don.Id"
+                                           value="@don.GhiChuStaff"
+                                           placeholder="Ghi chú nhanh..."
+                                           style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+                                                  border-radius:8px;padding:4px 10px;font-size:12px" />
+                                    <button type="button" class="btn btn-sm btn-warning rounded-pill"
+                                            onclick="luuGhiChu(@don.Id)" style="font-size:11px">Lưu</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (hoanThanh.Any())
+            {
+                <div style="margin-bottom:24px">
+                    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;font-weight:600">✓ ĐÃ XONG HÔM NAY (@hoanThanh.Count)</div>
+                    @foreach (var don in hoanThanh)
+                    {
+                        <div style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;
+                                    display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:0.7">
+                            <div>
+                                <span style="color:var(--muted)">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</span>
+                                <span style="margin:0 8px">@don.KhungGio?.SanBong?.TenSan</span>
+                                <span style="color:var(--muted2)">@don.User?.HoTen</span>
+                            </div>
+                            <span style="color:var(--green);font-weight:600">@(don.TongTien - don.TienCoc).ToString("N0")đ đã thu</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!Model.Any())
+            {
+                <div style="text-align:center;padding:60px 0;color:var(--muted)">
+                    <div style="font-size:3rem;margin-bottom:12px">📋</div>
+                    <div style="font-family:var(--ff-h);font-size:1.1rem">Chưa có lịch đặt sân hôm nay</div>
+                    <div style="font-size:12px;margin-top:6px">Sân phụ trách: @string.Join(", ", danhSachSan.Select(s => s.TenSan))</div>
                 </div>
             }
         </div>
-    }
 
-    @if (!Model.Any())
-    {
-        <div style="text-align:center;padding:80px 0;color:var(--muted)">
-            <div style="font-size:3rem;margin-bottom:16px">📋</div>
-            <div style="font-family:var(--ff-h);font-size:1.2rem">Chưa có lịch đặt sân hôm nay</div>
-            <div style="font-size:13px;margin-top:8px">Các sân phụ trách: @string.Join(", ", danhSachSan.Select(s => s.TenSan))</div>
+        <!-- ══ CỘT PHẢI: Nhật ký ca + Sự cố ══ -->
+        <div class="col-lg-5">
+
+            <!-- Sự cố -->
+            @if (suCo.Any())
+            {
+                <div class="section-card p-0 overflow-hidden mb-3" style="border:1px solid #e74c3c">
+                    <div style="background:rgba(231,76,60,.1);padding:10px 16px;border-bottom:1px solid rgba(231,76,60,.2)">
+                        <div style="font-size:11px;color:#e74c3c;font-weight:700;letter-spacing:1px">⚠️ SỰ CỐ TRONG CA (@suCo.Count)</div>
+                    </div>
+                    @foreach (var sc in suCo)
+                    {
+                        <div style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                                <strong style="color:#e74c3c">@sc.LoaiSuCo</strong>
+                                <span style="color:var(--muted)">@sc.KhungGio?.SanBong?.TenSan</span>
+                            </div>
+                            <div style="color:var(--muted2)">@sc.User?.HoTen — @sc.MaXacNhan</div>
+                            @if (!string.IsNullOrEmpty(sc.GhiChuSuCo))
+                            {
+                                <div style="color:var(--muted);font-style:italic;margin-top:3px">"@sc.GhiChuSuCo"</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Nhật ký ca -->
+            <div class="section-card p-0 overflow-hidden">
+                <div style="background:var(--bg3);padding:12px 16px;border-bottom:1px solid var(--border);
+                             display:flex;justify-content:space-between;align-items:center">
+                    <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px">📋 NHẬT KÝ CA HÔM NAY</div>
+                    <div style="font-size:11px;color:var(--muted)">
+                        ✅ @soCheckin check-in &nbsp;·&nbsp; 🏁 @soCheckout check-out
+                    </div>
+                </div>
+
+                @if (!nhatKy.Any())
+                {
+                    <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">
+                        Chưa có hoạt động nào trong ca hôm nay.
+                    </div>
+                }
+                else
+                {
+                    <div style="max-height:460px;overflow-y:auto">
+                        @foreach (var log in nhatKy)
+                        {
+                            var (icon, color) = log.HanhDong switch {
+                                "CheckIn"    => ("✅", "var(--green)"),
+                                "CheckOut"   => ("💰", "#f59e0b"),
+                                "BanVangLai" => ("🛍", "#6366f1"),
+                                "SuCo"       => ("⚠️", "#e74c3c"),
+                                _            => ("📝", "var(--muted)")
+                            };
+                            <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
+                                <div style="font-size:1.1rem;flex-shrink:0;margin-top:1px">@icon</div>
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-size:12px;font-weight:600;color:@color">@log.HanhDong</div>
+                                    <div style="font-size:12px;color:var(--text);margin-top:1px;word-break:break-word">@log.MoTa</div>
+                                </div>
+                                <div style="font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap">
+                                    @log.ThoiGian.ToString("HH:mm")
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
         </div>
-    }
-
+    </div>
 </div>
 
+<!-- ══ #9 Print Modal ══ -->
+<div id="printModal" style="display:none;position:fixed;inset:0;z-index:10000;
+                             background:rgba(0,0,0,.85);overflow-y:auto;
+                             padding:20px;align-items:flex-start;justify-content:center">
+    <div style="max-width:720px;width:100%">
+        <div id="printContent" style="background:white;color:#0f172a;border-radius:12px;
+                                       padding:32px;font-family:Inter,sans-serif">
+            <!-- Header báo cáo -->
+            <div style="text-align:center;border-bottom:2px solid #16C47F;padding-bottom:16px;margin-bottom:24px">
+                <div style="font-size:11px;letter-spacing:2px;color:#64748b;margin-bottom:4px">BÁO CÁO CA TRỰC</div>
+                <div style="font-size:22px;font-weight:800;color:#0f172a">@tenStaff</div>
+                <div style="font-size:13px;color:#64748b;margin-top:4px">@now.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN"))</div>
+            </div>
+
+            <!-- KPI row -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;text-align:center">
+                <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+                    <div style="font-size:24px;font-weight:800;color:#8E44AD">@Model.Count</div>
+                    <div style="font-size:11px;color:#64748b">Tổng đơn</div>
+                </div>
+                <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+                    <div style="font-size:24px;font-weight:800;color:#16C47F">@soCheckin</div>
+                    <div style="font-size:11px;color:#64748b">Check-in</div>
+                </div>
+                <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+                    <div style="font-size:24px;font-weight:800;color:#16C47F">@soCheckout</div>
+                    <div style="font-size:11px;color:#64748b">Check-out</div>
+                </div>
+                <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+                    <div style="font-size:16px;font-weight:800;color:#f59e0b">@doanhThu.ToString("N0")đ</div>
+                    <div style="font-size:11px;color:#64748b">Doanh thu</div>
+                </div>
+            </div>
+
+            <!-- Bảng HoanThanh -->
+            @if (hoanThanh.Any())
+            {
+                <div style="margin-bottom:20px">
+                    <div style="font-size:11px;letter-spacing:1px;color:#64748b;font-weight:700;margin-bottom:8px">
+                        ✅ ĐƠN ĐÃ HOÀN THÀNH (@hoanThanh.Count)
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;font-size:12px">
+                        <thead>
+                            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+                                <th style="padding:7px 10px;text-align:left;color:#475569">Mã đơn</th>
+                                <th style="padding:7px 10px;text-align:left;color:#475569">Khách</th>
+                                <th style="padding:7px 10px;text-align:left;color:#475569">Sân</th>
+                                <th style="padding:7px 10px;text-align:left;color:#475569">Giờ</th>
+                                <th style="padding:7px 10px;text-align:right;color:#475569">Đã thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var don in hoanThanh)
+                            {
+                                <tr style="border-bottom:1px solid #f1f5f9">
+                                    <td style="padding:6px 10px"><code>@don.MaXacNhan</code></td>
+                                    <td style="padding:6px 10px">@don.User?.HoTen</td>
+                                    <td style="padding:6px 10px">@don.KhungGio?.SanBong?.TenSan</td>
+                                    <td style="padding:6px 10px">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</td>
+                                    <td style="padding:6px 10px;text-align:right;font-weight:600;color:#16a34a">
+                                        @(don.TongTien - don.TienCoc).ToString("N0")đ
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:#f0fdf4">
+                                <td colspan="4" style="padding:8px 10px;font-weight:700;font-size:13px">TỔNG ĐÃ THU</td>
+                                <td style="padding:8px 10px;text-align:right;font-weight:800;color:#16a34a;font-size:15px">
+                                    @doanhThu.ToString("N0")đ
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+
+            <!-- Sự cố -->
+            @if (suCo.Any())
+            {
+                <div style="margin-bottom:20px;padding:14px;border:1px solid #fca5a5;border-radius:8px;background:#fff5f5">
+                    <div style="font-size:11px;letter-spacing:1px;color:#e74c3c;font-weight:700;margin-bottom:8px">
+                        ⚠️ SỰ CỐ TRONG CA (@suCo.Count)
+                    </div>
+                    @foreach (var sc in suCo)
+                    {
+                        <div style="font-size:12px;padding:4px 0;border-bottom:1px solid #fecaca">
+                            <strong style="color:#e74c3c">@sc.LoaiSuCo</strong>
+                            — @sc.KhungGio?.SanBong?.TenSan — @sc.User?.HoTen
+                            @if (!string.IsNullOrEmpty(sc.GhiChuSuCo))
+                            {
+                                <span style="color:#64748b;font-style:italic"> "@sc.GhiChuSuCo"</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Đang sử dụng / chưa xử lý -->
+            @if (dangDien.Any())
+            {
+                <div style="padding:12px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;font-size:12px">
+                    <div style="font-size:11px;color:#f59e0b;font-weight:700;margin-bottom:6px">⚠️ VẪN ĐANG SỬ DỤNG (@dangDien.Count đơn — chưa check-out)</div>
+                    @foreach (var don in dangDien)
+                    {
+                        <div>@don.KhungGio?.SanBong?.TenSan — @don.User?.HoTen — @don.MaXacNhan</div>
+                    }
+                </div>
+            }
+
+            <!-- Footer ký tên -->
+            <div style="margin-top:32px;display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:center;font-size:12px">
+                <div style="border-top:1px solid #0f172a;padding-top:8px;color:#475569">
+                    Nhân viên trực<br><strong>@tenStaff</strong>
+                </div>
+                <div style="border-top:1px solid #0f172a;padding-top:8px;color:#475569">
+                    Xác nhận của quản lý<br><strong>&nbsp;</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nút hành động (ẩn khi in) -->
+        <div class="no-print" style="text-align:center;margin-top:14px;display:flex;justify-content:center;gap:10px">
+            <button onclick="window.print()" class="btn btn-success rounded-pill px-4">🖨️ In báo cáo</button>
+            <button onclick="document.getElementById('printModal').style.display='none'"
+                    class="btn btn-secondary rounded-pill px-4">✕ Đóng</button>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
 @section Scripts {
-    <script>
-        // Đồng hồ realtime
-        function capNhatGio() {
-            var now = new Date();
-            var h = String(now.getHours()).padStart(2,'0');
-            var m = String(now.getMinutes()).padStart(2,'0');
-            var el = document.getElementById('dongHo');
-            if(el) el.textContent = h + ':' + m;
+    <style>
+        @@media print {
+            body > *:not(#printModal) { display: none !important; }
+            #printModal {
+                display: block !important; position: static !important;
+                background: none !important; padding: 0 !important; overflow: visible !important;
+            }
+            #printModal > div { max-width: 100% !important; }
+            .no-print { display: none !important; }
         }
-        setInterval(capNhatGio, 1000);
-        // Tự động làm mới danh sách mỗi 60 giây (không reload cả trang)
-        setInterval(function() {
-            fetch('/Staff/GetTrangThaiSlots')
-                .then(r => r.json())
-                .then(data => {
-                    // Cập nhật số liệu KPI nếu cần
-                    // Reload nhẹ chỉ khi trạng thái thay đổi
-                    var badge = document.getElementById('badgeDang');
-                    if (badge) badge.textContent = data.filter(s => s.trangThai === 'DangSuDung').length;
+    </style>
+    <script>
+        setInterval(() => {
+            const n = new Date();
+            const el = document.getElementById('dongHo');
+            if (el) el.textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+        }, 1000);
+
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.SanIds ?? new List<int>()));
+        window.onStaffSuKien = function(ev) { setTimeout(() => location.reload(), 2500); };
+
+        // ─── Smart Alerts ───
+        const SOON_MINS = 15;   // cảnh báo đơn đang đánh còn ≤ X phút
+        const LATE_MINS = 10;   // cảnh báo khách chưa check-in sau X phút
+        const _alerted  = new Set();
+
+        function _toMins(hhMM) {
+            if (!hhMM) return null;
+            const [h, m] = hhMM.split(':').map(Number);
+            return h * 60 + m;
+        }
+        function _nowMins() {
+            const n = new Date();
+            return n.getHours() * 60 + n.getMinutes();
+        }
+        function _alertToast(colorHex, msg) {
+            const t = document.createElement('div');
+            t.style.cssText = `position:fixed;bottom:100px;left:24px;z-index:9999;
+                min-width:260px;padding:12px 16px;border-radius:10px;
+                background:#1f2937;color:white;border-left:4px solid ${colorHex};
+                box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:13px;font-weight:600;
+                transform:translateX(-120%);transition:transform .4s cubic-bezier(.3,1.3,.5,1)`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            requestAnimationFrame(() => t.style.transform = 'translateX(0)');
+            if (typeof dingTone === 'function') dingTone(colorHex === '#e74c3c' ? 440 : 660);
+            setTimeout(() => { t.style.transform = 'translateX(-120%)'; setTimeout(() => t.remove(), 400); }, 6000);
+        }
+        function _setBadge(card, cls, color, text) {
+            let b = card.querySelector('.' + cls);
+            if (!b) {
+                b = document.createElement('span');
+                b.className = cls;
+                b.style.cssText = `display:inline-block;background:${color};color:white;padding:1px 8px;
+                    border-radius:8px;font-size:10px;font-weight:700;margin-left:8px;vertical-align:middle`;
+                const strong = card.querySelector('strong');
+                if (strong) strong.insertAdjacentElement('afterend', b);
+            }
+            b.style.background = color;
+            b.textContent = text;
+        }
+
+        function checkAlerts() {
+            const now = _nowMins();
+
+            // Đơn đang đánh — sắp hết giờ / quá giờ
+            document.querySelectorAll('.voice-card-dang[data-gio-ket]').forEach(card => {
+                const ket = _toMins(card.dataset.gioKet);
+                if (ket === null) return;
+                const left = ket - now;
+                const key  = 'dang-' + card.dataset.stt;
+
+                if (left >= 0 && left <= SOON_MINS) {
+                    card.style.borderColor = '#f59e0b';
+                    card.style.boxShadow   = '0 0 0 3px rgba(245,158,11,.2)';
+                    _setBadge(card, 'sa-soon', '#f59e0b', `⏰ Còn ${left} phút`);
+                    if (!_alerted.has(key)) {
+                        _alerted.add(key);
+                        const ten = card.querySelector('strong')?.textContent?.trim() ?? '';
+                        _alertToast('#f59e0b', `⏰ ${ten} — còn ${left} phút nữa hết giờ`);
+                    }
+                } else if (left < 0) {
+                    card.style.borderColor = '#e74c3c';
+                    card.style.boxShadow   = '0 0 0 3px rgba(231,76,60,.2)';
+                    _setBadge(card, 'sa-soon', '#e74c3c', `🚨 Quá ${-left} phút`);
+                }
+            });
+
+            // Đơn sắp đến — khách chưa check-in, đã quá giờ bắt đầu
+            document.querySelectorAll('.voice-card-sap[data-gio-bat]').forEach(card => {
+                const bat = _toMins(card.dataset.gioBat);
+                if (bat === null) return;
+                const overdue = now - bat;
+                const key     = 'sap-' + card.dataset.stt;
+
+                if (overdue >= LATE_MINS) {
+                    card.style.borderColor = '#e74c3c';
+                    card.style.boxShadow   = '0 0 0 3px rgba(231,76,60,.2)';
+                    _setBadge(card, 'sa-late', '#e74c3c', `⚠️ Trễ ${overdue} phút`);
+                    if (!_alerted.has(key)) {
+                        _alerted.add(key);
+                        const ten = card.querySelector('strong')?.textContent?.trim() ?? '';
+                        _alertToast('#e74c3c', `⚠️ ${ten} — khách trễ ${overdue} phút, chưa check-in`);
+                    }
+                }
+            });
+        }
+
+        checkAlerts();
+        setInterval(checkAlerts, 60000);
+        // ─────────────────────────────────
+
+        // ─── Quick Note ───
+        function toggleNote(id) {
+            const box = document.getElementById('note-box-' + id);
+            if (!box) return;
+            const showing = box.style.display !== 'none';
+            box.style.display = showing ? 'none' : 'block';
+            if (!showing) document.getElementById('note-input-' + id)?.focus();
+        }
+        async function luuGhiChu(id) {
+            const val = document.getElementById('note-input-' + id)?.value ?? '';
+            const res = await fetch('/Staff/LuuGhiChu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                           'RequestVerificationToken': document.querySelector('input[name=__RequestVerificationToken]')?.value ?? '' },
+                body: `datSanId=${id}&ghiChu=${encodeURIComponent(val)}`
+            });
+            if (res.ok) {
+                const box = document.getElementById('note-box-' + id);
+                box.style.display = 'none';
+                // Cập nhật badge hiển thị ngay
+                let pin = box.previousElementSibling;
+                if (pin && pin.style.color === 'rgb(245, 158, 11)') pin.remove();
+                if (val.trim()) {
+                    const d = document.createElement('div');
+                    d.style.cssText = 'padding:4px 16px 8px;font-size:11px;color:#f59e0b';
+                    d.textContent = '📌 ' + val.trim();
+                    box.insertAdjacentElement('beforebegin', d);
+                }
+                if (typeof dingTone === 'function') dingTone(880);
+            }
+        }
+        // ──────────────────
+
+        // ── Voice Context — inject dữ liệu cho engine giọng nói ──
+        window.voiceContext = {
+            sanList:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                danhSachSan.Select(s => new { id = s.Id, ten = s.TenSan })
+            )),
+            checkIns: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                sapDen.Select(d => new {
+                    id          = d.Id,
+                    maXacNhan   = d.MaXacNhan,
+                    tenKhach    = d.User != null ? d.User.HoTen : "",
+                    tenSan      = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId       = d.KhungGio != null ? d.KhungGio.SanBongId : 0
                 })
-                .catch(() => {});
-        }, 60000);
+            )),
+            checkOuts: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                dangDien.Select(d => new {
+                    id          = d.Id,
+                    maXacNhan   = d.MaXacNhan,
+                    tenKhach    = d.User != null ? d.User.HoTen : "",
+                    tenSan      = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId       = d.KhungGio != null ? d.KhungGio.SanBongId : 0
+                })
+            )),
+            suCoList: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Where(d => d.TrangThai == "DaXacNhan" || d.TrangThai == "DangSuDung").Select(d => new {
+                    id          = d.Id,
+                    maXacNhan   = d.MaXacNhan,
+                    tenKhach    = d.User != null ? d.User.HoTen : "",
+                    tenSan      = d.KhungGio != null && d.KhungGio.SanBong != null ? d.KhungGio.SanBong.TenSan : "",
+                    sanId       = d.KhungGio != null ? d.KhungGio.SanBongId : 0
+                })
+            ))
+        };
     </script>
 }

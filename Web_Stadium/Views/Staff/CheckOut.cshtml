@@ -1,304 +1,183 @@
-﻿@model Web_Stadium.EFCore.DatSan
+@model Web_Stadium.EFCore.DatSan
 @{
     ViewData["Title"] = "Check-out";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var tongTienDichVu = (decimal)(ViewBag.TongTienDichVu ?? 0m);
-    var tongTatCa = (decimal)(ViewBag.TongTatCa ?? 0m);
-    var conLai = (decimal)(ViewBag.ConLai ?? 0m);
-}
-
-@section Styles {
-    <style>
-        .checkout-wrap {
-            max-width: 560px;
-            margin: 0 auto;
-        }
-
-        .hd-card {
-            background: rgba(255,255,255,.04);
-            border: 1px solid rgba(255,255,255,.08);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 16px;
-        }
-
-        .hd-label {
-            font-size: 11px;
-            color: #888;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-        }
-
-        .khach-box {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: rgba(0,0,0,.2);
-            border-radius: 10px;
-            margin-bottom: 16px;
-        }
-
-        .khach-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--green);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        .price-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 7px 0;
-            border-bottom: 1px solid rgba(255,255,255,.05);
-        }
-
-            .price-row .lbl {
-                color: #aaa;
-            }
-
-            .price-row .amt {
-                font-weight: 600;
-            }
-
-            .price-row.giam .amt {
-                color: #6caee0;
-            }
-
-            .price-row.total {
-                padding-top: 12px;
-                border-bottom: none;
-                border-top: 1px solid rgba(255,255,255,.1);
-            }
-
-                .price-row.total .lbl, .price-row.total .amt {
-                    color: #fff;
-                    font-weight: 700;
-                    font-size: .95rem;
-                }
-
-        .thu-box {
-            background: rgba(30,215,96,.08);
-            border: 1px solid rgba(30,215,96,.3);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            margin-top: 12px;
-        }
-
-            .thu-box .thu-label {
-                font-size: 11px;
-                color: #888;
-                letter-spacing: 1px;
-                margin-bottom: 6px;
-            }
-
-            .thu-box .thu-amount {
-                font-family: var(--ff-h);
-                font-size: 2.6rem;
-                color: var(--green);
-                font-weight: 900;
-                line-height: 1;
-            }
-
-            .thu-box .thu-sub {
-                color: #888;
-                font-size: .78rem;
-                margin-top: 6px;
-            }
-
-        .status-tamtinh {
-            background: rgba(245,158,11,.08);
-            border: 1px solid rgba(245,158,11,.3);
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: .82rem;
-            color: #f59e0b;
-            margin-bottom: 16px;
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-        }
-
-        .btn-chot {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            background: var(--green);
-            color: #000;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: opacity .2s;
-        }
-
-            .btn-chot:hover {
-                opacity: .88;
-            }
-
-        .btn-back {
-            width: 100%;
-            padding: 11px;
-            margin-top: 8px;
-            border: 1px solid rgba(255,255,255,.15);
-            border-radius: 12px;
-            background: transparent;
-            color: #aaa;
-            font-size: .9rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: block;
-            text-align: center;
-            transition: all .2s;
-        }
-
-            .btn-back:hover {
-                border-color: #f59e0b;
-                color: #f59e0b;
-            }
-    </style>
+    var tongTatCa      = (decimal)(ViewBag.TongTatCa ?? 0m);
+    var conLai         = (decimal)(ViewBag.ConLai ?? 0m);
+    var sanIds         = ViewBag.SanIds as List<int> ?? new List<int>();
+    var bankName  = ViewBag.BankName      as string ?? "Techcombank";
+    var bankAcc   = ViewBag.AccountNumber as string ?? "";
+    var bankOwner = ViewBag.AccountName   as string ?? "";
 }
 
 <div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
     <div class="container">
         <div class="section-label">Staff — Kết thúc ca</div>
-        <h1 style="font-style:italic;line-height:0.9">CHECK-OUT<br><span class="text-green">HÓA ĐƠN TẠM TÍNH</span></h1>
+        <h1 style="font-style:italic;line-height:0.9">CHECK-OUT<br><span class="text-green">THU TIỀN & KẾT THÚC</span></h1>
     </div>
 </div>
 
 <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
     <div class="container d-flex gap-2">
-        <a href="/Staff/POS/@Model.Id" class="btn btn-sm btn-outline-warning rounded-pill">← Quay lại POS</a>
-        <a href="/Staff" class="btn btn-sm btn-outline-light rounded-pill">📋 Ca trực</a>
+        <a href="/Staff/POS/@Model.Id" class="btn btn-sm btn-outline-warning rounded-pill">← POS mini</a>
+        <a href="/Staff" class="btn btn-sm btn-outline-secondary rounded-pill">Ca trực</a>
     </div>
 </div>
 
 <div class="container py-5">
-    <div class="checkout-wrap">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
 
-        @if (TempData["Error"] != null)
-        {
-            <div class="alert alert-danger alert-dismissible fade show mb-4">
-                ❌ @TempData["Error"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
+            <div class="section-card p-4 mb-4">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:16px">TỔNG KẾT ĐƠN #@Model.MaXacNhan</div>
 
-        <!-- THÔNG BÁO TẠM TÍNH -->
-        <div class="status-tamtinh">
-            <span style="font-size:1.2rem;flex-shrink:0;">📋</span>
-            <div>
-                <strong>Đây là hóa đơn tạm tính.</strong> Thông báo số tiền cho khách kiểm tra.
-                Nếu khách muốn mua thêm, quay lại POS bổ sung trước.
-                Chỉ bấm <strong>Chốt hóa đơn</strong> khi khách xác nhận và chuẩn bị rời sân.
-            </div>
-        </div>
-
-        <!-- TỔNG KẾT ĐƠN -->
-        <div class="hd-card">
-            <div class="hd-label">Tổng kết đơn #@Model.MaXacNhan</div>
-
-            <div class="khach-box">
-                <div class="khach-avatar">@(Model.User?.HoTen?.FirstOrDefault())</div>
-                <div style="flex:1;">
-                    <div style="font-weight:600;color:#fff;">@Model.User?.HoTen</div>
-                    <div style="font-size:12px;color:#888;">@Model.User?.SoDienThoai</div>
-                </div>
-                <div style="text-align:right;font-size:12px;color:#888;">
-                    <div>@Model.KhungGio?.SanBong?.TenSan</div>
-                    <div>@Model.KhungGio?.GioBatDau.ToString("HH:mm") – @Model.KhungGio?.GioKetThuc.ToString("HH:mm")</div>
-                </div>
-            </div>
-
-            <div class="price-row">
-                <span class="lbl">⚽ Tiền thuê sân</span>
-                <span class="amt">@(Model.KhungGio?.Gia.ToString("N0") ?? "0")đ</span>
-            </div>
-
-            @if (Model.DatSanDichVus?.Any() == true)
-            {
-                foreach (var x in Model.DatSanDichVus)
-                {
-                    <div class="price-row">
-                        <span class="lbl">@x.DichVu?.TenDichVu × @x.SoLuong</span>
-                        <span class="amt">@(((x.DichVu?.Gia ?? 0) * x.SoLuong).ToString("N0"))đ</span>
+                <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:16px">
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">
+                        @(Model.User?.HoTen?.FirstOrDefault())
                     </div>
-                }
-                <div class="price-row">
-                    <span class="lbl" style="color:#666;">Tổng dịch vụ</span>
-                    <span class="amt" style="color:#666;">@tongTienDichVu.ToString("N0")đ</span>
+                    <div>
+                        <div style="font-weight:600">@Model.User?.HoTen</div>
+                        <div style="font-size:12px;color:var(--muted)">@Model.User?.SoDienThoai</div>
+                    </div>
+                    <div style="margin-left:auto;text-align:right;font-size:12px;color:var(--muted)">
+                        <div>@Model.KhungGio?.SanBong?.TenSan</div>
+                        <div>@Model.KhungGio?.GioBatDau.ToString(@"hh\:mm") – @Model.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</div>
+                    </div>
                 </div>
-            }
 
-            <div class="price-row total">
-                <span class="lbl">TỔNG CỘNG</span>
-                <span class="amt">@tongTatCa.ToString("N0")đ</span>
-            </div>
-            <div class="price-row giam">
-                <span class="lbl">Khách đã cọc</span>
-                <span class="amt">−@Model.TienCoc.ToString("N0")đ</span>
-            </div>
+                <div style="font-size:13px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span style="color:var(--muted2)">Tiền thuê sân</span>
+                        <span>@(Model.KhungGio?.Gia.ToString("N0") ?? "0")đ</span>
+                    </div>
+                    @if (Model.DatSanDichVus?.Any() == true)
+                    {
+                        @foreach (var x in Model.DatSanDichVus)
+                        {
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--muted2)">
+                                <span>@x.DichVu?.TenDichVu × @x.SoLuong</span>
+                                <span>@(((x.DichVu?.Gia ?? 0) * x.SoLuong).ToString("N0"))đ</span>
+                            </div>
+                        }
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:var(--muted)">
+                            <span>Tổng dịch vụ</span>
+                            <span>@tongTienDichVu.ToString("N0")đ</span>
+                        </div>
+                    }
+                    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                            <span style="font-weight:600">TỔNG CỘNG</span>
+                            <span style="font-weight:700;font-size:15px">@tongTatCa.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--muted)">
+                            <span>Khách đã cọc</span>
+                            <span style="color:#6caee0">−@Model.TienCoc.ToString("N0")đ</span>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="thu-box">
-                <div class="thu-label">💳 SỐ TIỀN THU TẠI QUẦY</div>
-                <div class="thu-amount">@conLai.ToString("N0")đ</div>
-                <div class="thu-sub">Tiền mặt hoặc chuyển khoản</div>
-            </div>
-        </div>
-
-        <!-- CHỐT HÓA ĐƠN -->
-        <div class="hd-card">
-            <div class="hd-label">Xác nhận hoàn tất</div>
-            <div style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.7;">
-                Sau khi bấm <strong style="color:#fff;">Chốt hóa đơn &amp; Hoàn thành</strong>:
-                <ul style="margin:8px 0 0;padding-left:18px;">
-                    <li>Đơn chuyển <strong style="color:var(--green);">Hoàn thành</strong> và bị <strong>khóa hoàn toàn</strong></li>
-                    <li>Không thể sửa doanh thu hay trừ kho thêm</li>
-                    <li>Khung giờ được giải phóng cho lượt đặt tiếp theo</li>
-                    <li>Khách nhận email mời đánh giá sau 30 phút</li>
-                </ul>
-                <div style="margin-top:10px;padding:10px 14px;background:rgba(239,68,68,.08);
-                            border:1px solid rgba(239,68,68,.2);border-radius:8px;color:#ef4444;font-size:.8rem;">
-                    ⚠️ Nếu khách muốn mua thêm sau khi đóng đơn →
-                    tạo <strong>đơn vãng lai độc lập</strong> trên POS (xem hướng dẫn bên dưới)
+                <div style="padding:16px;border-radius:8px;background:rgba(22,196,127,0.08);border:1px solid rgba(22,196,127,0.3);text-align:center;margin-top:8px">
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">SỐ TIỀN CẦN THU TẠI QUẦY</div>
+                    <div style="font-family:var(--ff-h);font-size:2.4rem;color:var(--green)">
+                        @conLai.ToString("N0")đ
+                    </div>
                 </div>
             </div>
 
-            <form method="post" action="/Staff/ThucHienCheckOut">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="datSanId" value="@Model.Id" />
-                <button type="submit" class="btn-chot"
-                        onclick="return confirm('Xác nhận đã thu @conLai.ToString("N0")đ?\n\nĐơn sẽ bị KHÓA hoàn toàn sau thao tác này!')">
-                    ✅ Chốt hóa đơn &amp; Hoàn thành — Thu @conLai.ToString("N0")đ
-                </button>
-            </form>
+            <div class="section-card p-4 mb-3">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">PHƯƠNG THỨC THANH TOÁN</div>
+                <div style="display:flex;gap:10px;margin-bottom:14px">
+                    <label class="pay-opt active" data-method="cash" onclick="chonPT('cash')"
+                           style="flex:1;display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--green);border-radius:10px;cursor:pointer;background:rgba(22,196,127,0.08)">
+                        <span style="font-size:22px">💵</span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">Tiền mặt</div>
+                            <div style="font-size:11px;color:var(--muted)">Thu tại quầy</div>
+                        </div>
+                    </label>
+                    <label class="pay-opt" data-method="bank" onclick="chonPT('bank')"
+                           style="flex:1;display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--border);border-radius:10px;cursor:pointer">
+                        <span style="font-size:22px">🏦</span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">Chuyển khoản</div>
+                            <div style="font-size:11px;color:var(--muted)">Quét VietQR</div>
+                        </div>
+                    </label>
+                </div>
 
-            <a href="/Staff/POS/@Model.Id" class="btn-back">← Quay lại POS để thêm dịch vụ</a>
-        </div>
-
-        <!-- HƯỚNG DẪN ĐƠN VÃNG LAI -->
-        <div style="background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);
-                    border-radius:14px;padding:18px;margin-top:8px;">
-            <div style="font-size:11px;color:#888;letter-spacing:1px;margin-bottom:10px;">
-                📦 SAU KHI ĐÃ CHỐT — KHÁCH MUA THÊM?
+                <div id="qr-bank" style="display:none;text-align:center;padding:14px;border-radius:10px;background:white;border:1px solid var(--border)">
+                    <div style="font-size:12px;color:#0f172a;font-weight:700">@bankName</div>
+                    <div style="font-size:11px;color:#64748b;margin-bottom:8px">@bankOwner • @bankAcc</div>
+                    <img id="vietqr-img"
+                         src="/QR/VietQR?amount=@conLai&info=@Model.MaXacNhan"
+                         alt="VietQR"
+                         style="width:240px;height:240px;border-radius:8px;background:#f8fafc" />
+                    <div style="margin-top:8px;font-size:12px;color:#0f172a">
+                        Số tiền: <strong style="color:#16C47F">@conLai.ToString("N0")đ</strong>
+                        — ND: <code>@Model.MaXacNhan</code>
+                    </div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px">Đưa khách quét bằng app ngân hàng</div>
+                </div>
             </div>
-            <div style="font-size:13px;color:#aaa;line-height:1.7;margin-bottom:12px;">
-                Tạo <strong style="color:#fff;">đơn vãng lai độc lập</strong> — tách biệt hoàn toàn khỏi booking vừa đóng.
-                Kho vẫn trừ bình thường, doanh thu ghi vào ca, nhưng không ảnh hưởng đến báo cáo của đơn cũ.
-            </div>
-            <a href="/Staff/VangLai" class="btn btn-sm btn-outline-secondary rounded-pill">
-                🛒 Tạo đơn vãng lai
-            </a>
-        </div>
 
+            <div class="section-card p-4">
+                <div style="font-size:12px;color:var(--muted2);margin-bottom:16px">
+                    Sau khi bấm <strong>Xác nhận Check-out</strong>:
+                    <ul style="margin-top:8px;padding-left:18px">
+                        <li>Đơn chuyển sang trạng thái <strong style="color:var(--green)">Hoàn thành</strong></li>
+                        <li>Khung giờ được <strong>giải phóng</strong> cho lượt đặt tiếp theo</li>
+                        <li>Khách hàng có thể <strong>đánh giá sân</strong></li>
+                    </ul>
+                </div>
+
+                <form method="post" action="/Staff/ThucHienCheckOut" id="formCheckOut">
+                    <input type="hidden" name="datSanId" value="@Model.Id" />
+                    <input type="hidden" name="phuongThuc" value="cash" id="phuongThuc" />
+                    <button type="submit" class="btn btn-success w-100 rounded-pill voice-confirm-checkout"
+                            style="font-size:15px;padding:12px;font-weight:700"
+                            onclick="return confirm('Xác nhận đã thu @conLai.ToString("N0")đ và hoàn tất check-out?')">
+                        ✅ Xác nhận Check-out — Thu @conLai.ToString("N0")đ
+                    </button>
+                </form>
+
+                <a href="/Staff/POS/@Model.Id" class="btn btn-outline-warning w-100 rounded-pill mt-2 voice-back-pos"
+                   style="font-size:13px">
+                    ← Quay lại thêm dịch vụ
+                </a>
+            </div>
+
+        </div>
     </div>
 </div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script>
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sanIds));
+
+        function chonPT(method) {
+            document.getElementById('phuongThuc').value = method;
+            document.querySelectorAll('.pay-opt').forEach(el => {
+                const isActive = el.dataset.method === method;
+                el.style.border = '2px solid ' + (isActive ? 'var(--green)' : 'var(--border)');
+                el.style.background = isActive ? 'rgba(22,196,127,0.08)' : 'transparent';
+                el.classList.toggle('active', isActive);
+            });
+            document.getElementById('qr-bank').style.display = method === 'bank' ? 'block' : 'none';
+        }
+
+        window.voiceHelpHTML = 'Trang Check-out: <em>"tiền mặt", "chuyển khoản", "xác nhận", "quay lại"</em>';
+        window.voiceCommands = [
+            { re:/(tiền mặt|tien mat|cash|tiền)/, label:'Chọn Tiền mặt', action: () => chonPT('cash') },
+            { re:/(chuyển khoản|chuyen khoan|qr|bank|ngân hàng|ngan hang|viet qr)/, label:'Chọn Chuyển khoản', action: () => chonPT('bank') },
+            {
+                re:/(xác nhận|xac nhan|hoàn tất|hoan tat|kết thúc|ket thuc|ok)/,
+                label:'Xác nhận check-out',
+                action: () => { const btn = document.querySelector('.voice-confirm-checkout'); btn.onclick = null; btn.click(); }
+            },
+            { re:/(quay lại|quay lai|pos|thêm dịch vụ|them dich vu)/, label:'Quay lại POS', action: () => document.querySelector('.voice-back-pos').click() }
+        ];
+    </script>
+}

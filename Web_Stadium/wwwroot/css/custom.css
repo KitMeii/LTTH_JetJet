@@ -224,18 +224,22 @@ h4 {
 }
 
 .nav-left {
-    flex: 1;
+    flex: 0 0 auto;
     justify-content: flex-start;
 }
 
 .nav-center {
     flex: 2;
     justify-content: center;
+    min-width: 0;
 }
 
 .nav-right {
-    flex: 1;
+    flex: 0 0 auto;
     justify-content: flex-end;
+    flex-shrink: 0; /* Đảm bảo phần này không bị co lai*/
+    white-space: nowrap; /* Ngăn menu bị xuống dòng*/
+    gap: 4px; /* Khoảng cách nhỏ giữa menu và phần đăng nhập */
 }
 
 /* 5. LOGO */
@@ -247,6 +251,9 @@ h4 {
     letter-spacing: 2px;
     color: #0F172A;
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
     .nav-logo span {
@@ -258,10 +265,11 @@ h4 {
     display: flex !important;
     align-items: center;
     height: 100%;
-    gap: 40px; /* Khoảng cách rộng cho sang */
     list-style: none !important;
     margin: 0;
     padding: 0;
+    gap: 24px;
+    flex-wrap: nowrap; /* Ngăn menu bị xuống dòng trên*/
 }
 
     .nav-links li {
@@ -292,7 +300,7 @@ h4 {
             color: #0EA86A;
         }
 /* 7. PHẦN ĐĂNG NHẬP (Làm giống nút Sign In Real Madrid) */
-.nav-actions {
+    .nav-actions {
     display: flex;
     align-items: center;
     gap: 20px;

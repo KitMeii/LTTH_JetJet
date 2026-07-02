@@ -1,6 +1,6 @@
 ﻿@{
     ViewData["Title"] = "Báo cáo Doanh thu";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
     var data = (ViewBag.Data as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     var xepHang = (ViewBag.XepHangSan as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
@@ -14,12 +14,6 @@
     double tongPhi = (double)(ViewBag.TongPhiHoaHong ?? 0.0);
     double tongDTSan = (double)(ViewBag.TongDoanhThuSan ?? 0.0);
     int tongLuot = (int)(ViewBag.TongLuot ?? 0);
-    double tongGiamHT = (double)(ViewBag.TongGiamHeThong ?? 0.0);
-    double tongGiamOwner = (double)(ViewBag.TongGiamOwner ?? 0.0);
-    int soLuotVoucherHT = (int)(ViewBag.SoLuotVoucherHT ?? 0);
-    var topVoucherHT = (ViewBag.TopVoucherHT as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
-    var giamHTArr = "[" + string.Join(",", data.Select(d => { try { return ((double)d.giamHeThong / 1_000_000).ToString("F4", System.Globalization.CultureInfo.InvariantCulture); } catch { return "0"; } })) + "]";
-    var giamOwnArr = "[" + string.Join(",", data.Select(d => { try { return ((double)d.giamOwner / 1_000_000).ToString("F4", System.Globalization.CultureInfo.InvariantCulture); } catch { return "0"; } })) + "]";
 
     string J(double v) => v.ToString("F4", System.Globalization.CultureInfo.InvariantCulture);
     string JS(string s) => s.Replace("\"", "'");
@@ -32,23 +26,10 @@
     var kbArr = "[" + string.Join(",", data.Select(d => { try { return ((int)d.soKB).ToString(); } catch { return "0"; } })) + "]";
 
     var top10 = xepHang.Take(10).ToList();
-    // Lưu ý: Thay "danhSachSan" bằng tên biến danh sách (List/IQueryable) thực tế của bạn
     var top5Data = xepHang.Take(5).ToList();
-
-    // Dùng đúng tên field từ Controller: TenSan, TongDT, SoLuot
-    var lblSan = "[" + string.Join(",", top5Data.Select(o =>
-    {
-        try { var s = (string)o.TenSan; return "\"" + JS(s.Length > 14 ? s[..14] + "..." : s) + "\""; }
-        catch { return "\"?\""; }
-    })) + "]";
-    var dtSan2 = "[" + string.Join(",", top5Data.Select(o =>
-    {
-        try { return J((double)o.TongDT / 1_000_000); } catch { return "0"; }
-    })) + "]";
-    var luotSan2 = "[" + string.Join(",", top5Data.Select(o =>
-    {
-        try { return ((int)o.SoLuot).ToString(); } catch { return "0"; }
-    })) + "]";
+    var lblSan = "[" + string.Join(",", top5Data.Select(o => { try { return "\"" + JS((string)o.TenSan) + "\""; } catch { return "\"?\""; } })) + "]";
+    var dtSan2 = "[" + string.Join(",", top5Data.Select(o => { try { return J((double)o.TongDT / 1_000_000); } catch { return "0"; } })) + "]";
+    var luotSan2 = "[" + string.Join(",", top5Data.Select(o => { try { return ((int)o.SoLuot).ToString(); } catch { return "0"; } })) + "]";
     var phiSan2 = "[" + string.Join(",", top10.Select(o => { try { return J((double)o.PhiHoaHong / 1_000_000); } catch { return "0"; } })) + "]";
 
     var top12ld = lapDay.Take(12).ToList();
@@ -63,6 +44,7 @@
     var phiOwner = "[" + string.Join(",", byOwner.Select(o => J(o.phi / 1_000_000))) + "]";
     var ldArrJs = "[" + string.Join(",", top12ld.Select(s => { try { int t = (int)s.Tong, d = (int)s.DaDat; return t > 0 ? J((double)d / t * 100) : "0"; } catch { return "0"; } })) + "]";
 }
+
 @section Styles {
     <style>
         :root {
@@ -109,19 +91,15 @@
             backdrop-filter: blur(20px);
             border-right: 1px solid rgba(255,255,255,.05);
             padding: 24px 14px;
-            position: sticky;
-            top: 56px;
-            height: fit-content;
         }
 
         .sbt {
             font-size: .65rem;
-            color: var(--line);
+            color: var(--dim);
             letter-spacing: 2px;
             text-transform: uppercase;
             padding: 0 8px;
             margin: 18px 0 10px;
-            
         }
 
         .sbl {
@@ -149,9 +127,8 @@
             }
 
             .sbl.active {
-                background: linear-gradient( 90deg, rgba(34,197,94,.16), rgba(34,197,94,.06) );
+                background: linear-gradient(90deg, rgba(34,197,94,.16), rgba(34,197,94,.06));
                 border: 1px solid rgba(34,197,94,.22);
-                box-shadow: 0 0 20px rgba(34,197,94,.12);
                 color: #fff;
             }
 
@@ -166,10 +143,6 @@
             margin-bottom: 10px;
             outline: none;
         }
-        .sbsel option{
-                background: #1e1e1e;
-                color: #fff;
-        }
 
         .bc-main {
             padding: 30px;
@@ -183,7 +156,7 @@
         }
 
         .cc, .kc {
-            background: linear-gradient( 180deg, rgba(255,255,255,.05), rgba(255,255,255,.025) );
+            background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
             border: 1px solid rgba(255,255,255,.06);
             backdrop-filter: blur(18px);
             border-radius: 24px;
@@ -194,11 +167,10 @@
             overflow: hidden;
         }
 
-            .cc:hover,
-            .kc:hover {
+            .cc:hover, .kc:hover {
                 transform: translateY(-4px);
                 border-color: rgba(255,255,255,.12);
-                box-shadow: 0 20px 45px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.02), inset 0 1px 0 rgba(255,255,255,.04);
+                box-shadow: 0 20px 45px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
             }
 
             .kc::before {
@@ -316,7 +288,6 @@
                 position: sticky;
                 top: 0;
                 background: #0f172a;
-                backdrop-filter: blur(12px);
                 z-index: 5;
                 padding: 12px;
                 text-align: left;
@@ -333,7 +304,7 @@
 
                 .rtbl tbody tr:hover {
                     transform: scale(1.01);
-                    background: linear-gradient( 90deg, rgba(255,255,255,.03), transparent );
+                    background: linear-gradient(90deg, rgba(255,255,255,.03), transparent);
                 }
 
             .rtbl tbody td {
@@ -409,13 +380,11 @@
         }
 
         @@media(max-width:1200px) {
-
             .krow {
                 grid-template-columns: repeat(2,1fr);
             }
 
-            .cg2,
-            .cg3 {
+            .cg2, .cg3 {
                 grid-template-columns: 1fr;
             }
 
@@ -430,20 +399,7 @@
     </style>
 }
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100;">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center">
-        <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Dashboard</a>
-        <a href="/Admin/DuyetSan" class="btn btn-sm btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLySan" class="btn btn-success rounded-pill">📍 Quản lý sân</a>
-        <a href="/Admin/KhieuNai" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-sm btn-success rounded-pill">📈 Báo cáo</a>
-        <a href="/Admin/AuditLog" class="btn btn-sm btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-sm btn-outline-success rounded-pill">🗂️ Master Data</a>
-    </div>
-</div>
-
-<div class="bc-shell" style="margin-top:56px;">
+<div class="bc-shell">
     <div class="bc-sb">
         <div class="sbt">Khoảng thời gian</div>
         <a href="/Admin/BaoCao?loai=ngay&nam=@nam&thang=@thang" class="sbl @(loai == "ngay" ? "active" : "")">📅 Theo ngày</a>
@@ -479,109 +435,46 @@
         <div style="margin-bottom:22px;">
             <div style="font-size:.65rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;">Admin — Giám sát tài chính toàn hệ thống</div>
             <h2 style="font-size:1.45rem;font-weight:800;color:var(--txt);margin:5px 0 2px;">Báo cáo Doanh thu</h2>
-            <div style="font-size:.82rem;color:var(--mt);">@tieuDe</div>
+            <div style="font-size:.82rem;color:var(--muted);">@tieuDe</div>
         </div>
 
         <!-- KPI -->
         <div class="krow">
-            <div class="kc" style="--acc:var(--g);">
+            <div class="kc" style="--acc:#22c55e;">
                 <div class="kico">💰</div>
                 <div class="klbl">Phí HH PitchHub thu về</div>
                 <div class="kval">@((tongPhi / 1_000_000).ToString("F2"))M <span>đ</span></div>
                 <div class="ksub">@tongPhi.ToString("N0")đ kỳ này</div>
             </div>
-            <div class="kc" style="--acc:var(--b);">
+            <div class="kc" style="--acc:#60a5fa;">
                 <div class="kico">🏟️</div>
                 <div class="klbl">Doanh thu chủ sân</div>
                 <div class="kval">@((tongDTSan / 1_000_000).ToString("F2"))M <span>đ</span></div>
                 <div class="ksub">@tongDTSan.ToString("N0")đ tổng giao dịch</div>
             </div>
-            <div class="kc" style="--acc:var(--gold);">
+            <div class="kc" style="--acc:#f59e0b;">
                 <div class="kico">⚽</div>
                 <div class="klbl">Tổng lượt đặt sân</div>
                 <div class="kval">@tongLuot.ToString("N0") <span>lượt</span></div>
                 <div class="ksub">TB @(tongLuot > 0 ? ((tongDTSan / tongLuot)).ToString("N0") : "0")đ/lượt</div>
             </div>
-            <div class="kc" style="--acc:var(--purple);">
+            <div class="kc" style="--acc:#8b5cf6;">
                 <div class="kico">📊</div>
                 <div class="klbl">Tỷ lệ HH bình quân</div>
                 <div class="kval">@(tongDTSan > 0 ? ((tongPhi / tongDTSan * 100)).ToString("F1") : "0") <span>%</span></div>
                 <div class="ksub">Trên tổng doanh thu sân</div>
             </div>
-            <div class="kc" style="--acc:var(--red);">
-                <div class="kico">🎫</div>
-                <div class="klbl">Chi phí Voucher HT</div>
-                <div class="kval">@((tongGiamHT / 1_000_000).ToString("F2")) <span>M đ</span></div>
-                <div class="ksub">@soLuotVoucherHT lượt — PitchHub chịu</div>
-            </div>
-            <div class="kc" style="--acc:var(--amber);">
-                <div class="kico">🏟️</div>
-                <div class="klbl">Owner chịu giảm</div>
-                <div class="kval">@((tongGiamOwner / 1_000_000).ToString("F2")) <span>M đ</span></div>
-                <div class="ksub">Từ voucher sân</div>
-            </div>
         </div>
 
-        <!-- Voucher HT Section -->
-        @if (topVoucherHT.Any())
-        {
-            <div class="sdiv">Hiệu quả voucher hệ thống</div>
-            <div class="cc" style="margin-bottom:24px;">
-                <div class="ch">
-                    <div class="ct">🎫 TOP VOUCHER HỆ THỐNG — PITCHHUB CHỊU CHI PHÍ</div>
-                    <a href="/Admin/Voucher" style="font-size:.75rem;color:var(--green);">Quản lý →</a>
-                </div>
-                <table class="rtbl">
-                    <thead>
-                        <tr>
-                            <th>Tên Voucher</th>
-                            <th>Lượt dùng</th>
-                            <th>Tổng chi phí</th>
-                            <th>Đánh giá</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var v in topVoucherHT)
-                        {
-                            double tg = 0;
-                            int dd = 0;
-                            string tn = "";
-                            try { tg = (double)v.TienGiam; dd = (int)v.DaDung; tn = (string)v.TenVoucher; } catch {}
-                            var roi = dd > 0 ? (tg / dd) : 0;
-                            <tr>
-                                <td class="rs">@tn</td>
-                                <td>@dd lượt</td>
-                                <td style="color:#ef4444;font-weight:700;">@((tg/1_000_000).ToString("F2"))M đ</td>
-                                <td>
-                                    @if (dd >= 10)
-                                    {
-                                        <span class="pl g">HOT</span>
-                                    }
-                                    else if (dd == 0)
-                                    {
-                                        <span class="pl r">Chưa dùng</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="pl b">Ổn định</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-
-        <!-- Chart 1: Doanh thu theo thời gian -->
+        <!-- Chart 1 -->
         <div class="sdiv">Doanh thu theo thời gian</div>
-        <div class="cc full" style="margin-bottom:16px;">
+        <div class="cc" style="margin-bottom:16px;">
             <div class="ch">
                 <div class="ct">📈 DOANH THU SÂN + PHÍ HH PITCHHUB (Triệu đồng)</div>
-                <div style="display:flex;gap:14px;font-size:.73rem;color:var(--mt);">
-                    <span>■ <span style="color:var(--b);">DT Sân</span></span>
-                    <span>■ <span style="color:var(--g);">Phí HH</span></span>
-                    <span>— <span style="color:var(--gold);">Lượt đặt</span></span>
+                <div style="display:flex;gap:14px;font-size:.73rem;color:var(--muted);">
+                    <span>■ <span style="color:#60a5fa;">DT Sân</span></span>
+                    <span>■ <span style="color:#22c55e;">Phí HH</span></span>
+                    <span>— <span style="color:#f59e0b;">Lượt đặt</span></span>
                 </div>
             </div>
             <canvas id="cMain" style="max-height:270px;"></canvas>
@@ -591,9 +484,7 @@
         <div class="sdiv">Phân tích chi tiết</div>
         <div class="cg2">
             <div class="cc">
-                <div class="ch">
-                    <div class="ct">📦 PHÂN LOẠI KA (Hủy) / KB (Hoàn thành)</div>
-                </div>
+                <div class="ch"><div class="ct">📦 PHÂN LOẠI KA (Hủy) / KB (Hoàn thành)</div></div>
                 <canvas id="cKAKB" style="max-height:220px;"></canvas>
             </div>
             <div class="cc">
@@ -667,20 +558,20 @@
                             }
                             catch { }
                             int bw = maxPhi2 > 0 ? (int)(phi / maxPhi2 * 100) : 0;
-                            var bc = bw >= 70 ? "var(--g)" : bw >= 40 ? "var(--gold)" : "var(--b)";
+                            var bc = bw >= 70 ? "#22c55e" : bw >= 40 ? "#f59e0b" : "#60a5fa";
                             var ldi = lapDay.FirstOrDefault(s => { try { return (string)s.Ten == ts; } catch { return false; } });
                             double lp = 0; if (ldi != null) { try { int t = (int)ldi.Tong, d = (int)ldi.DaDat; lp = t > 0 ? (double)d / t * 100 : 0; } catch { } }
-                            var lc = lp >= 70 ? "var(--g)" : lp >= 40 ? "var(--gold)" : "var(--red)";
+                            var lc = lp >= 70 ? "#22c55e" : lp >= 40 ? "#f59e0b" : "#ef4444";
                             <tr>
                                 <td><span class="rn">#@r</span></td>
                                 <td><span class="rs">@ts</span></td>
-                                <td style="font-size:.79rem;color:var(--mt);">@ow</td>
+                                <td style="font-size:.79rem;color:var(--muted);">@ow</td>
                                 <td><span class="pl g">@((tyLe * 100).ToString("F0"))%</span></td>
                                 <td>@sl</td>
-                                <td style="color:var(--b);font-weight:600;">@((tdt / 1_000_000).ToString("F2"))M</td>
+                                <td style="color:#60a5fa;font-weight:600;">@((tdt / 1_000_000).ToString("F2"))M</td>
                                 <td>
                                     <div class="pw">
-                                        <span style="color:var(--g);font-weight:700;min-width:52px;font-size:.8rem;">@((phi / 1_000_000).ToString("F2"))M</span>
+                                        <span style="color:#22c55e;font-weight:700;min-width:52px;font-size:.8rem;">@((phi / 1_000_000).ToString("F2"))M</span>
                                         <div class="pb"><div class="pf" style="width:@bw%;background:@bc;"></div></div>
                                     </div>
                                 </td>
@@ -696,8 +587,9 @@
                 </table>
             </div>
         </div>
-    </div><!-- /bc-main -->
-</div><!-- /bc-shell -->
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script>
@@ -715,7 +607,6 @@
         const PAL=[G,B,GOLD,RED,PUR,CYA,ORA,'#ec4899','#84cc16','#14b8a6'];
         const fmtM=v=>v.toFixed(2)+'M đ';
 
-        // 1. Main chart
         new Chart(document.getElementById('cMain'),{
           data:{
             labels:@Html.Raw(lblMain),
@@ -742,7 +633,6 @@
           }
         });
 
-        // 2. KA/KB stacked
         new Chart(document.getElementById('cKAKB'),{
           type:'bar',
           data:{
@@ -764,7 +654,6 @@
           }
         });
 
-        // 3. Donut
         new Chart(document.getElementById('cDonut'),{
           type:'doughnut',
           data:{
@@ -781,7 +670,6 @@
           }
         });
 
-        // 4. Lấp đầy
         const ldVals=@Html.Raw(ldArrJs);
         new Chart(document.getElementById('cLapDay'),{
           type:'bar',
@@ -801,64 +689,42 @@
           }
         });
 
-        // Đã được cắt 5 phần tử từ C# LINQ, chỉ cần lấy trực tiếp bằng Html.Raw
-        const t5lbl = @Html.Raw(lblSan);
-
-        // 5a. Top 5 Doanh thu
-        new Chart(document.getElementById('cTop5DT'), {
-          type: 'bar',
-          data: {
-            labels: t5lbl,
-            datasets: [{
-              label: 'DT (Triệu đ)',
-              data: @Html.Raw(dtSan2), // Bỏ .slice(0,5)
-              backgroundColor: PAL.slice(0, 5).map(c => c + '88'), // Giữ nguyên PAL.slice nếu PAL là mảng cấu hình JS thuần
-              borderColor: PAL.slice(0, 5),
-              borderWidth: 2,
-              borderRadius: 6
-            }]
+        const t5lbl=@Html.Raw(lblSan);
+        new Chart(document.getElementById('cTop5DT'),{
+          type:'bar',
+          data:{
+            labels:t5lbl,
+            datasets:[{label:'DT (Triệu đ)',data:@Html.Raw(dtSan2),
+              backgroundColor:PAL.slice(0,5).map(c=>c+'88'),borderColor:PAL.slice(0,5),borderWidth:2,borderRadius:6}]
           },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              tooltip: { callbacks: { label: c => ` ${fmtM(c.parsed.y)}` } }
-            },
-            scales: {
-              x: { ticks: { color: '#64748b', font: { size: 10 } } },
-              y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: B, callback: v => v + 'M' } }
+          options:{
+            responsive:true,
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmtM(c.parsed.y)}`}}},
+            scales:{
+              x:{ticks:{color:'#64748b',font:{size:10}}},
+              y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:B,callback:v=>v+'M'}}
             }
           }
         });
 
-        // 5b. Top 5 lượt đặt
-        new Chart(document.getElementById('cTop5L'), {
-          type: 'bar',
-          data: {
-            labels: t5lbl,
-            datasets: [{
-              label: 'Lượt đặt',
-              data: @Html.Raw(luotSan2), // Bỏ .slice(0,5)
-              backgroundColor: [G + '88', GOLD + '88', B + '88', PUR + '88', CYA + '88'],
-              borderColor: [G, GOLD, B, PUR, CYA],
-              borderWidth: 2,
-              borderRadius: 6
-            }]
+        new Chart(document.getElementById('cTop5L'),{
+          type:'bar',
+          data:{
+            labels:t5lbl,
+            datasets:[{label:'Lượt đặt',data:@Html.Raw(luotSan2),
+              backgroundColor:[G+'88',GOLD+'88',B+'88',PUR+'88',CYA+'88'],
+              borderColor:[G,GOLD,B,PUR,CYA],borderWidth:2,borderRadius:6}]
           },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              tooltip: { callbacks: { label: c => ` ${c.parsed.y} lượt` } }
-            },
-            scales: {
-              x: { ticks: { color: '#64748b', font: { size: 10 } } },
-              y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: GOLD } }
+          options:{
+            responsive:true,
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.y} lượt`}}},
+            scales:{
+              x:{ticks:{color:'#64748b',font:{size:10}}},
+              y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:GOLD}}
             }
           }
         });
 
-        // Export CSV
         function exportCSV(){
           const rows=[['#','Tên sân','Owner','Tỷ lệ HH','Lượt đặt','DT sân (M đ)','Phí HH (M đ)','KA','KB','Lấp đầy %']];
           document.querySelectorAll('.rtbl tbody tr').forEach(tr=>{

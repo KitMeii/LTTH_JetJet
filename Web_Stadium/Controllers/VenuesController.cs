@@ -56,6 +56,19 @@ namespace Web_Stadium.Controllers
                 .Include(s => s.KhungGios)
                 .ToListAsync();
 
+            // Ảnh đại diện cho từng sân (ảnh có ThuTu nhỏ nhất — owner chọn ở QuanLyAnh)
+            var sanIds = danhSach.Select(s => s.Id).ToList();
+            var anhDaiDien = await _context.AnhSanBongs
+                .Where(a => sanIds.Contains(a.SanBongId) && a.IsActive)
+                .GroupBy(a => a.SanBongId)
+                .Select(g => new
+                {
+                    SanBongId = g.Key,
+                    DuongDan = g.OrderBy(a => a.ThuTu).First().DuongDan
+                })
+                .ToDictionaryAsync(k => k.SanBongId, v => v.DuongDan);
+            ViewBag.AnhDaiDien = anhDaiDien;
+
             // Kiểm tra sân nào user đã bookmark (để hiện tim đỏ)
             var userId = TokenHelper.LayUserId(Request, _config);
             if (userId.HasValue)

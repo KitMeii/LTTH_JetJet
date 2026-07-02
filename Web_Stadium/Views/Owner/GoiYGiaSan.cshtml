@@ -1,0 +1,118 @@
+﻿@{
+    ViewData["Title"] = "Gợi ý giá sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "GoiYGiaSan";
+    var suggestion = ViewBag.Suggestion;
+    var error = ViewBag.Error;
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
+        }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .card-suggestion {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 24px;
+        margin-top: 24px;
+    }
+</style>
+
+<!-- Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / GỢI Ý GIÁ</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Gợi ý giá <span style="color: var(--db-green);">sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Gợi ý từ hệ thống AI (Java service)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sticky navigation – dùng partial chung -->
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-5">
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-warning">⚠️ @error</div>
+    }
+
+    @if (suggestion != null)
+    {
+        <div class="card-suggestion">
+            <h4 class="text-success fw-semibold">💰 Giá đề xuất</h4>
+            <ul class="list-unstyled mt-3">
+                <li class="mb-2"><strong>Giá giờ vàng:</strong> @string.Format("{0:N0} VNĐ", suggestion.suggestedGoldPrice)</li>
+                <li class="mb-2"><strong>Giá giờ thường:</strong> @string.Format("{0:N0} VNĐ", suggestion.suggestedRegularPrice)</li>
+                <li class="mb-2"><strong>Lý do:</strong> @suggestion.reason</li>
+                <li class="mb-2"><strong>Độ tin cậy:</strong> @(suggestion.confidence * 100) %</li>
+            </ul>
+        </div>
+    }
+    else if (string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-info">⏳ Đang tải dữ liệu từ Java service...</div>
+    }
+
+    <a href="/Owner" class="btn btn-outline-secondary rounded-pill mt-4 px-4">← Quay lại dashboard</a>
+</div>

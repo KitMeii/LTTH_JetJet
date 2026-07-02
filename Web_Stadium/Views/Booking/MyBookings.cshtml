@@ -320,45 +320,6 @@
                         <div class="bc-info-label">Tiền cọc</div>
                         <div class="bc-info-val highlight">@ds.TienCoc.ToString("N0")đ</div>
                     </div>
-                    @{
-                        var tongGiam = ds.TienGiamSan + ds.TienGiamHeThong;
-                    }
-                    @if (tongGiam > 0)
-                    {
-                        <div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">
-                            @if (ds.TienGiamSan > 0)
-                            {
-                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
-                                             border-radius:999px;font-size:12px;font-weight:600;
-                                             background:rgba(14,168,106,.1);color:#0EA86A;
-                                             border:1px solid rgba(14,168,106,.25);">
-                                    🏷️ Voucher sân: -@ds.TienGiamSan.ToString("N0")đ
-                                    @if (ds.VoucherSan != null)
-                                    {
-                                        <span style="opacity:.7;">(@ds.VoucherSan.TenVoucher)</span>
-                                    }
-                                </span>
-                            }
-                            @if (ds.TienGiamHeThong > 0)
-                            {
-                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
-                                             border-radius:999px;font-size:12px;font-weight:600;
-                                             background:rgba(59,130,246,.1);color:#3b82f6;
-                                             border:1px solid rgba(59,130,246,.25);">
-                                    🎫 Voucher HT: -@ds.TienGiamHeThong.ToString("N0")đ
-                                    @if (ds.VoucherHeThong != null)
-                                    {
-                                        <span style="opacity:.7;">(@ds.VoucherHeThong.TenVoucher)</span>
-                                    }
-                                </span>
-                            }
-                            <span style="display:inline-flex;align-items:center;padding:3px 10px;
-                                         border-radius:999px;font-size:12px;font-weight:700;
-                                         background:rgba(14,168,106,.08);color:#0EA86A;">
-                                Tiết kiệm: @tongGiam.ToString("N0")đ
-                            </span>
-                        </div>
-                    }
                     <div>
                         <div class="bc-info-label">Đặt lúc</div>
                         <div class="bc-info-val">@ds.ThoiGianTao.ToString("HH:mm dd/MM")</div>

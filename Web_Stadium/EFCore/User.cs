@@ -27,6 +27,10 @@ public partial class User
 
     public int DiemHienTai { get; set; }
 
+    public string? NganHang { get; set; }
+    public string? SoTaiKhoan { get; set; }
+    public string? TenTaiKhoan { get; set; }
+
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 
     public virtual ICollection<DanhGia> DanhGia { get; set; } = new List<DanhGia>();

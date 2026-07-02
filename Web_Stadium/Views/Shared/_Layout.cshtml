@@ -27,20 +27,21 @@
         }
 
         .heart-nav-btn {
-            background: none;
+            background: transparent;
             border: none;
             cursor: pointer;
-            font-size: 1.3rem;
-            padding: 6px 8px;
-            border-radius: 10px;
-            transition: background .2s;
+            font-size: 1.2rem;
+            padding: 5px 9px;
+            border-radius: 999px;
+            transition: all .2s;
             position: relative;
             display: flex;
             align-items: center;
+            line-height: 1;
         }
 
             .heart-nav-btn:hover {
-                background: rgba(14,168,106,.1);
+                background: rgba(255,255,255,.15);
             }
 
         .heart-count-badge {
@@ -199,7 +200,10 @@
         <div class="container nav-wrapper">
             <div class="nav-left">
                 <div class="brand-wrapper">
-                    <a class="nav-logo" href="/">PITCH<span>HUB⚽</span></a>
+                    <a class="nav-logo" href="/">
+                        PITCH<span>HUB</span>
+                        <i class="bi bi-dribbble" style="font-size:22px; color:white;"></i>
+                    </a>
                 </div>
             </div>
 
@@ -237,18 +241,19 @@
                         }
                         else if (role == "Owner")
                         {
-                            <li><a href="/Owner">Chủ sân</a></li>
-                            <li><a href="/Owner/Voucher">Voucher</a></li>
+                            <li><a href="/Owner">Chủ sân</a></li>                       
                             <li><a href="/Owner/HoSo">Hồ Sơ</a></li>
                         }
                         else if (role == "Staff")
                         {
-                            <li><a href="/Staff">Nhân viên</a></li>
+                            <li><a href="/TournamentStaff/DanhSach">Giải Đấu</a></li>
+                            <li><a href="/Staff">Nhân viên</a></li>                          
                             <li><a href="/Staff/HoSo">Hồ Sơ</a></li>
                         }
                         else
                         {
                             @* User thường *@
+                            <li><a href="/TournamentPublic">Giải Đấu</a></li>
                             <li><a href="/User/HoSo">Hồ Sơ</a></li>
                         }
                     }
@@ -260,11 +265,34 @@
                 {
                     @if (role == "User")
                     {
+                        <a href="/Venues" class="heart-nav-btn" title="Tìm sân" style="text-decoration:none;">
+                            <svg width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="white" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                        </a>
+
+                        <a href="/Booking/MyBookings" class="heart-nav-btn" title="Lịch đặt" style="text-decoration:none;">
+                            <svg width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="white" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="9" cy="21" r="1" />
+                                <circle cx="20" cy="21" r="1" />
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                            </svg>
+                        </a>
+
                         <div class="heart-btn-wrap" id="heartWrap">
                             <button class="heart-nav-btn" id="heartNavBtn"
                                     onclick="toggleHeartDD(event)"
                                     title="Sân yêu thích">
-                                ❤️
+                                <svg width="22" height="22" viewBox="0 0 24 24"
+                                     fill="none" stroke="white" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                </svg>
                                 <span class="heart-count-badge" id="heartCount" style="display:none;">0</span>
                             </button>
                             <div class="heart-dropdown" id="heartDropdown">
@@ -280,23 +308,24 @@
                             </div>
                         </div>
                     }
+
                     <div class="user-info-box">
                         <div class="badge">
                             @if (role == "Admin")
                             {
-                                <span class="text-admin">⚡ @userName</span>
+                                <span class="text-admin">⚡@userName</span>
                             }
                             else if (role == "Owner")
                             {
-                                <span class="text-owner">🏟️ @userName</span>
+                                <span class="text-owner">🏟️@userName</span>
                             }
                             else if (role == "Staff")
                             {
-                                <span class="text-staff">👷 @userName</span>
+                                <span class="text-staff">👷@userName</span>
                             }
                             else
                             {
-                                <span class="text-user">⚽ @userName</span>
+                                <span class="text-user">⚽@userName</span>
                             }
                         </div>
                         <a href="/Auth/Logout" class="btn-logout">Đăng xuất</a>
@@ -304,8 +333,43 @@
                 }
                 else
                 {
-                    <div class="user-info-box">
-                        <a href="/Auth/Login" class="btn-logout" style="background:var(--green);color:#FFFF">Đăng nhập</a>
+                    <a href="/Venues" class="heart-nav-btn" title="Tìm sân" style="text-decoration:none;">
+                        <svg width="22" height="22" viewBox="0 0 24 24"
+                             fill="none" stroke="white" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                    </a>
+
+                    <a href="/Auth/Login" class="heart-nav-btn" title="Lịch đặt" style="text-decoration:none;">
+                        <svg width="22" height="22" viewBox="0 0 24 24"
+                             fill="none" stroke="white" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="21" r="1" />
+                            <circle cx="20" cy="21" r="1" />
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                        </svg>
+                    </a>
+
+                    <a href="/Auth/Login" class="heart-nav-btn" title="Yêu thích" style="text-decoration:none;">
+                        <svg width="22" height="22" viewBox="0 0 24 24"
+                             fill="none" stroke="white" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                    </a>
+
+                    <div class="user-info-box" style="display:flex; align-items:center; gap:6px;">
+                        <a href="/Auth/Login" class="heart-nav-btn" title="Đăng nhập" style="text-decoration:none;">
+                            <svg width="22" height="22" viewBox="0 0 24 24"
+                                 fill="none" stroke="white" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </a>
+                        <a href="/Auth/Login" class="btn-logout" style="background:var(--green);color:#fff;white-space:nowrap;"></a>
                     </div>
                 }
             </div>

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 
 // Cài package: dotnet add package BCrypt.Net-Next
 using BCrypt.Net;

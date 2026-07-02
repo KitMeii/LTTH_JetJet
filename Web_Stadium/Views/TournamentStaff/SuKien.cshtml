@@ -1,0 +1,1057 @@
+﻿@model Web_Stadium.EFCore.TranDau
+@{
+    ViewData["Title"] = "Nhập kết quả trận đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var skBanThang = Model.SuKiens?
+        .Where(s => s.LoaiSuKien == "BanThang")
+        .OrderBy(s => s.Phut).ToList() ?? new List<Web_Stadium.EFCore.SuKienTran>();
+    var skThe = Model.SuKiens?
+        .Where(s => s.LoaiSuKien is "TheVang" or "TheDo" or "TheVangLan2")
+        .OrderBy(s => s.Phut).ToList() ?? new List<Web_Stadium.EFCore.SuKienTran>();
+
+    var tysoNha = skBanThang.Count(s => s.DoiId == Model.DoiNhaId);
+    var tysoKhach = skBanThang.Count(s => s.DoiId == Model.DoiKhachId);
+}
+
+@section Styles {
+    <style>
+        /* Layout */
+        .sk-wrap {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 16px 60px;
+        }
+
+        /* Scoreboard */
+        .scoreboard {
+            background: linear-gradient(135deg, #0a2a1a 0%, #0f3d2a 100%);
+            border-radius: var(--r-lg);
+            padding: 28px 32px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sb-teams {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .sb-team {
+            flex: 1;
+        }
+
+        .sb-name {
+            font-family: var(--ff-h);
+            font-size: .8rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.6);
+            margin-bottom: 8px;
+        }
+
+        .sb-score {
+            font-family: var(--ff-h);
+            font-size: 4rem;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+            cursor: default;
+            transition: transform .15s;
+        }
+
+            .sb-score.updated {
+                animation: scorePop .4s cubic-bezier(.34,1.56,.64,1);
+            }
+
+        .sb-sep {
+            font-family: var(--ff-h);
+            font-size: 2.5rem;
+            color: rgba(255,255,255,.2);
+            margin: 0 8px;
+        }
+
+        .sb-hint {
+            text-align: center;
+            color: rgba(255,255,255,.4);
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-top: 16px;
+        }
+
+        /* Section card */
+        .ev-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .ev-section-head {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(14,168,106,.04), transparent);
+        }
+
+        .ev-section-title {
+            font-family: var(--ff-h);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--green);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ev-section-body {
+            padding: 16px 20px;
+        }
+
+        /* Event rows */
+        .ev-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--border);
+            animation: fadeSlideIn .25s ease;
+        }
+
+            .ev-row:last-child {
+                border-bottom: none;
+            }
+
+        .ev-phut {
+            font-family: var(--ff-h);
+            font-size: 13px;
+            color: var(--green);
+            min-width: 40px;
+            font-weight: 700;
+        }
+
+        .ev-ico {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .ev-info {
+            flex: 1;
+        }
+
+        .ev-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .ev-doi {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .ev-fine {
+            font-size: 12px;
+            font-weight: 700;
+            color: #F59E0B;
+            background: rgba(245,158,11,.1);
+            padding: 2px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .ev-del {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            font-size: .85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+
+            .ev-del:hover {
+                background: rgba(239,68,68,.1);
+                color: var(--danger);
+                border-color: var(--danger);
+            }
+
+        /* Add form */
+        .add-form {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 16px;
+            margin-top: 12px;
+            display: none;
+        }
+
+            .add-form.open {
+                display: block;
+                animation: fadeSlideIn .2s ease;
+            }
+
+        .add-inp {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: var(--r);
+            padding: 9px 12px;
+            font-size: 13px;
+            width: 100%;
+            transition: border-color .2s;
+        }
+
+            .add-inp:focus {
+                outline: none;
+                border-color: var(--green);
+            }
+
+        .add-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: var(--r);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .18s;
+        }
+
+        .add-btn-primary {
+            background: var(--green);
+            color: #fff;
+        }
+
+            .add-btn-primary:hover {
+                opacity: .85;
+            }
+
+        .add-btn-ghost {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+
+            .add-btn-ghost:hover {
+                border-color: var(--green);
+                color: var(--green);
+            }
+
+        /* Player select grid */
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px,1fr));
+            gap: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+            padding: 4px 2px;
+        }
+
+        .player-btn {
+            border: 1.5px solid var(--border);
+            border-radius: var(--r);
+            padding: 10px 8px;
+            background: var(--bg3);
+            cursor: pointer;
+            text-align: center;
+            transition: all .15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .player-btn:hover {
+                border-color: var(--green);
+                background: rgba(14,168,106,.06);
+            }
+
+            .player-btn.selected {
+                border-color: var(--green);
+                background: rgba(14,168,106,.1);
+            }
+
+            .player-btn img {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1.5px solid var(--border);
+            }
+
+            .player-btn .pb-num {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: var(--bg2);
+                border: 1.5px solid var(--border);
+                font-family: var(--ff-h);
+                font-size: 15px;
+                color: var(--green);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .player-btn .pb-name {
+                font-size: 11px;
+                color: var(--text);
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 110px;
+            }
+
+            .player-btn.suspended {
+                opacity: .4;
+                cursor: not-allowed;
+                border-color: var(--danger);
+            }
+
+        /* Summary box */
+        .summary-box {
+            background: linear-gradient(135deg, rgba(14,168,106,.06), rgba(14,165,233,.04));
+            border: 1px solid rgba(14,168,106,.2);
+            border-radius: var(--r-lg);
+            padding: 20px 24px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+            .summary-row:last-child {
+                border-bottom: none;
+            }
+
+        .summary-total {
+            font-family: var(--ff-h);
+            font-size: 1.3rem;
+            color: var(--green);
+            font-weight: 800;
+        }
+
+        /* Animations */
+        @@keyframes scorePoP {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.25);
+                color: #1ed760;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @@keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @@keyframes scorePop {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2);padding:100px 0 28px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Staff — Nhập kết quả</div>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 style="font-style:italic;line-height:.9;margin:0">
+                    KẾT QUẢ<br><span class="text-green">TRẬN ĐẤU</span>
+                </h1>
+                <p style="color:var(--muted);margin-top:8px;font-size:13px">
+                    🏆 @Model.GiaiDau?.TenGiai &nbsp;·&nbsp;
+                    Vòng @Model.VongDau &nbsp;·&nbsp; @Model.LoaiVong
+                </p>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Ngày thi đấu</div>
+                <div style="font-weight:700;color:var(--text)">
+                    @Model.NgayThiDau.ToString("dd/MM/yyyy")
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NAV -->
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);
+            padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-between align-items-center">
+        <a href="/TournamentStaff/DanhSach" class="btn btn-outline-secondary rounded-pill">
+            ← Danh sách trận
+        </a>
+        <button class="btn btn-success rounded-pill"
+                onclick="moModalHoanThanh()"
+                id="btnHoanThanh">
+            🏁 Xem tổng kết & Hoàn thành
+        </button>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="sk-wrap">
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show mb-4">
+                ❌ @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <!-- SCOREBOARD -->
+        <div class="scoreboard">
+            <div class="sb-teams">
+                <div class="sb-team" style="text-align:right">
+                    <div class="sb-name">@Model.DoiNha?.TenDoi</div>
+                    <div class="sb-score" id="scoreNha">@tysoNha</div>
+                </div>
+                <div class="sb-sep">—</div>
+                <div class="sb-team">
+                    <div class="sb-name">@Model.DoiKhach?.TenDoi</div>
+                    <div class="sb-score" id="scoreKhach">@tysoKhach</div>
+                </div>
+            </div>
+            <div class="sb-hint">
+                NHẬP ĐẦY ĐỦ KẾT QUẢ RỒI BẤM HOÀN THÀNH
+            </div>
+        </div>
+
+        <!-- BÀN THẮNG -->
+        <div class="ev-section">
+            <div class="ev-section-head">
+                <div class="ev-section-title">
+                    ⚽ BÀN THẮNG
+                    <span style="background:rgba(14,168,106,.1);color:var(--green);
+                                 padding:2px 10px;border-radius:999px;font-size:11px"
+                          id="countBT">@skBanThang.Count bàn</span>
+                </div>
+                <button class="add-btn add-btn-ghost" onclick="toggleForm('formBT')">
+                    + Thêm bàn thắng
+                </button>
+            </div>
+            <div class="ev-section-body">
+                <!-- Form thêm bàn thắng -->
+                <div class="add-form" id="formBT">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;
+                                letter-spacing:1px;color:var(--muted);margin-bottom:12px">
+                        Chọn đội ghi bàn
+                    </div>
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="add-btn @(true ? "add-btn-primary" : "add-btn-ghost")"
+                                id="doiBTBtn-nha"
+                                onclick="chonDoiBT('nha')"
+                                style="flex:1">
+                            @Model.DoiNha?.TenDoi
+                        </button>
+                        <button class="add-btn add-btn-ghost"
+                                id="doiBTBtn-khach"
+                                onclick="chonDoiBT('khach')"
+                                style="flex:1">
+                            @Model.DoiKhach?.TenDoi
+                        </button>
+                    </div>
+                    <input type="hidden" id="btDoiId" value="@Model.DoiNhaId" />
+
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;
+                                letter-spacing:1px;color:var(--muted);margin:14px 0 10px">
+                        Cầu thủ ghi bàn
+                    </div>
+                    <div class="player-grid" id="gridBT">
+                        @foreach (var tv in (Model.DoiNha?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+                        {
+                            <button class="player-btn" id="pb-bt-@tv.Id"
+                                    data-id="@tv.Id" data-doi="@Model.DoiNhaId"
+                                    data-ten="@tv.HoTen" data-tl="nha"
+                                    onclick="chonCauThuBT(this)">
+                                @if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                                {
+                                    <img src="@tv.AnhDaiDien" alt="@tv.HoTen" />
+                                }
+                                else
+                                {
+                                    <div class="pb-num">@tv.SoAo</div>
+                                }
+                                <span class="pb-name">@tv.HoTen</span>
+                            </button>
+                        }
+                    </div>
+                    <input type="hidden" id="btTvId" value="" />
+
+                    <div class="row g-2 mt-3">
+                        <div class="col-4">
+                            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">
+                                Phút
+                            </label>
+                            <input type="number" id="btPhut" class="add-inp"
+                                   min="1" max="120" placeholder="VD: 35" />
+                        </div>
+                        <div class="col-8 d-flex align-items-end gap-2">
+                            <button class="add-btn add-btn-primary flex-grow-1"
+                                    onclick="themSuKien('BanThang')">
+                                ✅ Xác nhận
+                            </button>
+                            <button class="add-btn add-btn-ghost"
+                                    onclick="toggleForm('formBT')">
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh sách bàn thắng -->
+                <div id="listBT">
+                    @if (!skBanThang.Any())
+                    {
+                        <div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px"
+                             id="emptyBT">
+                            Chưa có bàn thắng nào
+                        </div>
+                    }
+                    @foreach (var sk in skBanThang)
+                    {
+                        <div class="ev-row" id="sk-@sk.Id">
+                            <span class="ev-phut">@(sk.Phut)'</span>
+                            <span class="ev-ico">⚽</span>
+                            <div class="ev-info">
+                                <div class="ev-name">@sk.ThanhVien?.HoTen</div>
+                                <div class="ev-doi">@sk.Doi?.TenDoi</div>
+                            </div>
+                            <button class="ev-del" onclick="xoaSuKien(@sk.Id, 'BanThang')"
+                                    title="Xóa bàn thắng này">
+                                ✕
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- THẺ PHẠT -->
+        <div class="ev-section">
+            <div class="ev-section-head">
+                <div class="ev-section-title">
+                    💛🟥 THẺ PHẠT
+                    <span style="background:rgba(245,158,11,.1);color:#F59E0B;
+                                 padding:2px 10px;border-radius:999px;font-size:11px"
+                          id="countThe">@skThe.Count thẻ</span>
+                </div>
+                <button class="add-btn add-btn-ghost" onclick="toggleForm('formThe')">
+                    + Thêm thẻ phạt
+                </button>
+            </div>
+            <div class="ev-section-body">
+                <!-- Form thêm thẻ -->
+                <div class="add-form" id="formThe">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">
+                                Chọn đội
+                            </label>
+                            <div class="d-flex gap-2">
+                                <button class="add-btn add-btn-primary flex-grow-1"
+                                        id="doiTheBtn-nha" onclick="chonDoiThe('nha')">
+                                    @Model.DoiNha?.TenDoi
+                                </button>
+                                <button class="add-btn add-btn-ghost flex-grow-1"
+                                        id="doiTheBtn-khach" onclick="chonDoiThe('khach')">
+                                    @Model.DoiKhach?.TenDoi
+                                </button>
+                            </div>
+                            <input type="hidden" id="theDoiId" value="@Model.DoiNhaId" />
+                        </div>
+                        <div class="col-md-6">
+                            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">
+                                Loại thẻ
+                            </label>
+                            <div class="d-flex gap-2">
+                                <button class="add-btn add-btn-ghost flex-grow-1"
+                                        id="loaiThe-vang"
+                                        onclick="chonLoaiThe('TheVang')"
+                                        style="border-color:#F59E0B;color:#F59E0B">
+                                    💛 Vàng (@Model.GiaiDau?.TienPhatTheVang.ToString("N0")đ)
+                                </button>
+                                <button class="add-btn add-btn-ghost flex-grow-1"
+                                        id="loaiThe-do"
+                                        onclick="chonLoaiThe('TheDo')"
+                                        style="border-color:var(--danger);color:var(--danger)">
+                                    🟥 Đỏ (@Model.GiaiDau?.TienPhatTheDo.ToString("N0")đ)
+                                </button>
+                            </div>
+                            <input type="hidden" id="theLoai" value="TheVang" />
+                        </div>
+                    </div>
+
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;
+                                letter-spacing:1px;color:var(--muted);margin-bottom:10px">
+                        Cầu thủ nhận thẻ
+                    </div>
+                    <div class="player-grid" id="gridThe">
+                        @foreach (var tv in (Model.DoiNha?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+                        {
+                            <button class="player-btn @(tv.SoTranTreoGio > 0 ? "suspended" : "")"
+                                    id="pb-the-@tv.Id"
+                                    data-id="@tv.Id" data-doi="@Model.DoiNhaId"
+                                    data-ten="@tv.HoTen" data-tl="nha"
+                                    @(tv.SoTranTreoGio > 0 ? "disabled" : "onclick=\"chonCauThuThe(this)\"")>
+                                @if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                                {
+                                    <img src="@tv.AnhDaiDien" alt="@tv.HoTen" />
+                                }
+                                else
+                                {
+                                    <div class="pb-num">@tv.SoAo</div>
+                                }
+                                <span class="pb-name">@tv.HoTen</span>
+                                @if (tv.SoTranTreoGio > 0)
+                                {
+                                    <span style="font-size:9px;color:var(--danger)">⛔ Treo giò</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                    <input type="hidden" id="theTvId" value="" />
+
+                    <div class="row g-2 mt-3">
+                        <div class="col-4">
+                            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">
+                                Phút
+                            </label>
+                            <input type="number" id="thePhut" class="add-inp"
+                                   min="1" max="120" placeholder="VD: 55" />
+                        </div>
+                        <div class="col-8 d-flex align-items-end gap-2">
+                            <button class="add-btn add-btn-primary flex-grow-1"
+                                    onclick="themSuKien(document.getElementById('theLoai').value)">
+                                ✅ Xác nhận
+                            </button>
+                            <button class="add-btn add-btn-ghost"
+                                    onclick="toggleForm('formThe')">
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh sách thẻ -->
+                <div id="listThe">
+                    @if (!skThe.Any())
+                    {
+                        <div style="text-align:center;padding:24px;color:var(--muted2);font-size:13px"
+                             id="emptyThe">
+                            Chưa có thẻ phạt nào
+                        </div>
+                    }
+                    @foreach (var sk in skThe)
+                    {
+                        var ico = sk.LoaiSuKien == "TheDo" || sk.LoaiSuKien == "TheVangLan2" ? "🟥" : "💛";
+                        var fine = sk.LoaiSuKien == "TheDo" || sk.LoaiSuKien == "TheVangLan2"
+                        ? Model.GiaiDau?.TienPhatTheDo : Model.GiaiDau?.TienPhatTheVang;
+                        <div class="ev-row" id="sk-@sk.Id">
+                            <span class="ev-phut">@(sk.Phut)'</span>
+                            <span class="ev-ico">@ico</span>
+                            <div class="ev-info">
+                                <div class="ev-name">@sk.ThanhVien?.HoTen</div>
+                                <div class="ev-doi">@sk.Doi?.TenDoi</div>
+                            </div>
+                            <span class="ev-fine">@fine?.ToString("N0")đ</span>
+                            <button class="ev-del" onclick="xoaSuKien(@sk.Id, 'The')"
+                                    title="Xóa thẻ này">
+                                ✕
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- TỔNG HỢP TIỀN PHẠT -->
+        @{
+            var tongPhat = skThe.Sum(sk =>
+            sk.LoaiSuKien is "TheDo" or "TheVangLan2"
+            ? Model.GiaiDau?.TienPhatTheDo ?? 0
+            : Model.GiaiDau?.TienPhatTheVang ?? 0);
+        }
+        @if (skThe.Any())
+        {
+            <div class="ev-section">
+                <div class="ev-section-head">
+                    <div class="ev-section-title">💰 TỔNG TIỀN PHẠT</div>
+                </div>
+                <div class="ev-section-body">
+                    <div class="summary-box" id="tongPhatBox">
+                        @foreach (var doi in new[] { Model.DoiNha, Model.DoiKhach })
+                        {
+                            if (doi == null) continue;
+                            var theDoiNay = skThe.Where(s => s.DoiId == doi.Id).ToList();
+                            if (!theDoiNay.Any()) continue;
+                            var phatDoi = theDoiNay.Sum(s =>
+                            s.LoaiSuKien is "TheDo" or "TheVangLan2"
+                            ? Model.GiaiDau?.TienPhatTheDo ?? 0
+                            : Model.GiaiDau?.TienPhatTheVang ?? 0);
+                            <div class="summary-row">
+                                <span style="color:var(--muted)">@doi.TenDoi</span>
+                                <span style="font-weight:700">
+                                    @theDoiNay.Count thẻ →
+                                    <span style="color:var(--danger)">@phatDoi.ToString("N0")đ</span>
+                                </span>
+                            </div>
+                        }
+                        <div class="summary-row">
+                            <span style="font-weight:700">Tổng phạt cả trận</span>
+                            <span class="summary-total" id="tongPhatVal">
+                                @tongPhat.ToString("N0")đ
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- MODAL HOÀN THÀNH -->
+<div class="modal fade" id="modalHT" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:var(--r-lg);border:1px solid var(--border)">
+            <div class="modal-header" style="border-bottom:1px solid var(--border)">
+                <h5 class="modal-title" style="font-family:var(--ff-h);letter-spacing:1px">
+                    🏁 XÁC NHẬN KẾT QUẢ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Tỷ số lớn -->
+                <div style="text-align:center;padding:16px 0;margin-bottom:16px;
+                            background:var(--bg3);border-radius:var(--r)">
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">KẾT QUẢ</div>
+                    <div style="font-family:var(--ff-h);font-size:1rem;color:var(--text)">
+                        @Model.DoiNha?.TenDoi
+                    </div>
+                    <div style="font-family:var(--ff-h);font-size:2.5rem;font-weight:900;
+                                color:var(--green);line-height:1.1" id="modalTyso">
+                        @tysoNha — @tysoKhach
+                    </div>
+                    <div style="font-family:var(--ff-h);font-size:1rem;color:var(--text)">
+                        @Model.DoiKhach?.TenDoi
+                    </div>
+                </div>
+
+                <!-- Thống kê nhanh -->
+                <div id="modalStats"
+                     style="font-size:13px;color:var(--muted);margin-bottom:16px">
+                    <div>⚽ <span id="mBT">@skBanThang.Count</span> bàn thắng</div>
+                    <div>💛🟥 <span id="mThe">@skThe.Count</span> thẻ phạt</div>
+                    <div>
+                        💰 Tổng phạt:
+                        <strong style="color:var(--danger)" id="mPhat">
+                            @tongPhat.ToString("N0")đ
+                        </strong>
+                    </div>
+                </div>
+
+                <div style="background:rgba(14,168,106,.06);border:1px solid rgba(14,168,106,.2);
+                            border-radius:var(--r);padding:12px 16px;font-size:13px;color:var(--muted)">
+                    📢 <strong style="color:var(--text)">Đọc kết quả cho 2 đội trưởng nghe</strong>
+                    trước khi bấm xác nhận. Sau khi chốt không thể chỉnh sửa.
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border)">
+                <button type="button" class="btn btn-outline-secondary rounded-pill"
+                        data-bs-dismiss="modal">
+                    Kiểm tra lại
+                </button>
+                <form method="post" action="/TournamentStaff/XacNhanKetThuc"
+                      style="display:inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="tranDauId" value="@Model.Id" />
+                    <button type="submit" class="btn btn-success rounded-pill px-4">
+                        ✅ Chốt kết quả chính thức
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ── Data cầu thủ ───────────────────────────────────────────────
+        var players = {
+            @Model.DoiNhaId: [
+                @foreach (var tv in (Model.DoiNha?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+                {
+                            @Html.Raw($"{{id:{tv.Id},soAo:{tv.SoAo},hoTen:'{tv.HoTen.Replace("'", "\\'")}',treoGio:{tv.SoTranTreoGio},doi:{Model.DoiNhaId}}},")
+                }
+            ],
+            @Model.DoiKhachId: [
+                @foreach (var tv in (Model.DoiKhach?.ThanhViens ?? new List<Web_Stadium.EFCore.ThanhVienDoi>()).OrderBy(t => t.SoAo))
+                {
+                            @Html.Raw($"{{id:{tv.Id},soAo:{tv.SoAo},hoTen:'{tv.HoTen.Replace("'", "\\'")}',treoGio:{tv.SoTranTreoGio},doi:{Model.DoiKhachId}}},")
+                }
+            ]
+        };
+        var doiNhaId   = @Model.DoiNhaId;
+        var doiKhachId = @Model.DoiKhachId;
+        var tranId     = @Model.Id;
+        var phatVang   = @(Model.GiaiDau?.TienPhatTheVang ?? 20000);
+        var phatDo     = @(Model.GiaiDau?.TienPhatTheDo ?? 100000);
+
+        // State
+        var btDoiSel  = 'nha';
+        var theDoiSel = 'nha';
+        var theLoaiSel= 'TheVang';
+        var btTvSel   = null;
+        var theTvSel  = null;
+
+        // ── Toggle form ────────────────────────────────────────────────
+        function toggleForm(id) {
+            var el = document.getElementById(id);
+            el.classList.toggle('open');
+        }
+
+        // ── Chọn đội BT ───────────────────────────────────────────────
+        function chonDoiBT(side) {
+            btDoiSel = side;
+            btTvSel  = null;
+            document.getElementById('btDoiId').value =
+                side === 'nha' ? doiNhaId : doiKhachId;
+
+            document.getElementById('doiBTBtn-nha').className   =
+                'add-btn ' + (side === 'nha' ? 'add-btn-primary' : 'add-btn-ghost') + ' flex-grow-1';
+            document.getElementById('doiBTBtn-khach').className =
+                'add-btn ' + (side === 'khach' ? 'add-btn-primary' : 'add-btn-ghost') + ' flex-grow-1';
+
+            renderPlayerGrid('gridBT', side === 'nha' ? doiNhaId : doiKhachId, 'bt');
+        }
+
+        // ── Chọn đội The ──────────────────────────────────────────────
+        function chonDoiThe(side) {
+            theDoiSel = side;
+            theTvSel  = null;
+            document.getElementById('theDoiId').value =
+                side === 'nha' ? doiNhaId : doiKhachId;
+
+            document.getElementById('doiTheBtn-nha').className   =
+                'add-btn ' + (side === 'nha' ? 'add-btn-primary' : 'add-btn-ghost') + ' flex-grow-1';
+            document.getElementById('doiTheBtn-khach').className =
+                'add-btn ' + (side === 'khach' ? 'add-btn-primary' : 'add-btn-ghost') + ' flex-grow-1';
+
+            renderPlayerGrid('gridThe', side === 'nha' ? doiNhaId : doiKhachId, 'the');
+        }
+
+        // ── Chọn loại thẻ ─────────────────────────────────────────────
+        function chonLoaiThe(loai) {
+            theLoaiSel = loai;
+            document.getElementById('theLoai').value = loai;
+
+            var btnV = document.getElementById('loaiThe-vang');
+            var btnD = document.getElementById('loaiThe-do');
+            btnV.style.background = loai === 'TheVang' ? 'rgba(245,158,11,.15)' : '';
+            btnV.style.fontWeight = loai === 'TheVang' ? '800' : '';
+            btnD.style.background = loai === 'TheDo'   ? 'rgba(239,68,68,.15)'  : '';
+            btnD.style.fontWeight = loai === 'TheDo'   ? '800' : '';
+        }
+
+        // ── Render grid cầu thủ ───────────────────────────────────────
+        function renderPlayerGrid(gridId, doiId, type) {
+            var grid    = document.getElementById(gridId);
+            var list    = players[doiId] || [];
+            grid.innerHTML = '';
+
+            list.forEach(function(p) {
+                var suspended = p.treoGio > 0 && type === 'the';
+                var btn = document.createElement('button');
+                btn.className = 'player-btn' + (suspended ? ' suspended' : '');
+                btn.id = 'pb-' + type + '-' + p.id;
+                btn.dataset.id  = p.id;
+                btn.dataset.doi = p.doi;
+                btn.dataset.ten = p.hoTen;
+                btn.innerHTML =
+                    '<div class="pb-num">' + p.soAo + '</div>' +
+                    '<span class="pb-name">' + p.hoTen + '</span>' +
+                    (suspended ? '<span style="font-size:9px;color:var(--danger)">⛔</span>' : '');
+
+                if (!suspended) {
+                    btn.onclick = function() {
+                        if (type === 'bt') chonCauThuBT(this);
+                        else chonCauThuThe(this);
+                    };
+                } else {
+                    btn.disabled = true;
+                }
+                grid.appendChild(btn);
+            });
+        }
+
+        // ── Chọn cầu thủ ──────────────────────────────────────────────
+        function chonCauThuBT(el) {
+            document.querySelectorAll('#gridBT .player-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            btTvSel = el.dataset.id;
+            document.getElementById('btTvId').value = btTvSel;
+        }
+        function chonCauThuThe(el) {
+            document.querySelectorAll('#gridThe .player-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            theTvSel = el.dataset.id;
+            document.getElementById('theTvId').value = theTvSel;
+        }
+
+        // ── Thêm sự kiện (AJAX) ───────────────────────────────────────
+        async function themSuKien(loai) {
+            var isBT   = loai === 'BanThang';
+            var tvId   = isBT ? btTvSel  : theTvSel;
+            var doiId  = isBT
+                ? document.getElementById('btDoiId').value
+                : document.getElementById('theDoiId').value;
+            var phut   = parseInt(isBT
+                ? document.getElementById('btPhut').value
+                : document.getElementById('thePhut').value) || 0;
+
+            if (!tvId)   { alert('Vui lòng chọn cầu thủ!'); return; }
+            if (!phut)   { alert('Vui lòng nhập phút!');    return; }
+
+            var fd = new FormData();
+            fd.append('tranDauId',  tranId);
+            fd.append('thanhVienId',tvId);
+            fd.append('doiId',      doiId);
+            fd.append('loaiSuKien', loai);
+            fd.append('phut',       phut);
+            fd.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+            var res  = await fetch('/TournamentStaff/GhiSuKien', { method:'POST', body:fd });
+            var data = await res.json();
+            if (!data.ok) { alert(data.message); return; }
+
+            // Cập nhật tỷ số
+            var elN = document.getElementById('scoreNha');
+            var elK = document.getElementById('scoreKhach');
+            elN.textContent = data.tysoNha;
+            elK.textContent = data.tysoKhach;
+            elN.classList.add('updated'); setTimeout(() => elN.classList.remove('updated'), 500);
+            elK.classList.add('updated'); setTimeout(() => elK.classList.remove('updated'), 500);
+
+            // Thêm dòng vào list
+            var ico   = loai === 'BanThang' ? '⚽' : loai === 'TheDo' ? '🟥' : '💛';
+            var listId= loai === 'BanThang' ? 'listBT' : 'listThe';
+            var empty = loai === 'BanThang' ? 'emptyBT' : 'emptyThe';
+
+            var emptyEl = document.getElementById(empty);
+            if (emptyEl) emptyEl.remove();
+
+            var ten    = players[parseInt(doiId)].find(p => p.id == tvId)?.hoTen || '?';
+            var tenDoi = parseInt(doiId) === doiNhaId
+                ? '@Model.DoiNha?.TenDoi' : '@Model.DoiKhach?.TenDoi';
+            var fine   = loai === 'TheDo' ? phatDo : loai === 'TheVang' ? phatVang : 0;
+
+            var row = document.createElement('div');
+            row.className = 'ev-row';
+            row.id = 'sk-new-' + Date.now();
+            row.innerHTML =
+                '<span class="ev-phut">' + phut + "\'</span>" +
+                '<span class="ev-ico">' + ico + '</span>' +
+                '<div class="ev-info">' +
+                    '<div class="ev-name">' + ten + '</div>' +
+                    '<div class="ev-doi">' + tenDoi + '</div>' +
+                '</div>' +
+                (fine > 0 ? '<span class="ev-fine">' + fine.toLocaleString('vi-VN') + 'đ</span>' : '') +
+                '<button class="ev-del" onclick="xoaSuKienEl(this)" title="Xóa">✕</button>';
+
+            document.getElementById(listId).appendChild(row);
+
+            // Cập nhật đếm
+            var countEl = loai === 'BanThang'
+                ? document.getElementById('countBT')
+                : document.getElementById('countThe');
+            var cur = parseInt(countEl.textContent) || 0;
+            countEl.textContent = (cur + 1) + (loai === 'BanThang' ? ' bàn' : ' thẻ');
+
+            // Reset form
+            if (isBT) { btTvSel = null; document.getElementById('btPhut').value = ''; }
+            else { theTvSel = null; document.getElementById('thePhut').value = ''; }
+            document.querySelectorAll('.player-btn.selected').forEach(b => b.classList.remove('selected'));
+
+            // Đóng form
+            toggleForm(loai === 'BanThang' ? 'formBT' : 'formThe');
+        }
+
+        // ── Xóa sự kiện ───────────────────────────────────────────────
+        async function xoaSuKien(skId, type) {
+            if (!confirm('Xóa sự kiện này?')) return;
+            var fd = new FormData();
+            fd.append('suKienId',  skId);
+            fd.append('tranDauId', tranId);
+            fd.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+            var res  = await fetch('/TournamentStaff/HuyBanThang', { method:'POST', body:fd });
+            var data = await res.json();
+            if (!data.ok) return;
+
+            document.getElementById('sk-' + skId)?.remove();
+            document.getElementById('scoreNha').textContent   = data.tysoNha;
+            document.getElementById('scoreKhach').textContent = data.tysoKhach;
+        }
+        function xoaSuKienEl(btn) {
+            btn.closest('.ev-row').remove();
+        }
+
+        // ── Modal hoàn thành ──────────────────────────────────────────
+        function moModalHoanThanh() {
+            var nha   = document.getElementById('scoreNha').textContent;
+            var khach = document.getElementById('scoreKhach').textContent;
+            document.getElementById('modalTyso').textContent = nha + ' — ' + khach;
+            new bootstrap.Modal(document.getElementById('modalHT')).show();
+        }
+
+        // Token AJAX
+    </script>
+    <form style="display:none">@Html.AntiForgeryToken()</form>
+}

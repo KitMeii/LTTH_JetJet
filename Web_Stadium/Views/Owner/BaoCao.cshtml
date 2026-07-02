@@ -1,468 +1,478 @@
 ﻿@{
-    ViewData["Title"] = "Báo cáo chi nhánh";
+    ViewData["Title"] = "Báo cáo kinh doanh";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "BaoCao";
+
+    // --- Lấy dữ liệu từ ViewBag, xử lý null an toàn ---
     var data = (ViewBag.Data as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     var tyLeLapDay = (ViewBag.TyLeLapDay as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     var hieuSuat = (ViewBag.HieuSuatStaff as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
-    var voucherHieuQua = (ViewBag.VoucherHieuQua as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     double tongThuThuan = ViewBag.TongThuThuan ?? 0.0;
     int tongLuot = ViewBag.TongLuot ?? 0;
-    double tongTienGiam = ViewBag.TongTienGiam ?? 0.0;
-    double tongGoc = ViewBag.TongGoc ?? 0.0;
-    int soLuotVoucher = ViewBag.SoLuotDungVoucher ?? 0;
     string loai = ViewBag.Loai ?? "thang";
     int nam = ViewBag.Nam ?? DateTime.Now.Year;
     int thang = ViewBag.Thang ?? DateTime.Now.Month;
     string tieuDe = ViewBag.TieuDe ?? "";
+    int? selectedSanId = ViewBag.SanId;
+    var dsSan = (ViewBag.DanhSachSan as List<Web_Stadium.EFCore.SanBong>) ?? new List<Web_Stadium.EFCore.SanBong>();
+    var selectedSan = dsSan.FirstOrDefault(s => s.Id == selectedSanId);
 }
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .filter-bar {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: var(--db-card);
+        padding: 16px 20px;
+        border-radius: 20px;
+        border: 1px solid var(--db-border);
+        margin-bottom: 28px;
+    }
+    .filter-select {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        border-radius: 30px;
+        padding: 6px 16px;
+        font-size: 13px;
+        color: var(--db-text);
+        cursor: pointer;
+    }
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+    .kpi-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 18px 16px;
+        transition: 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--db-green-border);
+    }
+    .kpi-accent .kpi-value {
+        color: var(--db-green);
+    }
+    .kpi-label {
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        color: var(--db-muted);
+        margin-bottom: 8px;
+    }
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--db-text);
+    }
+    .kpi-sub {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 4px;
+    }
+    .chart-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 32px;
+    }
+    .chart-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .chart-sub {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-bottom: 16px;
+    }
+    .chart-container {
+        height: 280px;
+        position: relative;
+    }
+    .two-col-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .stat-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 20px;
+    }
+    .stat-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
+    .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .stat-name {
+        width: 120px;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .stat-bar-wrap {
+        flex: 1;
+        height: 8px;
+        background: var(--db-border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .stat-bar-fill {
+        height: 100%;
+        border-radius: 10px;
+    }
+    .stat-percent {
+        width: 45px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: right;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px 0;
+        color: var(--db-muted);
+    }
+    @@media (max-width: 768px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .two-col-grid { grid-template-columns: 1fr; }
+        .stat-name { width: 100px; }
+    }
+</style>
+
+<div class="page-header">
     <div class="container">
-        <div class="section-label">Owner — Tài chính chi nhánh</div>
-        <h1 style="font-style:italic;line-height:0.9">BÁO CÁO<br><span class="text-green">KINH DOANH</span></h1>
-        <p style="color:var(--muted)">@tieuDe</p>
-    </div>
-</div>
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center">
-        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
-        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
-        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
-    </div>
-</div>
-
-<div class="container section">
-
-    <!-- TOP BAR -->
-    <div class="report-topbar">
-        <div class="report-tabs">
-            @foreach (var tab in new[] { ("ngay", "📅 Ngày"), ("tuan", "📆 Tuần"), ("thang", "🗓️ Tháng"), ("quy", "📊 Quý"), ("nam", "📈 Năm") })
-            {
-                var active = loai == tab.Item1;
-                <a href="/Owner/BaoCao?loai=@tab.Item1&nam=@nam&thang=@thang"
-                   class="report-tab @(active ? "active" : "")">@tab.Item2</a>
-            }
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / BÁO CÁO</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">
+                    Báo cáo <span style="color: var(--db-green);">kinh doanh</span>
+                    @if (selectedSan != null)
+                    {
+                        <span style="font-size: 1.2rem;"> — @selectedSan.TenSan</span>
+                    }
+                </h1>
+                <p class="text-muted mt-2 mb-0">@tieuDe</p>
+            </div>
         </div>
+    </div>
+</div>
 
-        <div class="report-filter">
+@await Html.PartialAsync("_OwnerNav")
+
+<div class="container py-5">
+
+    <!-- Bộ lọc -->
+    <div class="filter-bar">
+        <form method="get" action="/Owner/BaoCao" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; width: 100%;">
+            <select name="loai" class="filter-select" onchange="this.form.submit()">
+                <option value="ngay" selected="@(loai == "ngay")">📅 Ngày</option>
+                <option value="tuan" selected="@(loai == "tuan")">📆 Tuần</option>
+                <option value="thang" selected="@(loai == "thang")">🗓️ Tháng</option>
+                <option value="quy" selected="@(loai == "quy")">📊 Quý</option>
+                <option value="nam" selected="@(loai == "nam")">📈 Năm</option>
+            </select>
+
+            <select name="sanId" class="filter-select" onchange="this.form.submit()">
+                <option value="">-- Tất cả sân --</option>
+                @foreach (var s in dsSan)
+                {
+                    <option value="@s.Id" selected="@(selectedSanId == s.Id)">@s.TenSan</option>
+                }
+            </select>
+
             @if (loai == "ngay" || loai == "tuan")
             {
-                <form method="get" action="/Owner/BaoCao" class="d-flex gap-2">
-                    <input type="hidden" name="loai" value="@loai" />
-
-                    <select name="thang" onchange="this.form.submit()" class="report-select">
-                        @for (int t = 1; t <= 12; t++)
-                        {
-                            <option value="@t" selected="@(t == thang)">@($"Tháng {t}")</option>
-                        }
-                    </select>
-
-                    <select name="nam" onchange="this.form.submit()" class="report-select">
-                        @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 4; y--)
-                        {
-                            <option value="@y" selected="@(y == nam)">@y</option>
-                        }
-                    </select>
-                </form>
+                <select name="thang" class="filter-select" onchange="this.form.submit()">
+                    @for (int t = 1; t <= 12; t++)
+                    {
+                        <option value="@t" selected="@(t == thang)">Tháng @t</option>
+                    }
+                </select>
+                <select name="nam" class="filter-select" onchange="this.form.submit()">
+                    @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 4; y--)
+                    {
+                        <option value="@y" selected="@(y == nam)">Năm @y</option>
+                    }
+                </select>
             }
             else if (loai == "thang" || loai == "quy")
             {
-                <a href="/Owner/BaoCao?loai=@loai&nam=@(nam - 1)" class="year-nav">←</a>
-                <span class="year-label">@nam</span>
-                <a href="/Owner/BaoCao?loai=@loai&nam=@(nam + 1)" class="year-nav">→</a>
+                <span class="text-muted">Năm</span>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <a href="/Owner/BaoCao?loai=@loai&nam=@(nam - 1)&sanId=@selectedSanId" class="filter-select">←</a>
+                    <span style="font-weight: 600; min-width: 50px; text-align: center;">@nam</span>
+                    <a href="/Owner/BaoCao?loai=@loai&nam=@(nam + 1)&sanId=@selectedSanId" class="filter-select">→</a>
+                </div>
             }
-        </div>
+
+            @if (!string.IsNullOrEmpty(loai) && (selectedSanId.HasValue || nam != DateTime.Now.Year || thang != DateTime.Now.Month))
+            {
+                <a href="/Owner/BaoCao" class="filter-select">🔄 Xóa lọc</a>
+            }
+        </form>
+
+        <button type="button" id="btnXuatPDF"
+                class="btn btn-primary btn-sm rounded-pill"
+                data-url="@Url.Action("XuatBaoCaoPDF", "Owner", new { loai, nam, thang, sanId = selectedSanId })"
+                style="margin-left: auto;">
+            <i class="fas fa-file-pdf"></i> Xuất PDF
+        </button>
     </div>
 
-    <!-- KPI -->
-    <div class="summary-grid mb-4">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    }
 
-        <div class="report-kpi report-kpi-green">
-            <div class="kpi-title">THU THUẦN</div>
+    <!-- 4 KPI -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-accent">
+            <div class="kpi-label">THU THUẦN</div>
             <div class="kpi-value">@((tongThuThuan / 1_000_000).ToString("F1"))M</div>
-            <div class="kpi-sub">Sau khi trừ hoa hồng PitchHub</div>
+            <div class="kpi-sub">Sau khi trừ hoa hồng</div>
         </div>
-
-        <div class="report-kpi">
-            <div class="kpi-title">LƯỢT ĐẶT</div>
+        <div class="kpi-card">
+            <div class="kpi-label">LƯỢT ĐẶT</div>
             <div class="kpi-value">@tongLuot</div>
             <div class="kpi-sub">Đơn thành công</div>
         </div>
-
-        <div class="report-kpi">
-            <div class="kpi-title">TB / LƯỢT</div>
-            <div class="kpi-value small">
-                @(tongLuot > 0 ? ((tongThuThuan / tongLuot) / 1000).ToString("F0") : "0")K
-            </div>
-            <div class="kpi-sub">Thu thuần / đơn</div>
+        <div class="kpi-card">
+            <div class="kpi-label">TB MỖI LƯỢT</div>
+            <div class="kpi-value">@(tongLuot > 0 ? ((tongThuThuan / tongLuot) / 1000).ToString("F0") : "0")K</div>
+            <div class="kpi-sub">VNĐ thu thuần / đơn</div>
         </div>
-
-        <div class="report-kpi">
-            <div class="kpi-title">NHÂN VIÊN</div>
+        <div class="kpi-card">
+            <div class="kpi-label">NHÂN VIÊN</div>
             <div class="kpi-value">@hieuSuat.Count()</div>
-            <div class="kpi-sub">Đã xử lý đơn</div>
+            <div class="kpi-sub">Đã xử lý đơn trong kỳ</div>
         </div>
-
-        <div class="report-kpi" style="border-color:rgba(239,68,68,.3);background:linear-gradient(135deg,rgba(239,68,68,.08),#fff);">
-            <div class="kpi-title">OWNER CHỊU GIẢM</div>
-            <div class="kpi-value" style="color:#ef4444;">@((tongTienGiam / 1_000_000).ToString("F1"))M</div>
-            <div class="kpi-sub">@soLuotVoucher lượt dùng voucher sân</div>
-        </div>
-
     </div>
 
-    <!-- VOUCHER STATS -->
-    @if (voucherHieuQua.Any())
+    <!-- Biểu đồ -->
+    @if (data.Any())
     {
-        <div class="chart-card mb-4">
-            <div class="chart-title">Hiệu quả Voucher sân</div>
-            <div class="chart-sub">Top voucher được dùng nhiều nhất trong kỳ</div>
-            @foreach (var v in voucherHieuQua)
-            {
-                var maxDung = voucherHieuQua.Max(x => (int)x.DaDung);
-                var pct = maxDung > 0 ? (int)((double)(int)v.DaDung / maxDung * 100) : 0;
-                <div class="report-bar">
-                    <div class="bar-label" style="font-size:12px;">@v.TenVoucher</div>
-                    <div class="bar-track">
-                        <div class="bar-fill" style="width:@pct%;background:var(--green);"></div>
-                    </div>
-                    <div class="bar-value" style="color:var(--green);">@v.DaDung lượt</div>
-                </div>
-            }
+        <div class="chart-card">
+            <div class="chart-title">@tieuDe</div>
+            <div class="chart-sub">Xanh đậm = Thu thuần | Xanh nhạt = Tổng doanh thu sân</div>
+            <div class="chart-container">
+                <canvas id="chartMain"></canvas>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="chart-card">
+            <div class="empty-state">📊 Không có dữ liệu cho kỳ báo cáo này</div>
         </div>
     }
 
-    <!-- CHART -->
-    <div class="chart-card mb-4">
-        <div class="chart-title">@tieuDe</div>
-        <div class="chart-sub">Thu thuần & doanh thu sân theo thời gian</div>
-        <div class="chart-wrap">
-            <canvas id="chartMain"></canvas>
-        </div>
-    </div>
-
-    <div class="row g-4">
-
-        <!-- LẤP ĐẦY -->
-        <div class="col-md-6">
-            <div class="chart-card h-100">
-                <div class="chart-title">Tỷ lệ lấp đầy sân</div>
-
-                @foreach (var san in tyLeLapDay)
+    <!-- Tỷ lệ lấp đầy và hiệu suất staff -->
+    <div class="two-col-grid">
+        <div class="stat-card">
+            <div class="stat-title">🏟️ Tỷ lệ lấp đầy sân</div>
+            @if (tyLeLapDay.Any())
+            {
+                foreach (var san in tyLeLapDay)
                 {
-                    var pct = san.Tong > 0 ? (int)((double)san.DaDat / san.Tong * 100) : 0;
-                    var color = pct >= 80 ? "var(--green)" : pct >= 50 ? "#f59e0b" : "#ef4444";
-
-                    <div class="report-bar">
-                        <div class="bar-label">@san.Ten</div>
-
-                        <div class="bar-track">
-                            <div class="bar-fill" style="width:@pct%;background:@color"></div>
-                        </div>
-
-                        <div class="bar-value" style="color:@color">@pct%</div>
+                    var pct = san.Tong > 0 ? (int)((double)san.DaDat / (double)san.Tong * 100) : 0;
+                    var barColor = pct >= 80 ? "#0f6e4a" : (pct >= 50 ? "#f59e0b" : "#ef4444");
+                    <div class="stat-row">
+                        <div class="stat-name">@san.Ten</div>
+                        <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:@pct%; background: @barColor;"></div></div>
+                        <div class="stat-percent" style="color: @barColor;">@pct%</div>
                     </div>
                 }
-            </div>
+            }
+            else
+            {
+                <div class="empty-state">Chưa có dữ liệu lấp đầy</div>
+            }
         </div>
 
-        <!-- STAFF -->
-        <div class="col-md-6">
-            <div class="chart-card h-100">
-                <div class="chart-title">Hiệu suất nhân viên</div>
-                <div class="chart-sub">Số đơn xử lý trong kỳ</div>
-
-                @foreach (var s in hieuSuat)
+        <div class="stat-card">
+            <div class="stat-title">👥 Hiệu suất nhân viên</div>
+            <div class="chart-sub">Số đơn xử lý trong kỳ</div>
+            @if (hieuSuat.Any())
+            {
+                var maxDon = hieuSuat.Max(x => (int)x.SoDon);
+                foreach (var s in hieuSuat)
                 {
-                    var maxDon = hieuSuat.Any() ? (int)hieuSuat.Max(x => (int)x.SoDon) : 1;
                     var pct = maxDon > 0 ? (int)((double)(int)s.SoDon / maxDon * 100) : 0;
-
-                    <div class="report-bar">
-                        <div class="bar-label">@s.TenStaff</div>
-
-                        <div class="bar-track">
-                            <div class="bar-fill blue" style="width:@pct%"></div>
-                        </div>
-
-                        <div class="bar-value blue-text">@s.SoDon đơn</div>
+                    <div class="stat-row">
+                        <div class="stat-name">@s.TenStaff</div>
+                        <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:@pct%; background: #3b82f6;"></div></div>
+                        <div class="stat-percent" style="color: #3b82f6;">@s.SoDon đơn</div>
                     </div>
                 }
-
-                @if (!hieuSuat.Any())
-                {
-                    <div class="empty-report">Chưa có dữ liệu</div>
-                }
-            </div>
+            }
+            else
+            {
+                <div class="empty-state">Chưa có dữ liệu nhân viên</div>
+            }
         </div>
-
     </div>
 </div>
 
-<style>
-
-    .report-topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 30px;
-        flex-wrap: wrap
-    }
-
-    .report-tabs {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap
-    }
-
-    .report-tab {
-        padding: 8px 18px;
-        border-radius: 999px;
-        background: var(--bg3);
-        border: 1px solid var(--border);
-        color: var(--muted);
-        font-size: 13px;
-        font-weight: 600;
-        transition: .25s
-    }
-
-        .report-tab:hover {
-            transform: translateY(-2px);
-            border-color: rgba(14,168,106,.3)
-        }
-
-        .report-tab.active {
-            background: var(--green);
-            color: #fff;
-            border-color: var(--green);
-            box-shadow: 0 0 18px rgba(14,168,106,.25)
-        }
-
-    .report-select {
-        background: var(--bg2);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 8px 14px;
-        font-size: 13px;
-        outline: none
-    }
-
-    .year-nav {
-        color: var(--green);
-        font-size: 24px;
-        text-decoration: none
-    }
-
-    .year-label {
-        font-family: var(--ff-h);
-        font-size: 22px;
-        color: var(--green)
-    }
-
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-        gap: 18px
-    }
-
-    .report-kpi {
-        background: linear-gradient(135deg,#fff,#f7fafc);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        padding: 24px;
-        box-shadow: var(--shadow-sm);
-        transition: .3s
-    }
-
-        .report-kpi:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-lg)
-        }
-
-    .report-kpi-green {
-        border-color: rgba(14,168,106,.3);
-        background: linear-gradient(135deg,rgba(14,168,106,.08),#fff)
-    }
-
-    .kpi-title {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        color: var(--muted);
-        margin-bottom: 10px
-    }
-
-    .kpi-value {
-        font-family: var(--ff-h);
-        font-size: 2.4rem;
-        color: var(--text);
-        line-height: 1;
-        margin-bottom: 8px
-    }
-
-        .kpi-value.small {
-            font-size: 1.8rem
-        }
-
-    .report-kpi-green .kpi-value {
-        color: var(--green)
-    }
-
-    .kpi-sub {
-        font-size: 13px;
-        color: var(--muted)
-    }
-
-    .chart-card {
-        background: linear-gradient(135deg,#fff,#f8fbfd);
-        border: 1px solid rgba(14,168,106,.10);
-        border-radius: 28px;
-        padding: 28px;
-        box-shadow: var(--shadow-md)
-    }
-
-    .chart-title {
-        font-family: var(--ff-h);
-        font-size: 28px;
-        color: var(--text);
-        letter-spacing: 1px;
-        margin-bottom: 6px
-    }
-
-    .chart-sub {
-        color: var(--muted);
-        font-size: 13px;
-        margin-bottom: 22px
-    }
-
-    .chart-wrap {
-        position: relative;
-        height: 320px
-    }
-
-    .report-bar {
-        display: grid;
-        grid-template-columns: 120px 1fr 60px;
-        gap: 14px;
-        align-items: center;
-        margin-bottom: 18px
-    }
-
-    .bar-label {
-        font-weight: 700;
-        color: var(--text)
-    }
-
-    .bar-track {
-        height: 12px;
-        border-radius: 999px;
-        background: #edf2f7;
-        overflow: hidden
-    }
-
-    .bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        box-shadow: 0 0 14px rgba(14,168,106,.25)
-    }
-
-        .bar-fill.blue {
-            background: #6caee0
-        }
-
-    .bar-value {
-        font-size: 13px;
-        font-weight: 700
-    }
-
-    .blue-text {
-        color: #6caee0
-    }
-
-    .empty-report {
-        text-align: center;
-        padding: 24px;
-        color: var(--muted)
-    }
-
-</style>
-
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Tải PDF bằng fetch+blob để KHÔNG navigate page — tránh VS Browser Link mất kết nối khiến debug bị stop.
+        (function () {
+            const btn = document.getElementById('btnXuatPDF');
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                const url = btn.dataset.url;
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...';
+                try {
+                    const res = await fetch(url, { credentials: 'same-origin' });
+                    if (!res.ok) {
+                        alert('Lỗi xuất PDF: ' + res.status + ' ' + res.statusText);
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const cd = res.headers.get('Content-Disposition') || '';
+                    const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+                    const filename = m ? decodeURIComponent(m[1]) : ('BaoCao_' + Date.now() + '.pdf');
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+                } catch (err) {
+                    alert('Không gọi được API xuất PDF: ' + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            });
+        })();
+    </script>
     <script>
         @{
-                var lbls = System.Text.Json.JsonSerializer.Serialize(data.Select(d => (string)d.nhan));
-                var thuThuan = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.thuThuan / 1_000_000, 2)));
-                var tongDT = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.tongDT / 1_000_000, 2)));
-                var tongGiamArr = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.tongGiam / 1_000_000, 2)));
+            var labels = System.Text.Json.JsonSerializer.Serialize(data.Select(d => (string)d.nhan));
+            var thuThuanData = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.thuThuan / 1_000_000, 2)));
+            var tongDTData = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.tongDT / 1_000_000, 2)));
         }
-
-        new Chart(document.getElementById('chartMain'),{
-            type:'bar',
-            data:{
-                labels:@Html.Raw(lbls),
-                datasets:[
-                    {
-                        label:'Thu thuần',
-                        data:@Html.Raw(thuThuan),
-                        backgroundColor:'rgba(14,168,106,.75)',
-                        borderRadius:12,
-                        borderSkipped:false
-                    },
-                    {
-                        label:'Doanh thu thực (sau giảm)',
-                        data:@Html.Raw(tongDT),
-                        backgroundColor:'rgba(108,174,224,.30)',
-                        borderColor:'#6caee0',
-                        borderWidth:1,
-                        borderRadius:12,
-                        borderSkipped:false
-                    },
-                    {
-                        label:'Owner chịu giảm voucher',
-                        data:@Html.Raw(tongGiamArr),
-                        backgroundColor:'rgba(239,68,68,.55)',
-                        borderColor:'#ef4444',
-                        borderWidth:1,
-                        borderRadius:12,
-                        borderSkipped:false
-                    }
-                ]
-            },
-            options:{
-                responsive:true,
-                maintainAspectRatio:false,
-                interaction:{mode:'index',intersect:false},
-                plugins:{
-                    legend:{
-                        labels:{
-                            color:'#64748b',
-                            font:{size:12,weight:'600'},
-                            padding:18
+        const ctx = document.getElementById('chartMain')?.getContext('2d');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(labels),
+                    datasets: [
+                        {
+                            label: 'Thu thuần (triệu VND)',
+                            data: @Html.Raw(thuThuanData),
+                            backgroundColor: 'rgba(15,110,74,0.6)',
+                            borderColor: '#0f6e4a',
+                            borderWidth: 1.5,
+                            borderRadius: 6,
+                            barPercentage: 0.65
+                        },
+                        {
+                            label: 'Tổng doanh thu sân (triệu VND)',
+                            data: @Html.Raw(tongDTData),
+                            backgroundColor: 'rgba(59,130,246,0.15)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            barPercentage: 0.65
                         }
-                    }
+                    ]
                 },
-                scales:{
-                    x:{
-                        grid:{display:false},
-                        ticks:{
-                            color:'#64748b',
-                            font:{weight:'600'}
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#475569', font: { size: 11 } } },
+                        tooltip: {
+                            backgroundColor: '#ffffff',
+                            titleColor: '#0f172a',
+                            bodyColor: '#475569',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} triệu VND` }
                         }
                     },
-                    y:{
-                        beginAtZero:true,
-                        grid:{color:'rgba(15,23,42,.05)'},
-                        ticks:{
-                            color:'#64748b',
-                            callback:v=>v+'M'
-                        }
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 11 } } },
+                        y: { grid: { color: '#e2e8f0' }, ticks: { color: '#475569', callback: (val) => val + 'M' } }
                     }
                 }
-            }
-        });
+            });
+        }
     </script>
 }

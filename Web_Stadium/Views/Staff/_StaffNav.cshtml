@@ -1,0 +1,23 @@
+@{
+    var activePage = ViewBag.NavActivePage as string ?? "";
+}
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap">
+        <a href="/Staff"
+           class="btn btn-sm @(activePage=="index" ? "btn-success" : "btn-outline-secondary") rounded-pill">
+            📋 Ca trực
+        </a>
+        <a href="/Staff/CheckIn"
+           class="btn btn-sm @(activePage=="checkin" ? "btn-warning" : "btn-outline-warning") rounded-pill">
+            ✅ Check-in
+        </a>
+        <a href="/Staff/SuCo"
+           class="btn btn-sm @(activePage=="suco" ? "btn-danger" : "btn-outline-danger") rounded-pill">
+            ⚠️ Sự cố
+        </a>
+        <a href="/Staff/VangLai"
+           class="btn btn-sm @(activePage=="vanglai" ? "btn-info" : "btn-outline-info") rounded-pill">
+            🛍 Vãng lai
+        </a>
+    </div>
+</div>
