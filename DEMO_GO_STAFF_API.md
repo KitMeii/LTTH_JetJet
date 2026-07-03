@@ -1,4 +1,4 @@
-﻿# Demo ASP.NET MVC + Go API cho Staff
+# Demo ASP.NET MVC + Go API cho Staff
 
 ## Pham vi
 
@@ -24,7 +24,7 @@
    - `GET /api/tournament/matches/{matchId}/checkins`
    - `POST /api/tournament/matches/{matchId}/checkins/{playerId}/toggle`
    - Go luu bang `TournamentPlayerCheckIns`.
-   - Tren branch GitHub nay, MVC TournamentStaff van giu Java tournament-service de khong dung module cua nhom khac.
+   - Tren branch GitHub nay, MVC TournamentStaff van giu service giai dau rieng de khong dung module cua nhom khac.
 
 ## Cach chay
 
@@ -47,11 +47,34 @@ dotnet run --urls http://localhost:5000
 ## URL demo
 
 - MVC: `http://localhost:5000`
+- Backend architecture status: `http://localhost:5000/api/demo/microservices/status`
 - Go health: `http://localhost:8081/health`
 - Go status: `http://localhost:8081/api/demo/status`
 - Staff dashboard: `http://localhost:5000/Staff`
 - Staff check-in don san: `http://localhost:5000/Staff/CheckIn`
 - Staff giai dau: `http://localhost:5000/TournamentStaff/DanhSach`
+
+## Cach demo de giong backend that
+
+Khong dua trang "microservice" len navbar. Nguoi dung binh thuong chi thay web PitchHub.
+
+Khi bao cao, mo 3 man hinh:
+
+1. Web MVC `http://localhost:5000/Staff/CheckIn`
+2. Postman hoac terminal goi backend status:
+
+```powershell
+curl http://localhost:5000/api/demo/microservices/status
+```
+
+3. Terminal Go API va SSMS de thay log + database doi that.
+
+Y tuong noi:
+
+- "Frontend khong biet chi tiet service con. Web MVC chi goi backend qua client."
+- "Endpoint `/api/demo/microservices/status` la endpoint noi bo de kiem tra kien truc khi demo."
+- "Go API chay cong rieng 8081, MVC chay cong 5000, SQL Server la data store chung."
+- "Khi check-in, MVC goi Go API, Go validate quyen staff, update SQL, ghi audit log."
 
 ## Tai khoan
 
@@ -166,7 +189,7 @@ Click vao ten file/function de nhay thang sang code.
 | [`GoStaffApiClient inject`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L15) | Gan Go client vao StaffController | Chung minh MVC co goi Go |
 | [`GetSanDuocGiaoAsync`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L28) | Lay danh sach san staff duoc phan cong | Quyen staff theo san |
 | [`Index`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L40) | Dashboard ca truc, don hom nay | Man `/Staff` |
-| [`CheckIn`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L84) | Tim booking theo ma/SÄT | Man `/Staff/CheckIn` |
+| [`CheckIn`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L84) | Tim booking theo ma/SĐT | Man `/Staff/CheckIn` |
 | [`ThucHienCheckIn`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L113) | MVC goi Go API check-in booking | Diem demo chinh |
 | [`POS`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L131) | Them dich vu cho don dang su dung | Van giu C# |
 | [`ThemDichVuPOS`](BTL_DATSAN/Web_Stadium/Web_Stadium/Controllers/StaffController.cs#L154) | Luu dich vu POS, tru kho | Van giu C# |
@@ -215,7 +238,7 @@ Click vao ten file/function de nhay thang sang code.
 5. "Go API cap nhat SQL Server: doi trang thai booking, tru ton kho dich vu, ghi audit log."
 6. "Terminal Go in log request nen thay thay day la service rieng dang nhan request."
 7. "Neu tat Go API, MVC khong crash ma bao loi Go API chua chay."
-8. "Voi giai dau, co the demo endpoint Go bang Postman; MVC TournamentStaff van giu Java service cua nhom khac."
+8. "Voi giai dau, co the demo endpoint Go bang Postman; MVC TournamentStaff van giu service giai dau cua nhom khac."
 
 ## Lenh kiem thu
 
@@ -227,5 +250,3 @@ go build ./cmd/server
 cd C:\Users\Admin\Downloads\LTTH_JetJet-main\LTTH_JetJet-main\BTL_DATSAN\Web_Stadium\Web_Stadium
 dotnet build
 ```
-
-
