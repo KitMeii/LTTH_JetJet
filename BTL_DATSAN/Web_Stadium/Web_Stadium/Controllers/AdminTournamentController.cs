@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
@@ -6,42 +6,28 @@ using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
+    /// <summary>
+    /// SanBongContext chi con dung de doc bang Users (dropdown loc Owner) —
+    /// day KHONG phai domain Giai dau nen khong chuyen sang Java.
+    /// </summary>
     [YeuCauDangNhap("Admin")]
     public class AdminTournamentController : Controller
     {
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
-        private readonly StandingService _standingService;
-        private readonly TournamentExcelService _excelService;
+        private readonly TournamentApiService _apiService;
 
         public AdminTournamentController(
             SanBongContext context,
             IConfiguration config,
-            StandingService standingService,
-            TournamentExcelService excelService)
+            TournamentApiService apiService)
         {
             _context = context;
             _config = config;
-            _standingService = standingService;
-            _excelService = excelService;
+            _apiService = apiService;
         }
 
-        private int AdminId() => TokenHelper.LayUserId(Request, _config)!.Value;
-
-        private async Task GhiLog(string hanhDong, string doiTuong, int id, string moTa)
-        {
-            _context.AuditLogs.Add(new AuditLog
-            {
-                UserId = AdminId(),
-                VaiTro = "Admin",
-                HanhDong = hanhDong,
-                DoiTuong = doiTuong,
-                DoiTuongId = id,
-                MoTa = moTa,
-                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-            });
-            await _context.SaveChangesAsync();
-        }
+        private string Jwt() => _apiService.GetJwtFromContext(HttpContext) ?? "";
 
         // ══════════════════════════════════════════════════════════
         // GET /AdminTournament/Index
@@ -51,57 +37,26 @@ namespace Web_Stadium.Controllers
             string? trangThai, string? keyword,
             int? ownerId, string? sapXep)
         {
-            var query = _context.GiaiDaus
-                .Include(g => g.SanBong)
-                .Include(g => g.Owner)
-                .Include(g => g.DoiBongs)
-                .Include(g => g.TranDaus)
-                .AsQueryable();
+            var giaiList = await _apiService.GetAllGiai(trangThai, keyword, ownerId, sapXep, Jwt());
+            var kpi = await _apiService.GetKpi(Jwt());
 
-            if (!string.IsNullOrEmpty(trangThai))
-                query = query.Where(g => g.TrangThai == trangThai);
-
-            if (!string.IsNullOrEmpty(keyword))
-                query = query.Where(g =>
-                    g.TenGiai.Contains(keyword) ||
-                    g.SanBong.TenSan.Contains(keyword) ||
-                    g.Owner.HoTen.Contains(keyword));
-
-            if (ownerId.HasValue)
-                query = query.Where(g => g.OwnerId == ownerId.Value);
-
-            query = sapXep switch
-            {
-                "moi_nhat" => query.OrderByDescending(g => g.ThoiGianTao),
-                "cu_nhat" => query.OrderBy(g => g.ThoiGianTao),
-                "ten" => query.OrderBy(g => g.TenGiai),
-                _ => query.OrderByDescending(g => g.ThoiGianTao)
-            };
-
-            var giaiList = await query.ToListAsync();
-
-            // KPI tổng hợp — tên ViewBag khớp với Index.cshtml
             ViewBag.GiaiDaus = giaiList;
-            ViewBag.TongGiai        = await _context.GiaiDaus.CountAsync();
-            ViewBag.ChoDuyet        = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Draft");
-            ViewBag.DaDuyet         = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Approved");
-            ViewBag.DangDienRa      = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Active");
-            ViewBag.DangDangKy      = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "RegistrationOpen");
-            ViewBag.TongLePhi       = await _context.DoiBongs
-                .Where(d => d.DaThanhToan)
-                .SumAsync(d => d.GiaiDau.LePhiGiai);
+            ViewBag.TongGiai = kpi.TongGiai;
+            ViewBag.ChoDuyet = kpi.ChoDuyet;
+            ViewBag.DaDuyet = kpi.DaDuyet;
+            ViewBag.DangDienRa = kpi.DangDienRa;
+            ViewBag.TongLePhi = kpi.TongLePhi;
 
-            // Danh sách Owner cho dropdown lọc
+            // Users khong thuoc domain Giai dau — van doc truc tiep tu SanBongContext
             ViewBag.OwnerList = await _context.Users
                 .Where(u => u.VaiTro == "Owner")
                 .OrderBy(u => u.HoTen)
                 .ToListAsync();
 
-            // Filter state — tên khớp với View
             ViewBag.FilterTrangThai = trangThai;
-            ViewBag.FilterSearch    = keyword;
-            ViewBag.FilterOwner     = ownerId?.ToString();
-            ViewBag.FilterSapXep    = sapXep;
+            ViewBag.FilterSearch = keyword;
+            ViewBag.FilterOwner = ownerId?.ToString();
+            ViewBag.FilterSapXep = sapXep;
 
             return View(giaiList);
         }
@@ -112,21 +67,10 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> Details(int id)
         {
-            var giai = await _context.GiaiDaus
-                .Include(g => g.SanBong)
-                .Include(g => g.Owner)
-                .Include(g => g.BangDaus)
-                .Include(g => g.DoiBongs).ThenInclude(d => d.ThanhViens)
-                .Include(g => g.DoiBongs).ThenInclude(d => d.Bang)
-                .Include(g => g.DoiBongs).ThenInclude(d => d.DoiTruong)
-                .Include(g => g.TranDaus).ThenInclude(t => t.DoiNha)
-                .Include(g => g.TranDaus).ThenInclude(t => t.DoiKhach)
-                .Include(g => g.TranDaus).ThenInclude(t => t.SuKiens)
-                .FirstOrDefaultAsync(g => g.Id == id);
-
+            var giai = await _apiService.GetChiTietGiaiAdmin(id, Jwt());
             if (giai == null) return NotFound();
 
-            ViewBag.BangXepHang = await _standingService.GetStandings(id);
+            ViewBag.BangXepHang = await _apiService.GetBangXepHang(id);
 
             return View(giai);
         }
@@ -138,26 +82,14 @@ namespace Web_Stadium.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> PheDuyet(int id, string? ghiChu)
         {
-            var giai = await _context.GiaiDaus
-                .Include(g => g.Owner)
-                .FirstOrDefaultAsync(g => g.Id == id);
-
-            if (giai == null) return NotFound();
-            if (giai.TrangThai != "Draft")
+            var (ok, error) = await _apiService.PheDuyet(id, ghiChu, Jwt());
+            if (!ok)
             {
-                TempData["Error"] = "Chỉ phê duyệt giải ở trạng thái Draft!";
+                TempData["Error"] = error;
                 return RedirectToAction("Details", new { id });
             }
 
-            giai.TrangThai = "Approved";
-            await _context.SaveChangesAsync();
-
-            await GhiLog("PheDuyetGiai", "GiaiDau", id,
-                $"Phê duyệt giải '{giai.TenGiai}'. Ghi chú: {ghiChu}");
-
-            // Thông báo cho Owner
-            TempData["Success"] =
-                $"✅ Đã phê duyệt giải '{giai.TenGiai}'. Owner có thể mở đăng ký.";
+            TempData["Success"] = "✅ Đã phê duyệt giải. Owner có thể mở đăng ký.";
             return RedirectToAction("Details", new { id });
         }
 
@@ -168,30 +100,20 @@ namespace Web_Stadium.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> TuChoi(int id, string lyDo)
         {
-            var giai = await _context.GiaiDaus
-                .FirstOrDefaultAsync(g => g.Id == id);
-
-            if (giai == null) return NotFound();
-            if (giai.TrangThai != "Draft")
-            {
-                TempData["Error"] = "Chỉ từ chối giải ở trạng thái Draft!";
-                return RedirectToAction("Details", new { id });
-            }
-
             if (string.IsNullOrWhiteSpace(lyDo))
             {
                 TempData["Error"] = "Cần nhập lý do từ chối!";
                 return RedirectToAction("Details", new { id });
             }
 
-            await GhiLog("TuChoiGiai", "GiaiDau", id,
-                $"Từ chối giải '{giai.TenGiai}'. Lý do: {lyDo}");
+            var (ok, error) = await _apiService.TuChoi(id, lyDo, Jwt());
+            if (!ok)
+            {
+                TempData["Error"] = error;
+                return RedirectToAction("Details", new { id });
+            }
 
-            // Xóa giải (Draft chưa có dữ liệu quan trọng)
-            _context.GiaiDaus.Remove(giai);
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã từ chối và xóa giải '{giai.TenGiai}'.";
+            TempData["Success"] = "Đã từ chối và xóa giải.";
             return RedirectToAction("Index");
         }
 
@@ -200,11 +122,12 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> ExcelDoiSoat(int id)
         {
-            var (bytes, fileName) = await _excelService.ExportDoiSoat(id);
-            await GhiLog("ExportExcelAdmin", "GiaiDau", id, "Admin xuất Excel đối soát");
+            var bytes = await _apiService.GetExcelDoiSoatAdmin(id, Jwt());
+            if (bytes == null) return NotFound();
+
             return File(bytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                fileName);
+                $"DoiSoat_{id}.xlsx");
         }
 
         // ══════════════════════════════════════════════════════════
@@ -212,62 +135,35 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> BaoCao()
         {
-            var now = DateTime.Now;
+            var baoCao = await _apiService.GetBaoCao(Jwt());
 
-            // Thống kê theo tháng (6 tháng gần nhất)
-            var bieu6Thang = new List<object>();
-            for (int i = 5; i >= 0; i--)
+            // QUAN TRONG: view nay serialize bieu6Thang sang JS bang
+            // System.Text.Json.JsonSerializer.Serialize(bieu) KHONG naming
+            // policy — phai giu dung ten field lowercase nhu C# goc dung
+            // (anonymous object) de JS (d.thang, d.soGiai, d.doanhThu) khong vo.
+            // Phai la List<object> that su (khong phai List<anonymous-type>) vi
+            // View doc "ViewBag.Bieu6Thang as List<object>".
+            List<object> bieu6Thang = baoCao.Bieu6Thang.Select(t => (object)new
             {
-                var t = now.AddMonths(-i);
-                var bd = new DateTime(t.Year, t.Month, 1);
-                var kt = bd.AddMonths(1);
-
-                var soGiai = await _context.GiaiDaus
-                    .CountAsync(g => g.ThoiGianTao >= bd && g.ThoiGianTao < kt);
-
-                var soDoiThanhToan = await _context.DoiBongs
-                    .CountAsync(d => d.DaThanhToan
-                              && d.ThoiGianThanhToan >= bd
-                              && d.ThoiGianThanhToan < kt);
-
-                var doanhThu = await _context.DoiBongs
-                    .Where(d => d.DaThanhToan
-                             && d.ThoiGianThanhToan >= bd
-                             && d.ThoiGianThanhToan < kt)
-                    .SumAsync(d => d.GiaiDau.LePhiGiai);
-
-                bieu6Thang.Add(new
-                {
-                    thang = t.ToString("MM/yyyy"),
-                    soGiai,
-                    soDoiThanhToan,
-                    doanhThu = (double)doanhThu
-                });
-            }
+                thang = t.Thang,
+                soGiai = t.SoGiai,
+                soDoiThanhToan = t.SoDoiThanhToan,
+                doanhThu = (double)t.DoanhThu
+            }).ToList();
             ViewBag.Bieu6Thang = bieu6Thang;
 
-            // Top Owner tổ chức nhiều giải nhất
-            ViewBag.TopOwner = await _context.GiaiDaus
-                .Where(g => g.TrangThai != "Draft")
-                .GroupBy(g => g.Owner)
-                .Select(g => new {
-                    HoTen = g.Key.HoTen,
-                    Email = g.Key.Email,
-                    SoGiai = g.Count(),
-                    SoActive = g.Count(x => x.TrangThai == "Active")
-                })
-                .OrderByDescending(x => x.SoGiai)
-                .Take(10)
-                .ToListAsync();
+            // View doc "ViewBag.TopOwner as List<dynamic>" — phai la List<dynamic>
+            // (= List<object> luc runtime), khong phai List<TopOwnerRowApiDto>.
+            List<dynamic> topOwner = baoCao.TopOwner
+                .Select(o => (dynamic)new { o.HoTen, o.Email, o.SoGiai, o.SoActive })
+                .ToList();
+            ViewBag.TopOwner = topOwner;
 
-            // KPI tổng quan
-            ViewBag.TongGiaiDau = await _context.GiaiDaus.CountAsync(g => g.TrangThai != "Draft");
-            ViewBag.GiaiHoanThanh = await _context.GiaiDaus.CountAsync(g => g.TrangThai == "Finished");
-            ViewBag.TongDoi = await _context.DoiBongs.CountAsync(d => d.DaThanhToan);
-            ViewBag.TongTranDau = await _context.TranDaus.CountAsync(t => t.TrangThai == "Closed");
-            ViewBag.TongDoanhThu = await _context.DoiBongs
-                .Where(d => d.DaThanhToan)
-                .SumAsync(d => d.GiaiDau.LePhiGiai);
+            ViewBag.TongGiaiDau = baoCao.TongGiaiDau;
+            ViewBag.GiaiHoanThanh = baoCao.GiaiHoanThanh;
+            ViewBag.TongDoi = baoCao.TongDoi;
+            ViewBag.TongTranDau = baoCao.TongTranDau;
+            ViewBag.TongDoanhThu = baoCao.TongDoanhThu;
 
             return View();
         }
