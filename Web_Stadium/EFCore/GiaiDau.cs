@@ -30,6 +30,11 @@ namespace Web_Stadium.EFCore
         // Lịch slot Owner đã block lúc tạo giải (JSON: [{khungGioId, ngay}])
         public string? LichBlockJson { get; set; }
 
+        // Bật chế độ tự động: sau khi bấm Đóng đăng ký, hệ thống tự chia bảng
+        // (Java /draw) + xếp lịch (Java /schedule) + commit thẳng sang Active.
+        // Fallback: nếu solver không xếp đủ → rollback về RegistrationClosed.
+        public bool AutoMode { get; set; } = false;
+
         // Navigation
         public virtual SanBong? SanBong { get; set; }
         public virtual User? Owner { get; set; }

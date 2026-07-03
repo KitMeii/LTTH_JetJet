@@ -76,6 +76,63 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
+        // Gửi email cho Owner khi pipeline AutoMode thất bại — kèm link
+        // vào XemTruocLich để hoàn tất chốt lịch tay.
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailAutoPipelineThatBai(int giaiDauId, string reason, List<string> warnings)
+        {
+            var giai = await _context.GiaiDaus
+                .Include(g => g.Owner)
+                .FirstOrDefaultAsync(g => g.Id == giaiDauId);
+
+            if (giai?.Owner == null) return;
+
+            var linkXemTruoc = $"https://pitchhub.vn/Tournament/XemTruocLich/{giaiDauId}";
+            var warningsHtml = warnings.Count == 0
+                ? ""
+                : "<ul style='margin:8px 0 0 0;padding-left:18px;'>"
+                  + string.Join("", warnings.Select(w => $"<li>{System.Net.WebUtility.HtmlEncode(w)}</li>"))
+                  + "</ul>";
+
+            var body = $@"
+            <div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;'>
+                <div style='background:linear-gradient(135deg,#0f2027,#0EA86A);
+                            padding:24px;text-align:center;border-radius:12px 12px 0 0;'>
+                    <div style='font-size:1.5rem;font-weight:900;color:#fff;'>
+                        PITCH<span style='color:#1ed760;'>HUB</span> ⚽
+                    </div>
+                </div>
+                <div style='padding:24px;background:#fff;border-radius:0 0 12px 12px;'>
+                    <h2>⚠️ Cần bạn hoàn tất chốt lịch tay</h2>
+                    <p>Xin chào <strong>{giai.Owner.HoTen}</strong>,</p>
+                    <p>Giải <strong>{giai.TenGiai}</strong> đã đóng đăng ký nhưng
+                       pipeline tự động chưa xếp được lịch hoàn chỉnh.</p>
+                    <div style='background:#fff3cd;border-radius:10px;padding:14px;margin:14px 0;
+                                border-left:4px solid #ffc107;'>
+                        <div style='font-weight:700;color:#856404;margin-bottom:4px;'>Lý do</div>
+                        <div style='color:#666;font-size:14px;'>{System.Net.WebUtility.HtmlEncode(reason)}</div>
+                        {warningsHtml}
+                    </div>
+                    <p>Vui lòng vào màn <em>Xem trước lịch</em> để tinh chỉnh và bấm
+                       <em>Chốt lịch</em> thủ công:</p>
+                    <a href='{linkXemTruoc}' style='display:inline-block;background:#0EA86A;
+                       color:#fff;padding:12px 24px;border-radius:10px;
+                       text-decoration:none;font-weight:700;'>
+                        Mở Xem trước lịch →
+                    </a>
+                </div>
+            </div>";
+
+            try
+            {
+                await _emailService.GuiEmailAsync(
+                    giai.Owner.Email, giai.Owner.HoTen,
+                    $"⚠️ [{giai.TenGiai}] Cần chốt lịch tay", body);
+            }
+            catch { /* fire and forget */ }
+        }
+
+        // ══════════════════════════════════════════════════════════
         // Gửi email xác nhận đăng ký đội
         // ══════════════════════════════════════════════════════════
         public async Task GuiEmailXacNhanDangKy(int doiId)

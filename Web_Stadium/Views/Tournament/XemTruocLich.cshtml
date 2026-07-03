@@ -144,6 +144,20 @@
     {
         <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
     }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚠️ @TempData["Warning"]
+        </div>
+    }
+    @if (Model.Giai.AutoMode)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚡ <strong>Giải này bật chế độ tự động</strong> nhưng pipeline đã fail —
+            bạn đang hoàn tất xếp lịch tay. Kiểm tra các trận solver không xếp được
+            (highlight đỏ) và kéo thả vào slot phù hợp, rồi bấm <em>Chốt lịch</em>.
+        </div>
+    }
 
     <div class="row g-4">
         <!-- LEFT: GRID -->

@@ -125,6 +125,7 @@ namespace Web_Stadium.Services
                 NgayKetThuc = dto.NgayKetThuc,
                 ThoiGianDongDanhSach = dto.ThoiGianDong ?? dto.NgayBatDau.AddDays(-1),
                 LichBlockJson = lichBlockJson,
+                AutoMode = dto.AutoMode,
                 TrangThai = "Draft",
                 ThoiGianTao = DateTime.Now
             };
@@ -238,16 +239,21 @@ namespace Web_Stadium.Services
 
         // ══════════════════════════════════════════════════════════
         // Đóng đăng ký: RegistrationOpen → RegistrationClosed
+        // Nếu giải bật AutoMode → chạy tiếp pipeline tự động (chia bảng
+        // + xếp lịch + commit sang Active). Thất bại giữ RegistrationClosed
+        // để owner làm tay bằng luồng XemTruocLich cũ.
+        // daTuDongChot=true khi pipeline auto commit thành công → controller
+        // redirect thẳng về Details thay vì ChiaBang.
         // ══════════════════════════════════════════════════════════
-        public async Task<(bool ok, string error)> DongDangKy(int giaiId, int ownerId)
+        public async Task<(bool ok, string error, bool daTuDongChot)> DongDangKy(int giaiId, int ownerId)
         {
             var giai = await _context.GiaiDaus
                 .Include(g => g.DoiBongs)
                 .FirstOrDefaultAsync(g => g.Id == giaiId && g.OwnerId == ownerId);
 
-            if (giai == null) return (false, "Không tìm thấy giải!");
+            if (giai == null) return (false, "Không tìm thấy giải!", false);
             if (giai.TrangThai != "RegistrationOpen")
-                return (false, "Chỉ đóng đăng ký khi giải đang mở!");
+                return (false, "Chỉ đóng đăng ký khi giải đang mở!", false);
 
             var soDoiHopLe = giai.DoiBongs.Count(d => d.DaThanhToan);
             if (soDoiHopLe < giai.SoDoiToiDa)
@@ -258,13 +264,19 @@ namespace Web_Stadium.Services
                           $"(hiện có {soDoiHopLe} đội đã thanh toán";
                 if (soDoiChuaTT > 0) msg += $", {soDoiChuaTT} đội chờ xác nhận";
                 msg += $"). Còn thiếu {conThieu} đội.";
-                return (false, msg);
+                return (false, msg, false);
             }
 
             giai.TrangThai = "RegistrationClosed";
             giai.ThoiGianDongDanhSach = DateTime.Now;
             await _context.SaveChangesAsync();
-            return (true, "");
+
+            if (!giai.AutoMode) return (true, "", false);
+
+            // AutoMode: cố gắng chạy pipeline. Nếu fail thì đã có email + audit
+            // log bên trong; giữ RegistrationClosed để owner xử lý tay.
+            var (autoOk, autoErr) = await ChayAutoPipelineAsync(giaiId, ownerId);
+            return (true, autoOk ? "" : autoErr, autoOk);
         }
 
         // ══════════════════════════════════════════════════════════
@@ -317,6 +329,19 @@ namespace Web_Stadium.Services
             if (doiChuaBang.Any())
                 return (false, $"Còn {doiChuaBang.Count} đội chưa được xếp bảng!");
 
+            return await CommitLichAsync(giai, ownerId, finalAssignments);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // Helper: sinh Berger + gán slot theo assignments + verify không
+        // xung đột + commit TranDau + DummyBooking + set Active + gửi
+        // email/broadcast. Dùng chung cho ChotLichAsync (manual) và
+        // ChayAutoPipelineAsync (auto). Caller đã bảo đảm giai != null,
+        // TrangThai == "RegistrationClosed", các đội đã có Bang.
+        // ══════════════════════════════════════════════════════════
+        private async Task<(bool ok, string error)> CommitLichAsync(
+            GiaiDau giai, int ownerId, List<ChotLichAssignmentDto> finalAssignments)
+        {
             // 1) Sinh trận Berger (cùng logic như XemTruocLich để giữ mapping matchId virtual)
             var tranDaus = _scheduleService.SinhLichVongTron(giai, lichBlock: null);
             if (tranDaus.Count == 0)
@@ -343,7 +368,7 @@ namespace Web_Stadium.Services
             var busySlots = await _context.DatSans
                 .Where(d => d.NgayThiDau >= ngayBD && d.NgayThiDau <= ngayKT
                          && d.TrangThai != "DaHuy"
-                         && d.GiaiDauId != giaiId
+                         && d.GiaiDauId != giai.Id
                          && khungIds.Contains(d.KhungGioId))
                 .Select(d => new { d.KhungGioId, d.NgayThiDau })
                 .ToListAsync();
@@ -386,18 +411,228 @@ namespace Web_Stadium.Services
             await _context.SaveChangesAsync();
 
             // Email lịch đấu (fire & forget — scope riêng)
-            var giaiIdCopy = giaiId;
+            var giaiIdCopy = giai.Id;
             FireAndForgetEmail(svc => svc.GuiEmailLichDau(giaiIdCopy));
 
             // Realtime: thông báo giải bắt đầu
             try
             {
-                var bxh = await _standingService.GetStandings(giaiId);
-                await TournamentHub.BroadcastBXH(_hubContext, giaiId, bxh);
+                var bxh = await _standingService.GetStandings(giai.Id);
+                await TournamentHub.BroadcastBXH(_hubContext, giai.Id, bxh);
             }
             catch { }
 
             return (true, "");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // AUTO PIPELINE — gọi khi giải bật AutoMode + vừa Đóng đăng ký:
+        //   1) Java /draw   → BangId cho mỗi đội
+        //   2) Java /schedule → assignments cho từng trận Berger
+        //   3) CommitLichAsync → TranDau + DummyBooking + Active + email
+        // Fail bất cứ bước nào → rollback (bỏ BangId đã gán), giữ trạng thái
+        // RegistrationClosed để owner làm tay bằng luồng XemTruocLich cũ,
+        // ghi AuditLog + gửi email cảnh báo.
+        // ══════════════════════════════════════════════════════════
+        private async Task<(bool ok, string error)> ChayAutoPipelineAsync(int giaiId, int ownerId)
+        {
+            var giai = await _context.GiaiDaus
+                .Include(g => g.BangDaus)
+                .Include(g => g.DoiBongs).ThenInclude(d => d.Bang)
+                .Include(g => g.DoiBongs).ThenInclude(d => d.DoiTruong)
+                .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
+                .FirstOrDefaultAsync(g => g.Id == giaiId && g.OwnerId == ownerId);
+
+            if (giai == null) return (false, "Không tìm thấy giải!");
+
+            // ── Bước 1: chia bảng qua Java /draw ─────────────────────
+            var teamsPaid = giai.DoiBongs.Where(d => d.DaThanhToan).ToList();
+            var bangSorted = giai.BangDaus.OrderBy(b => b.Id).ToList();
+            if (bangSorted.Count == 0)
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid,
+                    "Giải chưa có bảng đấu — không thể chia tự động!",
+                    new List<string> { "Thiếu BangDau" });
+
+            DrawResponse drawResp;
+            try
+            {
+                drawResp = await _schedulerClient.DrawGroupsAsync(new DrawRequest
+                {
+                    GiaiId = giai.Id,
+                    SoBang = bangSorted.Count,
+                    Teams = teamsPaid.Select(d => new TeamDto
+                    {
+                        Id = d.Id,
+                        TenDoi = d.TenDoi,
+                        SeedRating = 0
+                    }).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid,
+                    "Không kết nối được Java /draw: " + ex.Message,
+                    new List<string> { ex.Message });
+            }
+
+            var doiMap = teamsPaid.ToDictionary(d => d.Id);
+            foreach (var a in drawResp.Assignments)
+            {
+                if (!doiMap.TryGetValue(a.TeamId, out var doi)) continue;
+                if (a.GroupIndex < 0 || a.GroupIndex >= bangSorted.Count) continue;
+                doi.BangId = bangSorted[a.GroupIndex].Id;
+            }
+            await _context.SaveChangesAsync();
+
+            await GhiAuditLogAsync(ownerId, "AutoChiaBang", giai.Id,
+                $"Auto chia {teamsPaid.Count} đội vào {bangSorted.Count} bảng " +
+                $"({string.Join(", ", bangSorted.Select(b => b.TenBang + ": " + doiMap.Values.Count(d => d.BangId == b.Id)))})");
+
+            // ── Bước 2: sinh Berger + gọi Java /schedule ────────────
+            var tranRaw = _scheduleService.SinhLichVongTron(giai, lichBlock: null);
+            if (tranRaw.Count == 0)
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid,
+                    "Không sinh được trận đấu (bảng đấu thiếu đội)!",
+                    new List<string> { "SinhLichVongTron trả về rỗng" });
+
+            var matchesById = new Dictionary<int, TranDau>();
+            for (int i = 0; i < tranRaw.Count; i++) matchesById[i] = tranRaw[i];
+
+            List<ScheduleService.SlotKhungGio> lichBlock = new();
+            if (!string.IsNullOrEmpty(giai.LichBlockJson))
+            {
+                try
+                {
+                    lichBlock = JsonSerializer.Deserialize<List<ScheduleService.SlotKhungGio>>(
+                        giai.LichBlockJson, _jsonOpts) ?? new();
+                }
+                catch { lichBlock = new(); }
+            }
+            if (lichBlock.Count == 0)
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid,
+                    "Chưa có slot block! Vào 'Lịch block' chọn slot trước khi bật AutoMode.",
+                    new List<string> { "LichBlockJson rỗng" });
+
+            var khungGioMap = giai.SanBong!.KhungGios.ToDictionary(k => k.Id);
+            var availableSlots = lichBlock
+                .Where(s => khungGioMap.ContainsKey(s.KhungGioId))
+                .Select(s => new SlotDto
+                {
+                    KhungGioId = s.KhungGioId,
+                    Ngay = s.Ngay.ToString("yyyy-MM-dd"),
+                    GioBatDau = khungGioMap[s.KhungGioId].GioBatDau.ToString(@"HH\:mm"),
+                    GioKetThuc = khungGioMap[s.KhungGioId].GioKetThuc.ToString(@"HH\:mm")
+                })
+                .ToList();
+
+            var khungIds = khungGioMap.Keys.ToList();
+            var ngayBD = giai.NgayBatDau.Date;
+            var ngayKT = giai.NgayKetThuc.Date;
+            var bookingConflicts = await _context.DatSans
+                .Where(d => d.NgayThiDau >= ngayBD && d.NgayThiDau <= ngayKT
+                         && d.TrangThai != "DaHuy"
+                         && d.GiaiDauId != giai.Id
+                         && khungIds.Contains(d.KhungGioId))
+                .Select(d => new BookingConflictDto
+                {
+                    KhungGioId = d.KhungGioId,
+                    Ngay = d.NgayThiDau.ToString("yyyy-MM-dd")
+                })
+                .ToListAsync();
+
+            var bangMap = giai.BangDaus.ToDictionary(b => b.Id);
+            var matchesDto = matchesById.Select(kv =>
+            {
+                var t = kv.Value;
+                return new MatchDto
+                {
+                    MatchId = kv.Key,
+                    TeamA = t.DoiNhaId,
+                    TeamB = t.DoiKhachId,
+                    TeamAName = doiMap.TryGetValue(t.DoiNhaId, out var da) ? da.TenDoi : "?",
+                    TeamBName = doiMap.TryGetValue(t.DoiKhachId, out var db) ? db.TenDoi : "?",
+                    Round = t.VongDau,
+                    GroupId = t.BangId ?? 0,
+                    GroupName = t.BangId.HasValue && bangMap.ContainsKey(t.BangId.Value)
+                        ? bangMap[t.BangId.Value].TenBang : "-"
+                };
+            }).ToList();
+
+            ScheduleResponse resp;
+            try
+            {
+                resp = await _schedulerClient.SolveAsync(new ScheduleRequest
+                {
+                    GiaiId = giaiId,
+                    Matches = matchesDto,
+                    AvailableSlots = availableSlots,
+                    Bookings = bookingConflicts,
+                    Constraints = new ConstraintsDto()
+                });
+            }
+            catch (Exception ex)
+            {
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid,
+                    "Không kết nối được Java /schedule: " + ex.Message,
+                    new List<string> { ex.Message });
+            }
+
+            if (resp.Unassigned.Count > 0 || resp.Assignments.Count < matchesById.Count)
+            {
+                var msg = $"Solver không xếp đủ lịch: {resp.Assignments.Count}/{matchesById.Count} trận.";
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid, msg, resp.Warnings);
+            }
+
+            // ── Bước 3: build ChotLichAssignmentDto và commit ───────
+            var chotDto = resp.Assignments.Select(a => new ChotLichAssignmentDto
+            {
+                MatchId = a.MatchId,
+                KhungGioId = a.KhungGioId,
+                Ngay = a.Ngay
+            }).ToList();
+
+            var (ok, err) = await CommitLichAsync(giai, ownerId, chotDto);
+            if (!ok)
+                return await AutoFail(giaiId, ownerId, giai, teamsPaid, err, resp.Warnings);
+
+            await GhiAuditLogAsync(ownerId, "AutoChotLich", giai.Id,
+                $"Auto chốt lịch: {matchesById.Count} trận, {resp.Assignments.Count} slot" +
+                (resp.Warnings.Count > 0 ? $" (cảnh báo: {string.Join(" | ", resp.Warnings)})" : ""));
+
+            return (true, "");
+        }
+
+        // Rollback + audit + email khi auto pipeline hỏng ở bước nào đó.
+        private async Task<(bool ok, string error)> AutoFail(
+            int giaiId, int ownerId, GiaiDau giai, List<DoiBong> teamsPaid,
+            string reason, List<string> warnings)
+        {
+            // Rollback BangId đã gán (nếu có) — teamsPaid được load từ DB nên EF sẽ update.
+            foreach (var d in teamsPaid) d.BangId = null;
+            try { await _context.SaveChangesAsync(); } catch { /* best effort */ }
+
+            await GhiAuditLogAsync(ownerId, "AutoPipelineFailed", giaiId,
+                reason + (warnings.Count > 0 ? " | warnings: " + string.Join(" | ", warnings) : ""));
+
+            FireAndForgetEmail(svc => svc.GuiEmailAutoPipelineThatBai(giaiId, reason, warnings));
+
+            return (false, reason + " Giữ trạng thái Đóng đăng ký, mời bạn vào 'Xem trước lịch' hoàn tất tay.");
+        }
+
+        // Ghi AuditLog (không truyền IpAddress vì gọi từ service, không có HttpContext).
+        private async Task GhiAuditLogAsync(int userId, string hanhDong, int doiTuongId, string moTa)
+        {
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = userId,
+                VaiTro = "Owner",
+                HanhDong = hanhDong,
+                DoiTuong = "GiaiDau",
+                DoiTuongId = doiTuongId,
+                MoTa = moTa,
+                ThoiGian = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
         }
 
         // ══════════════════════════════════════════════════════════
@@ -451,8 +686,8 @@ namespace Web_Stadium.Services
                 {
                     KhungGioId = s.KhungGioId,
                     Ngay = s.Ngay.ToString("yyyy-MM-dd"),
-                    GioBatDau = khungGioMap[s.KhungGioId].GioBatDau.ToString(@"hh\:mm"),
-                    GioKetThuc = khungGioMap[s.KhungGioId].GioKetThuc.ToString(@"hh\:mm")
+                    GioBatDau = khungGioMap[s.KhungGioId].GioBatDau.ToString(@"HH\:mm"),
+                    GioKetThuc = khungGioMap[s.KhungGioId].GioKetThuc.ToString(@"HH\:mm")
                 })
                 .ToList();
 
@@ -728,6 +963,9 @@ namespace Web_Stadium.Services
 
         // Lịch slot Owner đã block (FullCalendar) — gửi dưới dạng JSON string
         public string? LichBlockJson { get; set; }
+
+        // Owner tick → sau khi Đóng đăng ký sẽ tự chia bảng + xếp lịch (Java).
+        public bool AutoMode { get; set; } = false;
 
         public List<ScheduleService.SlotKhungGio>? LichBlock
         {

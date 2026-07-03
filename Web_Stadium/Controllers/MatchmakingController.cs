@@ -177,8 +177,8 @@ namespace Web_Stadium.Controllers
                              ? d.KhungGio.SanBong.DiaChi + " - " + d.KhungGio.SanBong.Quan : "",
                 ngayThiDau = d.NgayThiDau.ToString("dd/MM/yyyy"),
                 gio = d.KhungGio != null
-                             ? d.KhungGio.GioBatDau.ToString(@"hh\:mm")
-                               + " - " + d.KhungGio.GioKetThuc.ToString(@"hh\:mm")
+                             ? d.KhungGio.GioBatDau.ToString(@"HH\:mm")
+                               + " - " + d.KhungGio.GioKetThuc.ToString(@"HH\:mm")
                              : ""
             });
 

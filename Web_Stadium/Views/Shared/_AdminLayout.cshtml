@@ -275,6 +275,13 @@
                         @TempData["Error"]
                     </div>
                 }
+                @if (TempData["Warning"] != null)
+                {
+                    <div class="admin-toast warning" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        @TempData["Warning"]
+                    </div>
+                }
             </div>
 
             <!-- NỘI DUNG TRANG -->

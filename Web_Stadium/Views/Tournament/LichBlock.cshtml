@@ -196,6 +196,15 @@
         <div class="tour-alert tour-alert--success">✅ @TempData["Success"]</div>
     }
 
+    @if (Model.AutoMode)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚡ <strong>Giải này bật chế độ tự động.</strong>
+            Java scheduler cần đủ slot ở đây để xếp lịch — nên block nhiều hơn số trận Berger
+            (tối thiểu ≈ <em>số trận × 1.2</em>) để pipeline có đường xoay.
+        </div>
+    }
+
     <div class="tour-card">
         <div class="tour-card__header">
             <div>
@@ -219,7 +228,7 @@
                 foreach (var kg in khungGios)
                 {
                     <span class="kg-chip" data-kg-id="@kg.Id" onclick="chonKg(@kg.Id)">
-                        ⏰ @kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")
+                        ⏰ @kg.GioBatDau.ToString(@"HH\:mm") – @kg.GioKetThuc.ToString(@"HH\:mm")
                     </span>
                 }
             }
@@ -239,8 +248,8 @@
         var khungGios = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
             khungGios.Select(k => new {
                 id = k.Id,
-                gioBatDau = k.GioBatDau.ToString(@"hh\:mm"),
-                gioKetThuc = k.GioKetThuc.ToString(@"hh\:mm")
+                gioBatDau = k.GioBatDau.ToString(@"HH\:mm"),
+                gioKetThuc = k.GioKetThuc.ToString(@"HH\:mm")
             })
         ));
         var lichBlock = [];

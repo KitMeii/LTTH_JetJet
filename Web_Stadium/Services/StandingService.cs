@@ -18,6 +18,8 @@ namespace Web_Stadium.Services
         public async Task<Dictionary<int, List<StandingRow>>> GetStandings(int giaiDauId)
         {
             var giai = await _context.GiaiDaus
+                .AsSplitQuery()
+                .AsNoTracking()
                 .Include(g => g.BangDaus)
                 .Include(g => g.DoiBongs)
                 .Include(g => g.TranDaus)

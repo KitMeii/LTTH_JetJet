@@ -175,7 +175,7 @@
                     <div style="font-size:14px;color:var(--muted);margin-bottom:8px;">
                         &#128197; @sapToi.NgayThiDau.ToString("dd/MM/yyyy")
                         &nbsp;&middot;&nbsp;
-                        @kgSap?.GioBatDau.ToString(@"hh\:mm")&ndash;@kgSap?.GioKetThuc.ToString(@"hh\:mm")
+                        @kgSap?.GioBatDau.ToString(@"HH\:mm")&ndash;@kgSap?.GioKetThuc.ToString(@"HH\:mm")
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <span class="bc-status @(sapToi.TrangThai == "DaXacNhan" ? "st-xn" : "st-cho")"
@@ -309,7 +309,7 @@
                     <div>
                         <div class="bc-info-label">Khung giờ</div>
                         <div class="bc-info-val">
-                            @kg?.GioBatDau.ToString(@"hh\:mm") &ndash; @kg?.GioKetThuc.ToString(@"hh\:mm")
+                            @kg?.GioBatDau.ToString(@"HH\:mm") &ndash; @kg?.GioKetThuc.ToString(@"HH\:mm")
                         </div>
                     </div>
                     <div>

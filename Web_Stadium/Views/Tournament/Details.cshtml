@@ -214,6 +214,12 @@
     {
         <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
     }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚠️ @TempData["Warning"]
+        </div>
+    }
 
     <!-- KPI strip -->
     <div class="tour-kpi-grid">
@@ -261,6 +267,7 @@
                             ("Tạo lúc",     Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")),
                             ("Đóng đăng ký", Model.ThoiGianDongDanhSach?.ToString("dd/MM/yyyy") ?? "—"),
                             ("Staff phụ trách", Model.StaffPhuTrach?.HoTen ?? "(chưa gán)"),
+                            ("Chế độ chốt lịch", Model.AutoMode ? "⚡ Tự động (chia bảng + xếp lịch qua Java scheduler)" : "🖐️ Thủ công (Owner chia bảng + chốt tay)"),
                             ("Mô tả",       string.IsNullOrEmpty(Model.MoTa) ? "—" : Model.MoTa),
                         })
                         {
@@ -327,13 +334,25 @@
 
                             if (duDoi)
                             {
+                                var confirmMsg = Model.AutoMode
+                                    ? "Đóng đăng ký? Hệ thống sẽ TỰ ĐỘNG chia bảng + xếp lịch + chuyển giải sang Đang diễn ra."
+                                    : "Đóng đăng ký? Sau khi đóng sẽ chuyển sang bước chia bảng.";
+                                var btnLabel = Model.AutoMode
+                                    ? "⚡ Đóng đăng ký &amp; tự động chốt lịch"
+                                    : "🔒 Đóng đăng ký &amp; bắt đầu chia bảng";
                                 <form method="post" action="/Tournament/DongDangKy/@Model.Id" class="mb-2"
-                                      onsubmit="return confirm('Đóng đăng ký? Sau khi đóng sẽ chuyển sang bước chia bảng.')">
+                                      onsubmit="return confirm('@confirmMsg')">
                                     @Html.AntiForgeryToken()
-                                    <button class="tour-btn tour-btn--warn tour-btn--block">🔒 Đóng đăng ký &amp; bắt đầu chia bảng</button>
+                                    <button class="tour-btn tour-btn--warn tour-btn--block">@Html.Raw(btnLabel)</button>
                                 </form>
                                 <div class="tour-hint" style="color:var(--db-green)">
                                     ✅ Đã đủ @Model.SoDoiToiDa/@Model.SoDoiToiDa đội đã thanh toán — sẵn sàng đóng đăng ký.
+                                    @if (Model.AutoMode)
+                                    {
+                                        <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;background:#fff3cd;color:#856404;font-size:11px;font-weight:600">
+                                            ⚡ AutoMode
+                                        </span>
+                                    }
                                 </div>
                             }
                             else

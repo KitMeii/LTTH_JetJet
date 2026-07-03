@@ -684,6 +684,9 @@ namespace Web_Stadium.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AutoMode")
+                        .HasColumnType("bit");
+
                     b.Property<decimal>("LePhiGiai")
                         .HasColumnType("decimal(18,2)");
 

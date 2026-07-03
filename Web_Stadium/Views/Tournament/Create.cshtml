@@ -303,6 +303,23 @@
                 <input type="hidden" name="LichBlockJson" id="lichBlockJson" value="[]" />
             </div>
 
+            <!-- Auto mode -->
+            <div class="section-box" style="margin-top:16px">
+                <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+                    <input type="checkbox" name="AutoMode" value="true" id="autoModeChk"
+                           style="margin-top:4px;transform:scale(1.25)" />
+                    <span>
+                        <strong>⚡ Tự động chia bảng &amp; xếp lịch khi đóng đăng ký</strong>
+                        <div style="font-size:12px;color:var(--db-muted);margin-top:2px">
+                            Khi bấm <em>Đóng đăng ký</em>, hệ thống sẽ tự bốc thăm chia bảng và gọi
+                            Java scheduler xếp lịch từ slot đã block, rồi chuyển thẳng sang trạng thái
+                            <em>Đang diễn ra</em>. Nếu solver không xếp đủ lịch, giải giữ nguyên trạng
+                            thái Đóng đăng ký và bạn có thể vào <em>Xem trước lịch</em> hoàn tất tay.
+                        </div>
+                    </span>
+                </label>
+            </div>
+
             <!-- Submit -->
             <div class="d-flex gap-3 justify-content-end">
                 <a href="/Tournament" class="tour-btn">Hủy</a>
@@ -435,6 +452,16 @@
             }
             var bd = document.getElementById('ngayBD').value, kt = document.getElementById('ngayKT').value;
             if (bd && kt && bd >= kt) { e.preventDefault(); alert('Ngày kết thúc phải sau ngày bắt đầu!'); return; }
+
+            // AutoMode cần LichBlock (Java solver không có slot thì fail chắc chắn)
+            var autoChk = document.getElementById('autoModeChk');
+            if (autoChk && autoChk.checked && (!lichBlock || lichBlock.length === 0)) {
+                e.preventDefault();
+                alert('⚠️ Bạn đã bật chế độ TỰ ĐỘNG — cần chọn ít nhất 1 slot ở lịch block để Java scheduler xếp lịch. Hoặc bỏ tick nếu muốn xếp lịch tay sau.');
+                autoChk.focus();
+                return;
+            }
+
             updateSummary();
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('submitBtn').textContent = '⏳ Đang tạo...';

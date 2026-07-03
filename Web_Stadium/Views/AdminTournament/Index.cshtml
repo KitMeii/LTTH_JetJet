@@ -451,7 +451,16 @@
                     <div style="display:flex;align-items:center;gap:12px;">
                         <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,212,126,.1);border:1px solid rgba(0,212,126,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏆</div>
                         <div>
-                            <div style="font-weight:800;font-size:16px;">@gd.TenGiai</div>
+                            <div style="font-weight:800;font-size:16px;">
+                                @gd.TenGiai
+                                @if (gd.AutoMode)
+                                {
+                                    <span title="Tự động chia bảng &amp; xếp lịch khi Owner đóng đăng ký"
+                                          style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:8px;background:#fff3cd;color:#856404;font-size:10.5px;font-weight:700;vertical-align:middle">
+                                        ⚡ Auto
+                                    </span>
+                                }
+                            </div>
                             <div style="font-size:12px;color:var(--muted);margin-top:2px;">
                                 👤 @(gd.Owner?.HoTen ?? "—") · 🏟️ @(gd.SanBong?.TenSan ?? "—")
                             </div>

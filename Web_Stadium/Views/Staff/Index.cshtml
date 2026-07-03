@@ -85,9 +85,9 @@
                 var donDang = dangDien.FirstOrDefault(d => d.KhungGio?.SanBongId == san.Id);
                 var donSap  = sapDen.FirstOrDefault(d => d.KhungGio?.SanBongId == san.Id);
                 var (dot, status, bc) = donDang != null
-                    ? ("#8E44AD", $"Đang đá đến {donDang.KhungGio?.GioKetThuc.ToString(@"hh\:mm")}", "rgba(142,68,173,.25)")
+                    ? ("#8E44AD", $"Đang đá đến {donDang.KhungGio?.GioKetThuc.ToString(@"HH\:mm")}", "rgba(142,68,173,.25)")
                     : donSap != null
-                        ? ("var(--green)", $"Sắp đến {donSap.KhungGio?.GioBatDau.ToString(@"hh\:mm")}", "rgba(22,196,127,.15)")
+                        ? ("var(--green)", $"Sắp đến {donSap.KhungGio?.GioBatDau.ToString(@"HH\:mm")}", "rgba(22,196,127,.15)")
                         : ("var(--muted2)", "Đang trống", "var(--border)");
                 <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;
                              border:1px solid @bc;border-radius:10px;background:var(--bg2)">
@@ -163,8 +163,8 @@
                                 _            => "#555"
                             };
                             var shortName = don.User?.HoTen?.Split(' ').LastOrDefault() ?? "";
-                            var batStr = don.KhungGio?.GioBatDau.ToString(@"hh\:mm") ?? "";
-                            var ketStr = don.KhungGio?.GioKetThuc.ToString(@"hh\:mm") ?? "";
+                            var batStr = don.KhungGio?.GioBatDau.ToString(@"HH\:mm") ?? "";
+                            var ketStr = don.KhungGio?.GioKetThuc.ToString(@"HH\:mm") ?? "";
                             var tip = $"{don.User?.HoTen} | {batStr}–{ketStr} | {don.TrangThai}";
                             <a href="@(don.TrangThai == "DangSuDung" ? $"/Staff/CheckOut/{don.Id}" : "#")"
                                title="@tip"
@@ -211,13 +211,13 @@
                         <div class="section-card p-0 overflow-hidden mb-3 voice-card-dang"
                              style="border:1px solid #8E44AD;transition:border-color .3s,box-shadow .3s"
                              data-stt="@sttDang"
-                             data-gio-ket="@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")">
+                             data-gio-ket="@don.KhungGio?.GioKetThuc.ToString(@"HH\:mm")">
                             <div style="background:rgba(142,68,173,0.1);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
                                 <div>
                                     <span style="background:#8E44AD;color:white;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-right:8px">#@sttDang</span>
                                     <strong>@don.KhungGio?.SanBong?.TenSan</strong>
                                     <span style="color:var(--muted);font-size:13px;margin-left:10px">
-                                        @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                        @don.KhungGio?.GioBatDau.ToString(@"HH\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"HH\:mm")
                                     </span>
                                 </div>
                                 <span style="background:#8E44AD;color:white;padding:2px 10px;border-radius:10px;font-size:11px">Đang đá</span>
@@ -276,13 +276,13 @@
                         sttSap++;
                         <div class="section-card p-0 overflow-hidden mb-2 voice-card-sap"
                              data-stt="@sttSap"
-                             data-gio-bat="@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")"
+                             data-gio-bat="@don.KhungGio?.GioBatDau.ToString(@"HH\:mm")"
                              style="border:1px solid var(--border);transition:border-color .3s,box-shadow .3s">
                             <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                                 <div>
                                     <span style="background:var(--green);color:white;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;margin-right:8px">#@sttSap</span>
                                     <strong style="font-size:13px">@don.KhungGio?.SanBong?.TenSan</strong>
-                                    <span style="color:var(--muted);font-size:12px;margin-left:8px">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</span>
+                                    <span style="color:var(--muted);font-size:12px;margin-left:8px">@don.KhungGio?.GioBatDau.ToString(@"HH\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"HH\:mm")</span>
                                     <br />
                                     <span style="font-size:12px;color:var(--muted2)">
                                         @don.User?.HoTen — <code style="color:#6caee0;font-size:11px">@don.MaXacNhan</code>
@@ -333,7 +333,7 @@
                         <div style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;
                                     display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:0.7">
                             <div>
-                                <span style="color:var(--muted)">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</span>
+                                <span style="color:var(--muted)">@don.KhungGio?.GioBatDau.ToString(@"HH\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"HH\:mm")</span>
                                 <span style="margin:0 8px">@don.KhungGio?.SanBong?.TenSan</span>
                                 <span style="color:var(--muted2)">@don.User?.HoTen</span>
                             </div>
@@ -485,7 +485,7 @@
                                     <td style="padding:6px 10px"><code>@don.MaXacNhan</code></td>
                                     <td style="padding:6px 10px">@don.User?.HoTen</td>
                                     <td style="padding:6px 10px">@don.KhungGio?.SanBong?.TenSan</td>
-                                    <td style="padding:6px 10px">@don.KhungGio?.GioBatDau.ToString(@"hh\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</td>
+                                    <td style="padding:6px 10px">@don.KhungGio?.GioBatDau.ToString(@"HH\:mm")–@don.KhungGio?.GioKetThuc.ToString(@"HH\:mm")</td>
                                     <td style="padding:6px 10px;text-align:right;font-weight:600;color:#16a34a">
                                         @(don.TongTien - don.TienCoc).ToString("N0")đ
                                     </td>

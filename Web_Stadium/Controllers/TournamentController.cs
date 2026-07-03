@@ -113,8 +113,8 @@ namespace Web_Stadium.Controllers
                 .Select(k => new
                 {
                     id = k.Id,
-                    gioBatDau = k.GioBatDau.ToString(@"hh\:mm"),
-                    gioKetThuc = k.GioKetThuc.ToString(@"hh\:mm"),
+                    gioBatDau = k.GioBatDau.ToString(@"HH\:mm"),
+                    gioKetThuc = k.GioKetThuc.ToString(@"HH\:mm"),
                     gia = k.Gia,
                     loaiNgay = k.LoaiNgay
                 })
@@ -126,7 +126,14 @@ namespace Web_Stadium.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var ownerId = OwnerId();
+
+            // Chia thành nhiều query nhỏ (AsSplitQuery) + tắt change-tracker
+            // (AsNoTracking) — nếu để 1 mega-JOIN với 9 Include, SQL Server phải
+            // trả về tích Cartesian: KhungGio × Bang × Doi × ThanhVien × TranDau
+            // × SuKien × KhungGio ⇒ hàng chục nghìn row/lần load.
             var giai = await _context.GiaiDaus
+                .AsSplitQuery()
+                .AsNoTracking()
                 .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
                 .Include(g => g.BangDaus)
                 .Include(g => g.DoiBongs).ThenInclude(d => d.ThanhViens)
@@ -145,7 +152,7 @@ namespace Web_Stadium.Controllers
 
             // Staff khả dụng (được phân công tại sân của giải)
             ViewBag.StaffKhaDung = await _context.StaffSanPhanCongs
-                .Include(p => p.Staff)
+                .AsNoTracking()
                 .Where(p => p.SanBongId == giai.SanBongId && p.Staff.IsActive)
                 .Select(p => p.Staff)
                 .Distinct()
@@ -170,11 +177,22 @@ namespace Web_Stadium.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DongDangKy(int id)
         {
-            var (ok, error) = await _tournamentService.DongDangKy(id, OwnerId());
+            var (ok, error, daTuDongChot) = await _tournamentService.DongDangKy(id, OwnerId());
             if (!ok) { TempData["Error"] = error; return RedirectToAction("Details", new { id }); }
 
             await GhiLog("DongDangKy", "GiaiDau", id, "Đóng đăng ký giải");
-            TempData["Success"] = "Đã đóng đăng ký! Tiến hành chia bảng.";
+
+            if (daTuDongChot)
+            {
+                TempData["Success"] = "Đã đóng đăng ký & tự động chốt lịch! Email lịch đấu đã gửi.";
+                return RedirectToAction("Details", new { id });
+            }
+
+            // AutoMode được bật nhưng pipeline hỏng → error chứa lý do
+            if (!string.IsNullOrEmpty(error))
+                TempData["Warning"] = error;
+            else
+                TempData["Success"] = "Đã đóng đăng ký! Tiến hành chia bảng.";
             return RedirectToAction("ChiaBang", new { id });
         }
 
@@ -337,8 +355,8 @@ namespace Web_Stadium.Controllers
             return Json(new
             {
                 ok = true,
-                gioBD = kg!.GioBatDau.ToString(@"hh\:mm"),
-                gioKT = kg.GioKetThuc.ToString(@"hh\:mm"),
+                gioBD = kg!.GioBatDau.ToString(@"HH\:mm"),
+                gioKT = kg.GioKetThuc.ToString(@"HH\:mm"),
                 ngay = ng.ToString("dd/MM/yyyy")
             });
         }

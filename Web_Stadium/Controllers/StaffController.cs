@@ -514,8 +514,8 @@ namespace Web_Stadium.Controllers
                 {
                     id       = k.Id,
                     sanTen   = k.SanBong.TenSan,
-                    bat      = k.GioBatDau.ToString(@"hh\:mm"),
-                    ket      = k.GioKetThuc.ToString(@"hh\:mm"),
+                    bat      = k.GioBatDau.ToString(@"HH\:mm"),
+                    ket      = k.GioKetThuc.ToString(@"HH\:mm"),
                     trangThai = k.TrangThai
                 }).ToListAsync();
             return Json(slots);

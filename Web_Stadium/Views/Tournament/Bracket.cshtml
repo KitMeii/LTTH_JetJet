@@ -207,7 +207,7 @@
                         <option value="">-- Chọn khung giờ --</option>
                         @foreach (var kg in khungGios.OrderBy(k => k.GioBatDau))
                         {
-                            <option value="@kg.Id">@kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")</option>
+                            <option value="@kg.Id">@kg.GioBatDau.ToString(@"HH\:mm") – @kg.GioKetThuc.ToString(@"HH\:mm")</option>
                         }
                     </select>
                 </div>

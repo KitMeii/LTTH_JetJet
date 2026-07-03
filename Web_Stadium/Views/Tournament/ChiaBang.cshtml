@@ -177,7 +177,7 @@
 <div class="tour-hero">
     <div class="container">
         <a href="/Tournament/Details/@Model.Id"
-           style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;
+           style="color:rgba(000,000,000,.85);font-size:13px;text-decoration:none;
                   display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">
             ← Quay lại chi tiết giải
         </a>
@@ -211,6 +211,21 @@
     @if (TempData["Error"] != null)
     {
         <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚠️ @TempData["Warning"]
+        </div>
+    }
+
+    @if (Model.AutoMode)
+    {
+        <div class="tour-alert" style="background:#fff3cd;color:#856404;border-left:4px solid #ffc107;">
+            ⚡ <strong>Chế độ tự động đang bật</strong> nhưng pipeline chưa hoàn tất được lịch —
+            bạn có thể chia bảng tay ở đây rồi vào <em>Xem trước lịch</em> chốt tay,
+            hoặc kiểm tra lại lịch block (thiếu slot cho solver là nguyên nhân phổ biến).
+        </div>
     }
 
     <div class="tour-alert tour-alert--info" id="huongDanBox">

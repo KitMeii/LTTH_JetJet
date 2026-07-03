@@ -86,6 +86,36 @@ namespace Web_Stadium.Services.JavaClient
         public string? Reason { get; set; }
     }
 
+    // ── /draw ─────────────────────────────────────────────────────
+
+    public class TeamDto
+    {
+        public int Id { get; set; }
+        public string TenDoi { get; set; } = "";
+        /// <summary>Điểm hạt giống (0 nếu không có).</summary>
+        public int SeedRating { get; set; }
+    }
+
+    public class GroupAssignmentDto
+    {
+        public int TeamId { get; set; }
+        /// <summary>0-based index of BangDau (theo thứ tự tạo).</summary>
+        public int GroupIndex { get; set; }
+    }
+
+    public class DrawRequest
+    {
+        public int GiaiId { get; set; }
+        public int SoBang { get; set; }
+        public List<TeamDto> Teams { get; set; } = new();
+    }
+
+    public class DrawResponse
+    {
+        public List<GroupAssignmentDto> Assignments { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // Client — typed HttpClient, đăng ký trong Program.cs
     // ══════════════════════════════════════════════════════════════════
@@ -119,6 +149,14 @@ namespace Web_Stadium.Services.JavaClient
             res.EnsureSuccessStatusCode();
             var body = await res.Content.ReadFromJsonAsync<ValidateResponse>(_jsonOpts, ct);
             return body ?? new ValidateResponse { Ok = false, Reason = "Java trả về rỗng." };
+        }
+
+        public async Task<DrawResponse> DrawGroupsAsync(DrawRequest req, CancellationToken ct = default)
+        {
+            var res = await _http.PostAsJsonAsync("api/tournament/draw", req, _jsonOpts, ct);
+            res.EnsureSuccessStatusCode();
+            var body = await res.Content.ReadFromJsonAsync<DrawResponse>(_jsonOpts, ct);
+            return body ?? new DrawResponse();
         }
     }
 }
