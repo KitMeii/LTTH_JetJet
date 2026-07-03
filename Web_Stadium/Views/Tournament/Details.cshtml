@@ -320,11 +320,36 @@
                         }
                         @if (Model.TrangThai == "RegistrationOpen")
                         {
-                            <form method="post" action="/Tournament/DongDangKy/@Model.Id" class="mb-2"
-                                  onsubmit="return confirm('Đóng đăng ký? Sau khi đóng sẽ chuyển sang bước chia bảng.')">
-                                @Html.AntiForgeryToken()
-                                <button class="tour-btn tour-btn--warn tour-btn--block">🔒 Đóng đăng ký</button>
-                            </form>
+                            var soDoiDaTT = Model.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
+                            var soDoiChoTT = Model.DoiBongs?.Count(d => !d.DaThanhToan) ?? 0;
+                            var duDoi = soDoiDaTT >= Model.SoDoiToiDa;
+                            var conThieu = Model.SoDoiToiDa - soDoiDaTT;
+
+                            if (duDoi)
+                            {
+                                <form method="post" action="/Tournament/DongDangKy/@Model.Id" class="mb-2"
+                                      onsubmit="return confirm('Đóng đăng ký? Sau khi đóng sẽ chuyển sang bước chia bảng.')">
+                                    @Html.AntiForgeryToken()
+                                    <button class="tour-btn tour-btn--warn tour-btn--block">🔒 Đóng đăng ký &amp; bắt đầu chia bảng</button>
+                                </form>
+                                <div class="tour-hint" style="color:var(--db-green)">
+                                    ✅ Đã đủ @Model.SoDoiToiDa/@Model.SoDoiToiDa đội đã thanh toán — sẵn sàng đóng đăng ký.
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="tour-btn tour-btn--warn tour-btn--block mb-2" disabled
+                                        title="Cần đủ @Model.SoDoiToiDa đội đã thanh toán mới đóng được đăng ký"
+                                        style="opacity:.55;cursor:not-allowed">
+                                    🔒 Đóng đăng ký (còn thiếu @conThieu đội)
+                                </button>
+                                <div class="tour-alert tour-alert--info mb-0" style="font-size:12px">
+                                    ⏳ Cần đủ @Model.SoDoiToiDa đội đã thanh toán mới cho đóng đăng ký. <br>
+
+                                    Hiện có @soDoiDaTT đội đã thanh toán@(soDoiChoTT > 0 ? $", {soDoiChoTT} đội chờ xác nhận" : ""). <br>
+                                    Còn thiếu @conThieu đội.
+                                </div>
+                            }
                         }
                         @if (Model.TrangThai == "RegistrationClosed")
                         {

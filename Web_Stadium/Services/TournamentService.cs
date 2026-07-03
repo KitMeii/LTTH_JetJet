@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
 using Web_Stadium.Services.JavaClient;
@@ -21,6 +22,7 @@ namespace Web_Stadium.Services
         private readonly KnockOutService _knockOutService;
         private readonly IHubContext<TournamentHub> _hubContext;
         private readonly TournamentSchedulerClient _schedulerClient;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public TournamentService(
             SanBongContext context,
@@ -30,7 +32,8 @@ namespace Web_Stadium.Services
             TournamentNotificationService notificationService,
             KnockOutService knockOutService,
             IHubContext<TournamentHub> hubContext,
-            TournamentSchedulerClient schedulerClient)
+            TournamentSchedulerClient schedulerClient,
+            IServiceScopeFactory scopeFactory)
         {
             _context = context;
             _scheduleService = scheduleService;
@@ -40,6 +43,27 @@ namespace Web_Stadium.Services
             _knockOutService = knockOutService;
             _hubContext = hubContext;
             _schedulerClient = schedulerClient;
+            _scopeFactory = scopeFactory;
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // Chạy email trong scope DI riêng — tránh dùng chung _context
+        // với request hiện tại (gây "A second operation was started on
+        // this context instance" khi controller còn thao tác DB sau đó).
+        // ══════════════════════════════════════════════════════════
+        private void FireAndForgetEmail(Func<TournamentNotificationService, Task> action)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var notif = scope.ServiceProvider
+                        .GetRequiredService<TournamentNotificationService>();
+                    await action(notif);
+                }
+                catch { /* fire & forget */ }
+            });
         }
 
         // ══════════════════════════════════════════════════════════
@@ -166,8 +190,9 @@ namespace Web_Stadium.Services
             doi.TienKyQuyConLai = doi.GiaiDau.TienKyQuy;
             await _context.SaveChangesAsync();
 
-            // Email xác nhận (fire & forget)
-            _ = _notificationService.GuiEmailXacNhanDangKy(doiId);
+            // Email xác nhận (fire & forget — scope riêng để không đụng _context của request)
+            var doiIdCopy = doiId;
+            FireAndForgetEmail(svc => svc.GuiEmailXacNhanDangKy(doiIdCopy));
 
             return (true, "", doi);
         }
@@ -225,8 +250,16 @@ namespace Web_Stadium.Services
                 return (false, "Chỉ đóng đăng ký khi giải đang mở!");
 
             var soDoiHopLe = giai.DoiBongs.Count(d => d.DaThanhToan);
-            if (soDoiHopLe < 2)
-                return (false, "Cần ít nhất 2 đội đã thanh toán để đóng đăng ký!");
+            if (soDoiHopLe < giai.SoDoiToiDa)
+            {
+                var soDoiChuaTT = giai.DoiBongs.Count(d => !d.DaThanhToan);
+                var conThieu = giai.SoDoiToiDa - soDoiHopLe;
+                var msg = $"Chưa đủ đội để đóng đăng ký! Cần đủ {giai.SoDoiToiDa} đội đã thanh toán " +
+                          $"(hiện có {soDoiHopLe} đội đã thanh toán";
+                if (soDoiChuaTT > 0) msg += $", {soDoiChuaTT} đội chờ xác nhận";
+                msg += $"). Còn thiếu {conThieu} đội.";
+                return (false, msg);
+            }
 
             giai.TrangThai = "RegistrationClosed";
             giai.ThoiGianDongDanhSach = DateTime.Now;
@@ -352,8 +385,9 @@ namespace Web_Stadium.Services
             giai.TrangThai = "Active";
             await _context.SaveChangesAsync();
 
-            // Email lịch đấu (fire & forget)
-            _ = _notificationService.GuiEmailLichDau(giaiId);
+            // Email lịch đấu (fire & forget — scope riêng)
+            var giaiIdCopy = giaiId;
+            FireAndForgetEmail(svc => svc.GuiEmailLichDau(giaiIdCopy));
 
             // Realtime: thông báo giải bắt đầu
             try

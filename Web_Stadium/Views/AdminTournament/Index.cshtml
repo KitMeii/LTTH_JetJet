@@ -3,8 +3,8 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var giaiDaus = ViewBag.GiaiDaus as List<Web_Stadium.EFCore.GiaiDau> ?? new();
     var tongGiai = (int)(ViewBag.TongGiai ?? giaiDaus.Count);
-    var choDuyet = (int)(ViewBag.ChoDuyet ?? giaiDaus.Count(g => g.TrangThai == "ChoDuyet"));
-    var dangDienRa = (int)(ViewBag.DangDienRa ?? giaiDaus.Count(g => g.TrangThai == "DangDienRa"));
+    var choDuyet = (int)(ViewBag.ChoDuyet ?? giaiDaus.Count(g => g.TrangThai == "Draft"));
+    var dangDienRa = (int)(ViewBag.DangDienRa ?? giaiDaus.Count(g => g.TrangThai == "Active"));
     var tongLePhi = (decimal)(ViewBag.TongLePhi ?? giaiDaus.Sum(g => g.LePhiGiai));
     var filterTT = ViewBag.FilterTrangThai as string ?? "";
     var filterOwner = ViewBag.FilterOwner as string ?? "";
@@ -104,19 +104,19 @@
                 transform: translateY(-1px);
             }
 
-            .gd-card.tt-ChoDuyet {
+            .gd-card.tt-Draft {
                 border-color: rgba(246,170,56,.3);
             }
 
-            .gd-card.tt-DangDienRa {
+            .gd-card.tt-Active {
                 border-color: rgba(0,212,126,.3);
             }
 
-            .gd-card.tt-KetThuc {
+            .gd-card.tt-Finished {
                 opacity: .65;
             }
 
-            .gd-card.tt-BiTuChoi {
+            .gd-card.tt-Rejected {
                 border-color: rgba(255,93,115,.25);
             }
 
@@ -194,37 +194,43 @@
         }
 
             .gd-pill.Draft {
-                background: rgba(255,255,255,.07);
-                color: var(--muted);
-                border: 1px solid var(--border2);
-            }
-
-            .gd-pill.ChoDuyet {
                 background: rgba(246,170,56,.12);
                 color: var(--warn);
                 border: 1px solid rgba(246,170,56,.25);
             }
 
-            .gd-pill.DaDuyet {
+            .gd-pill.Approved {
                 background: rgba(108,174,224,.12);
                 color: var(--blue);
                 border: 1px solid rgba(108,174,224,.25);
             }
 
-            .gd-pill.DangDienRa {
+            .gd-pill.RegistrationOpen {
+                background: rgba(14,165,233,.15);
+                color: #0EA5E9;
+                border: 1px solid rgba(14,165,233,.3);
+            }
+
+            .gd-pill.RegistrationClosed {
+                background: rgba(246,170,56,.12);
+                color: var(--warn);
+                border: 1px solid rgba(246,170,56,.25);
+            }
+
+            .gd-pill.Active {
                 background: rgba(0,212,126,.18);
                 color: var(--green2);
                 border: 1px solid rgba(0,212,126,.35);
                 box-shadow: 0 0 10px rgba(0,212,126,.18);
             }
 
-            .gd-pill.KetThuc {
+            .gd-pill.Finished {
                 background: rgba(255,255,255,.06);
                 color: var(--muted);
                 border: 1px solid var(--border2);
             }
 
-            .gd-pill.BiTuChoi {
+            .gd-pill.Rejected {
                 background: rgba(255,93,115,.12);
                 color: var(--danger);
                 border: 1px solid rgba(255,93,115,.25);
@@ -300,7 +306,7 @@
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
             @if (choDuyet > 0)
             {
-                <a href="?filterTT=ChoDuyet" style="background:rgba(246,170,56,.12);border:1px solid rgba(246,170,56,.3);color:var(--warn);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
+                <a href="?trangThai=Draft" style="background:rgba(246,170,56,.12);border:1px solid rgba(246,170,56,.3);color:var(--warn);padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
                     ⏳ @choDuyet chờ duyệt
                 </a>
             }
@@ -327,7 +333,7 @@
         </div>
         <div class="gd-kpi" style="--kpi-accent:#00d47e;">
             <div class="gd-kpi-icon">📋</div>
-            <div class="gd-kpi-val" style="color:var(--green2);">@giaiDaus.Count(g => g.TrangThai == "DaDuyet")</div>
+            <div class="gd-kpi-val" style="color:var(--green2);">@giaiDaus.Count(g => g.TrangThai == "Approved")</div>
             <div class="gd-kpi-label">Đã duyệt</div>
         </div>
         <div class="gd-kpi" style="--kpi-accent:#00ff99;">
@@ -357,12 +363,13 @@
                 <label>📋 Trạng thái</label>
                 <select name="trangThai" class="form-select">
                     <option value="" selected="@(filterTT == "")">Tất cả</option>
-                    <option value="Draft" selected="@(filterTT == "Draft")">📝 Nháp</option>
-                    <option value="ChoDuyet" selected="@(filterTT == "ChoDuyet")">⏳ Chờ duyệt</option>
-                    <option value="DaDuyet" selected="@(filterTT == "DaDuyet")">✅ Đã duyệt</option>
-                    <option value="DangDienRa" selected="@(filterTT == "DangDienRa")">⚽ Đang diễn ra</option>
-                    <option value="KetThuc" selected="@(filterTT == "KetThuc")">🏁 Đã kết thúc</option>
-                    <option value="BiTuChoi" selected="@(filterTT == "BiTuChoi")">❌ Bị từ chối</option>
+                    <option value="Draft" selected="@(filterTT == "Draft")">⏳ Chờ duyệt / Nháp</option>
+                    <option value="Approved" selected="@(filterTT == "Approved")">✅ Đã duyệt</option>
+                    <option value="RegistrationOpen" selected="@(filterTT == "RegistrationOpen")">📋 Đang mở đăng ký</option>
+                    <option value="RegistrationClosed" selected="@(filterTT == "RegistrationClosed")">🔒 Đóng đăng ký</option>
+                    <option value="Active" selected="@(filterTT == "Active")">⚽ Đang diễn ra</option>
+                    <option value="Finished" selected="@(filterTT == "Finished")">🏁 Đã kết thúc</option>
+                    <option value="Rejected" selected="@(filterTT == "Rejected")">❌ Bị từ chối</option>
                 </select>
             </div>
             <div class="gd-filter-group">
@@ -429,12 +436,13 @@
             var fillColor = phanTram >= 90 ? "var(--danger)" : phanTram >= 60 ? "var(--warn)" : "var(--green)";
             var ttLabel = tt switch
             {
-                "Draft" => "📝 Nháp",
-                "ChoDuyet" => "⏳ Chờ duyệt",
-                "DaDuyet" => "✅ Đã duyệt",
-                "DangDienRa" => "⚽ Đang diễn ra",
-                "KetThuc" => "🏁 Đã kết thúc",
-                "BiTuChoi" => "❌ Bị từ chối",
+                "Draft" => "⏳ Chờ duyệt",
+                "Approved" => "✅ Đã duyệt",
+                "RegistrationOpen" => "📋 Đang đăng ký",
+                "RegistrationClosed" => "🔒 Đóng đăng ký",
+                "Active" => "⚽ Đang diễn ra",
+                "Finished" => "🏁 Đã kết thúc",
+                "Rejected" => "❌ Bị từ chối",
                 _ => tt
             };
 
@@ -450,7 +458,7 @@
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        @if (tt == "DangDienRa")
+                        @if (tt == "Active")
                         {
                             <span class="live-dot"></span>
                         }
@@ -523,7 +531,7 @@
                             👁 Chi tiết
                         </a>
 
-                        @if (tt == "ChoDuyet")
+                        @if (tt == "Draft")
                         {
                             <form method="post" action="/AdminTournament/PheDuyet"
                                   onsubmit="return confirm('Phê duyệt giải @gd.TenGiai?')">
@@ -537,7 +545,7 @@
                                 ✕ Từ chối
                             </button>
                         }
-                        @if (tt == "DangDienRa" || tt == "DaDuyet")
+                        @if (tt == "Active" || tt == "Approved" || tt == "RegistrationOpen" || tt == "RegistrationClosed")
                         {
                             <form method="post" action="/AdminTournament/KetThuc"
                                   onsubmit="return confirm('Kết thúc giải @gd.TenGiai?')">

@@ -22,6 +22,147 @@
         #calendar { background: #fff; border-radius: 12px; padding: 14px; border: 1px solid var(--db-border); }
         .slot-block { background: var(--db-green-bg) !important; color: var(--db-green) !important;
                       border: 1px solid var(--db-green) !important; font-weight: 700; cursor: pointer; }
+   
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .pitch-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .pitch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+        border-color: var(--db-green-border);
+    }
+    .pitch-card.opacity-50 { opacity: 0.6; }
+    .pitch-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pitch-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+        color: var(--db-text);
+    }
+    .pitch-address {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 5px;
+    }
+    .pitch-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    .badge-custom {
+        background: #eef2ff;
+        color: #1e40af;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge-grass { background: #e6f7e6; color: #2e7d32; }
+    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
+    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+    .pitch-commission { text-align: right; }
+    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
+    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
+    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    .pitch-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--db-border);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .btn-outline-custom {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-text);
+        transition: 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-outline-custom:hover {
+        background: var(--db-green-bg);
+        border-color: var(--db-green-border);
+        color: var(--db-green);
+    }
+    /* Header gọn nhẹ - không padding-top quá lớn */
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 20px 0 20px;
+        margin-top: 0;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 80px 0;
+        color: var(--db-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
+
+    
     </style>
 }
 
