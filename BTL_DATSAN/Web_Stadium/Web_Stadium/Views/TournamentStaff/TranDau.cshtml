@@ -216,6 +216,17 @@
                     </div>
                 }
             </div>
+
+            <!-- ⭐ GoStaffApi (port 8082) — ĐIỂM DANH CẦU THỦ (tính năng mới,
+                 tách biệt hoàn toàn với check-in đơn đặt sân) -->
+            <div style="background:var(--card);border:1px solid var(--border);
+                        border-radius:var(--r-lg);padding:18px;margin-top:16px;">
+                <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>✅ Điểm danh cầu thủ</span>
+                    <span id="diemDanhTong" style="font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0;"></span>
+                </div>
+                <div id="diemDanhBox" style="font-size:13px;color:var(--muted);">Đang tải...</div>
+            </div>
         </div>
 
         <!-- THÔNG TIN TRẬN -->
@@ -277,3 +288,76 @@
 
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        var matchId = @Model.Id;
+
+        async function taiDiemDanh() {
+            var box = document.getElementById('diemDanhBox');
+            try {
+                var res = await fetch('/TournamentStaff/DiemDanhCauThu?matchId=' + matchId);
+                var data = await res.json();
+                if (!data.ok) {
+                    box.innerHTML = '<span class="text-danger">' + (data.message || 'Không tải được điểm danh (GoStaffApi)!') + '</span>';
+                    return;
+                }
+
+                document.getElementById('diemDanhTong').textContent = 'Đã có mặt: ' + data.totalChecked + '/' + data.roster.length;
+
+                if (data.roster.length === 0) {
+                    box.innerHTML = '<span>Chưa có cầu thủ nào trong danh sách 2 đội.</span>';
+                    return;
+                }
+
+                var html = '';
+                ['nha', 'khach'].forEach(function (doi) {
+                    var nhom = data.roster.filter(function (p) { return p.doi === doi; });
+                    if (nhom.length === 0) return;
+                    html += '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px;">'
+                        + (doi === 'nha' ? data.tenDoiNha : data.tenDoiKhach) + '</div>';
+                    nhom.forEach(function (p) {
+                        html += '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;'
+                            + 'border-bottom:1px solid var(--border);cursor:pointer;">'
+                            + '<input type="checkbox" ' + (p.isCheckedIn ? 'checked' : '') + ' '
+                            + 'onchange="toggleDiemDanh(' + p.thanhVienDoiId + ', this)" />'
+                            + '<span style="font-family:var(--ff-h);color:var(--green);min-width:24px;text-align:center;">#' + p.soAo + '</span>'
+                            + '<span style="flex:1;color:var(--text);">' + p.tenCauThu + '</span>'
+                            + '</label>';
+                    });
+                });
+                box.innerHTML = html;
+            } catch (e) {
+                box.innerHTML = '<span class="text-danger">Không kết nối được dịch vụ điểm danh (GoStaffApi, port 8082)!</span>';
+            }
+        }
+
+        async function toggleDiemDanh(playerId, checkbox) {
+            checkbox.disabled = true;
+            try {
+                var fd = new FormData();
+                fd.append('matchId', matchId);
+                fd.append('playerId', playerId);
+                var res = await fetch('/TournamentStaff/ToggleDiemDanh', { method: 'POST', body: fd });
+                var data = await res.json();
+                if (!data.ok) {
+                    alert(data.message || 'Điểm danh thất bại!');
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.disabled = false;
+                    return;
+                }
+                checkbox.checked = data.checked;
+                var tongEl = document.getElementById('diemDanhTong');
+                var tongSo = tongEl.textContent.split('/')[1] || '?';
+                tongEl.textContent = 'Đã có mặt: ' + data.totalChecked + '/' + tongSo;
+            } catch (e) {
+                alert('Không kết nối được dịch vụ điểm danh!');
+                checkbox.checked = !checkbox.checked;
+            } finally {
+                checkbox.disabled = false;
+            }
+        }
+
+        taiDiemDanh();
+    </script>
+}

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Services;
+using Web_Stadium.Services.Dto.Recommendation;
 
 namespace Web_Stadium.Controllers
 {
@@ -22,15 +23,18 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly TournamentApiService _apiService;
+        private readonly RecommendationApiService _recommendationService;
 
         public TournamentController(
             SanBongContext context,
             IConfiguration config,
-            TournamentApiService apiService)
+            TournamentApiService apiService,
+            RecommendationApiService recommendationService)
         {
             _context = context;
             _config = config;
             _apiService = apiService;
+            _recommendationService = recommendationService;
         }
 
         private int OwnerId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -230,6 +234,31 @@ namespace Web_Stadium.Controllers
             else TempData["Success"] = "🏆 Đã sinh vòng knock-out!";
 
             return RedirectToAction("Bracket", new { id = giaiDauId });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // ⭐ java-recommendation (port 8081) — xếp lịch thông minh bằng CSP solver
+        // Bổ sung, KHÔNG thay thế KhoiTao() (vẫn dùng Berger qua Java tournament-service)
+        // ══════════════════════════════════════════════════════════
+
+        // POST /Tournament/XepLichCSP — xếp lịch thi đấu bằng CSP solver (java-recommendation)
+        [HttpPost]
+        public async Task<IActionResult> XepLichCSP([FromBody] ScheduleRequestDto request)
+        {
+            var result = await _recommendationService.XepLich(request, Jwt());
+            if (result == null) return Json(new { ok = false, message = "Không kết nối được dịch vụ xếp lịch!" });
+
+            return Json(new { ok = true, assignments = result.Assignments, unassigned = result.Unassigned, warnings = result.Warnings });
+        }
+
+        // POST /Tournament/ValidateLichCSP — validate 1 nước kéo-thả lịch (java-recommendation)
+        [HttpPost]
+        public async Task<IActionResult> ValidateLichCSP([FromBody] ValidateRequestDto request)
+        {
+            var result = await _recommendationService.ValidateLich(request, Jwt());
+            if (result == null) return Json(new { ok = false, message = "Không kết nối được dịch vụ xếp lịch!" });
+
+            return Json(new { ok = result.Ok, reason = result.Reason });
         }
 
         // ── Helper ─────────────────────────────────────────────

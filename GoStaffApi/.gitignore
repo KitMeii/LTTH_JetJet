@@ -1,0 +1,8 @@
+# Binary build output
+/server.exe
+/server
+/cmd/server/server.exe
+/cmd/server/server
+
+# .env that le (khac .env.example — file that co the chua secret that)
+.env

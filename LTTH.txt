@@ -3,3 +3,26 @@ http://localhost:8080/api/swagger-ui/index.html#/
 cd D:\webBTL_LTTH\tournament-service
 >> $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
 >> .\mvnw spring-boot:run
+cd D:\webBTL_LTTH\java-recommendation
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
+.\mvnw spring-boot:run
+
+# Terminal 1 - Java Tournament
+cd D:\webBTL_LTTH\tournament-service
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
+.\mvnw spring-boot:run
+
+# Terminal 2 - Java Recommendation  
+cd D:\webBTL_LTTH\java-recommendation
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
+.\mvnw spring-boot:run
+
+# Terminal 3 - Go Staff API
+cd D:\webBTL_LTTH\GoStaffApi
+$env:GO_STAFF_PORT = "8082"
+$env:GO_STAFF_DB = "server=localhost;database=SanBongBTL;user id=sa;password=422005;TrustServerCertificate=true"
+$env:GO_JWT_SECRET = "[secret từ tournament-service]"
+.\server.exe
+
+# Visual Studio - C#
+F5 → https://localhost:7045

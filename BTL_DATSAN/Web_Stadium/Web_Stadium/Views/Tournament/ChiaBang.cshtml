@@ -107,6 +107,10 @@
                 style="display:none">
             🚀 Khởi tạo giải — Sinh lịch tự động
         </button>
+        <button id="btnXepLichCSP" class="btn btn-outline-info rounded-pill" onclick="xepLichCSP()"
+                style="display:none" title="java-recommendation (port 8081) — CSP solver, tránh trùng lịch với booking sân thường">
+            🧠 Xếp lịch thông minh (CSP)
+        </button>
         <div id="warnChuaBang" class="text-warning" style="font-size:13px">
             ⚠️ Còn <span id="soConLai">@doiChuaBang.Count</span> đội chưa được xếp bảng
         </div>
@@ -285,10 +289,41 @@
             // Hiện/ẩn nút khởi tạo
             if (chua === 0) {
                 document.getElementById('btnKhoiTao').style.display = 'inline-flex';
+                document.getElementById('btnXepLichCSP').style.display = 'inline-flex';
                 document.getElementById('warnChuaBang').style.display = 'none';
             } else {
                 document.getElementById('btnKhoiTao').style.display = 'none';
+                document.getElementById('btnXepLichCSP').style.display = 'none';
                 document.getElementById('warnChuaBang').style.display = '';
+            }
+        }
+
+        // ⭐ java-recommendation (port 8081) — xếp lịch bằng CSP solver (thay Berger)
+        // LUU Y: day la ban noi day co ban — request gui rong (matches/availableSlots/
+        // bookings) vi trang nay chua co san du lieu tran/khung gio that de lap.
+        // Muon dung that can bo sung API lay khung gio + tran chua xep cua giai nay.
+        async function xepLichCSP() {
+            if (!confirm('Gọi thử CSP solver (java-recommendation)?\n\nLưu ý: bản nối dây hiện tại gửi request rỗng để kiểm tra kết nối — chưa lắp dữ liệu trận đấu/khung giờ thật.')) return;
+
+            try {
+                var res = await fetch('/Tournament/XepLichCSP', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        giaiId: @Model.Id,
+                        matches: [],
+                        availableSlots: [],
+                        bookings: [],
+                        constraints: { minRestDays: 1, forbidSameDay: true, preferWeekend: true }
+                    })
+                });
+                var data = await res.json();
+                if (!data.ok) { alert(data.message || 'Không gọi được CSP solver!'); return; }
+                alert('✅ CSP solver phản hồi OK — ' + data.assignments.length + ' trận được xếp, '
+                    + data.unassigned.length + ' trận chưa xếp được.');
+                console.log('XepLichCSP result:', data);
+            } catch (e) {
+                alert('Không kết nối được dịch vụ xếp lịch (port 8081)!');
             }
         }
 
