@@ -1,0 +1,158 @@
+{
+  "info": {
+    "name": "Web Stadium - Go Staff API Demo",
+    "description": "Postman demo collection for ASP.NET MVC -> Go API -> SQL Server Staff integration.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "apiKey",
+      "value": "dev-demo-key"
+    },
+    {
+      "key": "staffId",
+      "value": "7"
+    },
+    {
+      "key": "bookingId",
+      "value": "14"
+    },
+    {
+      "key": "matchId",
+      "value": "1"
+    },
+    {
+      "key": "playerId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health - public",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Demo status - public",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/demo/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "demo",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Staff booking check-in - Go backend",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{apiKey}}"
+          },
+          {
+            "key": "X-Staff-Id",
+            "value": "{{staffId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/staff/bookings/{{bookingId}}/check-in",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "staff",
+            "bookings",
+            "{{bookingId}}",
+            "check-in"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Tournament check-ins - list",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{apiKey}}"
+          },
+          {
+            "key": "X-Staff-Id",
+            "value": "{{staffId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/tournament/matches/{{matchId}}/checkins",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "tournament",
+            "matches",
+            "{{matchId}}",
+            "checkins"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Tournament player toggle check-in",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Internal-Api-Key",
+            "value": "{{apiKey}}"
+          },
+          {
+            "key": "X-Staff-Id",
+            "value": "{{staffId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/tournament/matches/{{matchId}}/checkins/{{playerId}}/toggle",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "tournament",
+            "matches",
+            "{{matchId}}",
+            "checkins",
+            "{{playerId}}",
+            "toggle"
+          ]
+        }
+      }
+    }
+  ]
+}

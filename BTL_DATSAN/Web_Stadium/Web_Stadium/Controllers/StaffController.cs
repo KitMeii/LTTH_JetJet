@@ -12,12 +12,14 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly GoStaffApiClient _goStaffApi;
 
-        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService, GoStaffApiClient goStaffApi)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _goStaffApi = goStaffApi;
         }
 
         private int GetStaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -110,60 +112,16 @@ namespace Web_Stadium.Controllers
         [HttpPost]
         public async Task<IActionResult> ThucHienCheckIn(int datSanId)
         {
-            var sanIds = await GetSanDuocGiaoAsync();
-            var don = await _context.DatSans
-                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
-                .Include(d => d.User)
-                .FirstOrDefaultAsync(d => d.Id == datSanId
-                                       && sanIds.Contains(d.KhungGio.SanBongId));
-
-            if (don == null) return NotFound();
-
-            // Thông báo lý do từ chối rõ ràng theo flow
-            if (don.TrangThai != "DaXacNhan")
+            var result = await _goStaffApi.CheckInBookingAsync(datSanId, GetStaffId());
+            if (!result.Ok)
             {
-                var lyDo = don.TrangThai switch
-                {
-                    "ChoDuyet" => "Đơn đang chờ Owner xác nhận. Hướng dẫn khách liên hệ Owner để được duyệt nhanh.",
-                    "DaHuy" => "Đơn này đã bị hủy — không thể check-in.",
-                    "DangSuDung" => "Khách đã được check-in rồi.",
-                    "HoanThanh" => "Đơn này đã hoàn thành.",
-                    _ => $"Đơn ở trạng thái \"{ don.TrangThai }\" — không thể check-in."
-                };
-                TempData["Error"] = lyDo;
+                TempData["Error"] = result.Message;
+                TempData["GoEndpoint"] = result.Endpoint;
                 return RedirectToAction("CheckIn");
             }
 
-            don.TrangThai = "DangSuDung";
-            don.StaffCheckInId = GetStaffId();
-
-            // ✅ ĐỒNG BỘ VỚI FLOW USER: Trừ kho dịch vụ đặt trước khi check-in
-            // (dịch vụ đặt online không trừ kho ngay — chỉ trừ khi Staff xác nhận giao hàng)
-            var dichVuDatTruoc = await _context.DatSanDichVus
-                .Include(x => x.DichVu)
-                .Where(x => x.DatSanId == datSanId)
-                .ToListAsync();
-
-            foreach (var item in dichVuDatTruoc)
-            {
-                if (item.DichVu != null)
-                    item.DichVu.TonKho = Math.Max(0, item.DichVu.TonKho - item.SoLuong);
-            }
-
-            // Ghi AuditLog
-            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
-            {
-                UserId = GetStaffId(),
-                VaiTro = "Staff",
-                HanhDong = "CheckIn",
-                DoiTuong = "DatSan",
-                DoiTuongId = datSanId,
-                MoTa = $"Check-in đơn {don.MaXacNhan} — {don.User?.HoTen}"
-            });
-
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"✅ Check-in thành công! {don.User?.HoTen} — {don.KhungGio?.SanBong?.TenSan} | Mã: {don.MaXacNhan}";
+            TempData["GoEndpoint"] = result.Endpoint;
+            TempData["Success"] = $"Check-in thanh cong qua Go API! {result.CustomerName} - {result.StadiumName} | Ma: {result.Confirmation}";
             return RedirectToAction("Index");
         }
 

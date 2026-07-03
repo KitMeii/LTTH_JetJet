@@ -83,6 +83,7 @@ namespace Web_Stadium
             });
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentApiService>();
+            builder.Services.AddHttpClient<Web_Stadium.Services.GoStaffApiClient>();
 
 
             var app = builder.Build();
