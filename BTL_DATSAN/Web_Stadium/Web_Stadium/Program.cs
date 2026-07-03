@@ -84,6 +84,27 @@ namespace Web_Stadium
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentApiService>();
 
+            // ── java-recommendation (Java, port 8081) — check-in QR, de xuat gia,
+            // xuat PDF, xep lich CSP. Cung pattern voi TournamentService o tren. ──
+            builder.Services.AddHttpClient("RecommendationService", client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:8081/");
+                client.DefaultRequestHeaders.Add("Accept", "application/json");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddScoped<Web_Stadium.Services.RecommendationApiService>();
+
+            // ── GoStaffApi (Go, port 8082) — CHI diem danh cau thu giai dau.
+            // Check-in dat san thuong van do C# (StaffController) va
+            // java-recommendation (port 8081) dam nhiem, khong doi. ──
+            builder.Services.AddHttpClient("GoStaffApi", client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:8082/");
+                client.DefaultRequestHeaders.Add("Accept", "application/json");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddScoped<Web_Stadium.Services.GoStaffApiClient>();
+
 
             var app = builder.Build();
 

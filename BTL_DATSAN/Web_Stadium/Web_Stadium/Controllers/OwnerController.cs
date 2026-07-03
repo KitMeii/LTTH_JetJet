@@ -5,6 +5,7 @@ using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Hubs;
 using Web_Stadium.Services;
+using Web_Stadium.Services.Dto.Recommendation;
 
 namespace Web_Stadium.Controllers
 {
@@ -16,20 +17,26 @@ namespace Web_Stadium.Controllers
         private readonly EmailService _emailService;
         private readonly IHubContext<SanBongHub> _hub;
         private readonly CloudinaryService _cloudinaryService;
+        private readonly RecommendationApiService _recommendationService;
 
         public OwnerController(SanBongContext context, IConfiguration config,
             EmailService emailService, IHubContext<SanBongHub> hub,
-            CloudinaryService cloudinaryService)
+            CloudinaryService cloudinaryService, RecommendationApiService recommendationService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _hub = hub;
             _cloudinaryService = cloudinaryService;
+            _recommendationService = recommendationService;
         }
 
         // Helper lấy OwnerId từ JWT
         private int GetOwnerId() => TokenHelper.LayUserId(Request, _config)!.Value;
+
+        // Helper lấy JWT thô (forward sang java-recommendation) — cùng pattern
+        // với TournamentApiService.GetJwtFromContext().
+        private string GetJwt() => _recommendationService.GetJwtFromContext(HttpContext) ?? "";
 
         // Helper: chỉ lấy sân thuộc Owner đang đăng nhập
         private IQueryable<SanBong> SanCuaToi() =>
@@ -1712,6 +1719,46 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã vô hiệu voucher \"{v.TenVoucher}\".";
             return RedirectToAction("Voucher");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // ⭐ java-recommendation (port 8081) — đề xuất giá / xuất PDF / QR check-in
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Owner/DeXuatGia?sanId=1&month=6&year=2026 — đề xuất giá giờ vàng/thường
+        [HttpGet]
+        public async Task<IActionResult> DeXuatGia(int sanId, int month, int year)
+        {
+            var result = await _recommendationService.SuggestPrice(sanId, month, year, GetJwt());
+            if (result == null)
+                return Json(new { ok = false, message = "Không kết nối được dịch vụ đề xuất giá!" });
+
+            return Json(new
+            {
+                ok = true,
+                giaVang = result.SuggestedGoldPrice,
+                giaThuong = result.SuggestedRegularPrice,
+                moTa = result.Reason,
+                doTinCay = result.Confidence
+            });
+        }
+
+        // POST /Owner/XuatPDF — xuất PDF báo cáo doanh thu qua java-recommendation
+        [HttpPost]
+        public async Task<IActionResult> XuatPDF([FromBody] ReportDataDto data)
+        {
+            var pdfBytes = await _recommendationService.ExportPDF(data, GetJwt());
+            if (pdfBytes == null) return StatusCode(500, "Không sinh được PDF — java-recommendation không phản hồi.");
+            return File(pdfBytes, "application/pdf", "BaoCao.pdf");
+        }
+
+        // GET /Owner/XemQR/{maXacNhan} — ảnh QR của đơn đặt sân (java-recommendation)
+        [HttpGet]
+        public async Task<IActionResult> XemQR(string maXacNhan)
+        {
+            var qrBytes = await _recommendationService.GetQRCode(maXacNhan, GetJwt());
+            if (qrBytes == null) return NotFound();
+            return File(qrBytes, "image/png");
         }
     }
 }

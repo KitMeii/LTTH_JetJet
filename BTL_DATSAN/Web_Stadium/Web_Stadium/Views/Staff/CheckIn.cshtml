@@ -51,6 +51,18 @@
                 </div>
             </div>
 
+            <!-- ⭐ java-recommendation (port 8081) — Check-in bằng mã QR -->
+            <div class="section-card p-4 mb-4">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:16px">CHECK-IN BẰNG QR (java-recommendation)</div>
+                <div style="display:flex;gap:8px">
+                    <input type="text" id="qrMaXacNhan" class="form-control"
+                           placeholder="Quét/nhập mã xác nhận QR..."
+                           style="background:var(--bg3);border-color:var(--border);color:white;font-size:14px" />
+                    <button type="button" class="btn btn-outline-light rounded-pill px-3" onclick="traCuuQR()">Tra cứu</button>
+                </div>
+                <div id="qrKetQua" style="margin-top:14px"></div>
+            </div>
+
             <!-- Kết quả tra cứu -->
             @if (ViewBag.TuKhoa != null && ketQua == null)
             {
@@ -164,3 +176,51 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // ⭐ java-recommendation (port 8081) — Check-in bằng mã QR
+        async function traCuuQR() {
+            var ma = document.getElementById('qrMaXacNhan').value.trim();
+            var out = document.getElementById('qrKetQua');
+            if (!ma) { out.innerHTML = '<span class="text-danger">Nhập mã xác nhận trước!</span>'; return; }
+
+            out.innerHTML = 'Đang tra cứu...';
+            try {
+                var res = await fetch('/Staff/LookupDon?maXacNhan=' + encodeURIComponent(ma));
+                var data = await res.json();
+                if (!data.ok || !data.booking) {
+                    out.innerHTML = '<div class="text-danger">' + (data.message || 'Không tìm thấy đơn!') + '</div>';
+                    return;
+                }
+                var b = data.booking;
+                out.innerHTML =
+                    '<div class="section-card p-3" style="border:1px solid var(--green)">' +
+                    '<div><strong>' + b.hoTen + '</strong> — ' + b.tenSan + '</div>' +
+                    '<div style="font-size:13px;color:var(--muted)">' + b.gioBatDau + ' – ' + b.gioKetThuc + ' | Mã: ' + b.maXacNhan + '</div>' +
+                    '<div style="font-size:13px;margin-top:6px">Trạng thái: <strong>' + b.trangThai + '</strong></div>' +
+                    (b.trangThai === 'DaXacNhan'
+                        ? '<button type="button" class="btn btn-success rounded-pill w-100 mt-2" onclick="checkInQR(\'' + ma + '\')">✅ Check-in ngay</button>'
+                        : '') +
+                    '</div>';
+            } catch (e) {
+                out.innerHTML = '<span class="text-danger">Không kết nối được dịch vụ check-in!</span>';
+            }
+        }
+
+        async function checkInQR(ma) {
+            var out = document.getElementById('qrKetQua');
+            try {
+                var fd = new FormData();
+                fd.append('maXacNhan', ma);
+                var res = await fetch('/Staff/CheckInQR', { method: 'POST', body: fd });
+                var data = await res.json();
+                if (!data.ok) { alert(data.message || 'Check-in thất bại!'); return; }
+                alert('✅ ' + (data.message || 'Check-in thành công!'));
+                traCuuQR();
+            } catch (e) {
+                alert('Không kết nối được dịch vụ check-in!');
+            }
+        }
+    </script>
+}

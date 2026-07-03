@@ -31,6 +31,27 @@
 
 <div class="container section">
 
+    <!-- ⭐ java-recommendation (port 8081) — Xuất PDF / Đề xuất giá -->
+    <div class="d-flex gap-2 flex-wrap mb-3">
+        <button type="button" class="btn btn-outline-danger rounded-pill btn-sm" onclick="xuatPdfBaoCao()">
+            📄 Xuất PDF
+        </button>
+        <button type="button" class="btn btn-outline-success rounded-pill btn-sm" onclick="moDeXuatGia()">
+            💰 Đề xuất giá
+        </button>
+    </div>
+    <div id="deXuatGiaBox" style="display:none" class="section-card p-3 mb-3">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px">ĐỀ XUẤT GIÁ (java-recommendation)</div>
+        <div class="d-flex gap-2 flex-wrap align-items-end">
+            <div>
+                <label style="font-size:12px;color:var(--muted)">Mã sân (SanBongId)</label>
+                <input type="number" id="dxgSanId" class="form-control form-control-sm" style="width:120px" min="1" />
+            </div>
+            <button type="button" class="btn btn-success btn-sm rounded-pill" onclick="deXuatGia()">Đề xuất</button>
+        </div>
+        <div id="deXuatGiaKetQua" style="margin-top:10px;font-size:13px"></div>
+    </div>
+
     <!-- TOP BAR -->
     <div class="report-topbar">
         <div class="report-tabs">
@@ -424,5 +445,68 @@
                 }
             }
         });
+
+        // ⭐ java-recommendation (port 8081) — Xuất PDF / Đề xuất giá
+        function moDeXuatGia() {
+            var box = document.getElementById('deXuatGiaBox');
+            box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function deXuatGia() {
+            var sanId = document.getElementById('dxgSanId').value;
+            var out = document.getElementById('deXuatGiaKetQua');
+            if (!sanId) { out.innerHTML = '<span class="text-danger">Nhập mã sân trước!</span>'; return; }
+
+            out.innerHTML = 'Đang tính...';
+            try {
+                var res = await fetch('/Owner/DeXuatGia?sanId=' + sanId + '&month=@thang&year=@nam');
+                var data = await res.json();
+                if (!data.ok) { out.innerHTML = '<span class="text-danger">' + data.message + '</span>'; return; }
+                out.innerHTML =
+                    '<div><strong>Giá giờ vàng đề xuất:</strong> ' + data.giaVang.toLocaleString('vi-VN') + 'đ</div>' +
+                    '<div><strong>Giá giờ thường đề xuất:</strong> ' + data.giaThuong.toLocaleString('vi-VN') + 'đ</div>' +
+                    '<div style="color:var(--muted);margin-top:4px">' + data.moTa + '</div>';
+            } catch (e) {
+                out.innerHTML = '<span class="text-danger">Không kết nối được dịch vụ đề xuất giá!</span>';
+            }
+        }
+
+        async function xuatPdfBaoCao() {
+            var payload = {
+                title: 'Báo cáo kinh doanh — @tieuDe',
+                stadiumName: 'PitchHub',
+                period: '@tieuDe',
+                summary: {
+                    totalRevenue: @tongThuThuan,
+                    totalBookings: @tongLuot,
+                    avgPerBooking: @(tongLuot > 0 ? tongThuThuan / tongLuot : 0),
+                    commission: 0,
+                    netRevenue: @tongThuThuan
+                },
+                details: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    data.Select(d => new {
+                        label = (string)d.nhan,
+                        totalRevenue = (double)d.tongDT,
+                        bookings = 0,
+                        netRevenue = (double)d.thuThuan
+                    })))
+            };
+
+            try {
+                var res = await fetch('/Owner/XuatPDF', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) { alert('Không xuất được PDF!'); return; }
+                var blob = await res.blob();
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = 'BaoCao.pdf'; a.click();
+                window.URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Không kết nối được dịch vụ xuất PDF!');
+            }
+        }
     </script>
 }

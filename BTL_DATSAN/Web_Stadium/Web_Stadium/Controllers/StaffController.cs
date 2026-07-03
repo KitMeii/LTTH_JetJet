@@ -12,15 +12,33 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly RecommendationApiService _recommendationService;
 
-        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService,
+            RecommendationApiService recommendationService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _recommendationService = recommendationService;
         }
 
         private int GetStaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
+
+        // Helper lấy JWT thô (forward sang java-recommendation)
+        private string GetJwt() => _recommendationService.GetJwtFromContext(HttpContext) ?? "";
+
+        // CheckInService.java (java-recommendation) so sánh ownerId truyền vào với
+        // SanBongs.OwnerId — Staff không có "ownerId" riêng nên phải tra ngược qua
+        // Users.OwnerIdCuaStaff (chủ quản lý Staff này) rồi mới gọi sang Java.
+        private async Task<int?> GetOwnerIdCuaStaffAsync()
+        {
+            var staffId = GetStaffId();
+            return await _context.Users
+                .Where(u => u.Id == staffId)
+                .Select(u => u.OwnerIdCuaStaff)
+                .FirstOrDefaultAsync();
+        }
 
         // Lấy danh sách SanBongId mà Staff này được phân công
         private async Task<List<int>> GetSanDuocGiaoAsync()
@@ -654,6 +672,36 @@ namespace Web_Stadium.Controllers
             }
 
             return RedirectToAction("ChuyenNhuong");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // ⭐ java-recommendation (port 8081) — check-in bằng mã QR
+        // Tách biệt với CheckIn()/ThucHienCheckIn() ở trên (tra cứu EFCore trực
+        // tiếp) — 2 action mới này đi qua Java, dùng cho luồng quét QR.
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Staff/LookupDon?maXacNhan=... — tra cứu đơn đặt sân qua java-recommendation
+        [HttpGet]
+        public async Task<IActionResult> LookupDon(string maXacNhan)
+        {
+            var ownerId = await GetOwnerIdCuaStaffAsync();
+            if (ownerId == null)
+                return Json(new { ok = false, message = "Tài khoản Staff chưa được gán cho Owner nào!" });
+
+            var (ok, message, booking) = await _recommendationService.LookupDatSan(maXacNhan, ownerId.Value, GetJwt());
+            return Json(new { ok, message, booking });
+        }
+
+        // POST /Staff/CheckInQR — check-in đơn đặt sân qua java-recommendation (QR)
+        [HttpPost]
+        public async Task<IActionResult> CheckInQR(string maXacNhan)
+        {
+            var ownerId = await GetOwnerIdCuaStaffAsync();
+            if (ownerId == null)
+                return Json(new { ok = false, message = "Tài khoản Staff chưa được gán cho Owner nào!" });
+
+            var (ok, message, booking) = await _recommendationService.ScanCheckIn(maXacNhan, ownerId.Value, GetJwt());
+            return Json(new { ok, message, booking });
         }
     }
 }
