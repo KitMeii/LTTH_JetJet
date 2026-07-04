@@ -9,8 +9,10 @@ namespace Web_Stadium.EFCore
         public int GiaiDauId { get; set; }
         public int? BangId { get; set; }
         public int? KhungGioId { get; set; }
-        public int DoiNhaId { get; set; }
-        public int DoiKhachId { get; set; }
+        // Nullable để cho phép placeholder Bán kết / Chung kết (đội chưa xác định
+        // — sẽ được điền sau khi vòng trước đó Closed). Xem KnockOutService.
+        public int? DoiNhaId { get; set; }
+        public int? DoiKhachId { get; set; }
         public int? BanThangNha { get; set; }
         public int? BanThangKhach { get; set; }
         public int VongDau { get; set; }

@@ -186,12 +186,12 @@ namespace Web_Stadium.Services
         // Owner sẽ cập nhật đội sau khi có kết quả Tứ kết
         private List<TranDau> SinhBanKetPlaceholder(int giaiDauId, DateTime ngay)
         {
-            // Dùng DoiNhaId = 0 làm placeholder (TBD)
+            // DoiNhaId/DoiKhachId = null → TBD (điền khi vòng trước Closed)
             return new List<TranDau> {
                 new TranDau {
                     GiaiDauId  = giaiDauId,
-                    DoiNhaId   = 0, // TBD — cập nhật sau tứ kết
-                    DoiKhachId = 0,
+                    DoiNhaId   = null,
+                    DoiKhachId = null,
                     VongDau    = 20,
                     LoaiVong   = "BanKet",
                     NgayThiDau = ngay,
@@ -199,8 +199,8 @@ namespace Web_Stadium.Services
                 },
                 new TranDau {
                     GiaiDauId  = giaiDauId,
-                    DoiNhaId   = 0,
-                    DoiKhachId = 0,
+                    DoiNhaId   = null,
+                    DoiKhachId = null,
                     VongDau    = 20,
                     LoaiVong   = "BanKet",
                     NgayThiDau = ngay,
@@ -215,8 +215,8 @@ namespace Web_Stadium.Services
             return new TranDau
             {
                 GiaiDauId = giaiDauId,
-                DoiNhaId = 0,
-                DoiKhachId = 0,
+                DoiNhaId = null,
+                DoiKhachId = null,
                 VongDau = 30,
                 LoaiVong = "ChungKet",
                 NgayThiDau = ngay,
@@ -225,8 +225,14 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
-        // Cập nhật đội cho trận knock-out sau khi có kết quả
-        // Gọi sau mỗi lần TranDau.TrangThai → Closed
+        // Cập nhật đội cho trận knock-out sau khi có kết quả.
+        // Gọi sau mỗi lần TranDau.TrangThai → Closed.
+        //
+        // Bracket cố định theo vị trí (không phụ thuộc thứ tự close):
+        //   Tứ kết #0,#1 → Bán kết #0 (Nha, Khach)
+        //   Tứ kết #2,#3 → Bán kết #1 (Nha, Khach)
+        //   Bán kết #0,#1 → Chung kết (Nha, Khach)
+        // Vị trí #i = index trong list các trận cùng LoaiVong sắp theo Id.
         // ══════════════════════════════════════════════════════════
         public async Task CapNhatDoiKnockOut(int tranDauId)
         {
@@ -235,37 +241,45 @@ namespace Web_Stadium.Services
                 .FirstOrDefaultAsync(t => t.Id == tranDauId);
 
             if (tran == null || tran.TrangThai != "Closed") return;
-            if (!tran.BanThangNha.HasValue) return;
+            if (!tran.BanThangNha.HasValue || !tran.BanThangKhach.HasValue) return;
+            if (!tran.DoiNhaId.HasValue || !tran.DoiKhachId.HasValue) return;
 
-            // Xác định đội thắng và thua
-            int doiThang = tran.BanThangNha > tran.BanThangKhach
-                ? tran.DoiNhaId : tran.DoiKhachId;
-
-            // Tìm trận Pending tiếp theo trong giải (theo thứ tự VongDau)
             var vongTiepTheo = tran.LoaiVong switch
             {
                 "TuKet" => "BanKet",
                 "BanKet" => "ChungKet",
                 _ => null
             };
-
             if (vongTiepTheo == null) return;
 
-            var tranPending = tran.GiaiDau.TranDaus
-                .Where(t => t.LoaiVong == vongTiepTheo && t.TrangThai == "Pending")
+            // Đội thắng (hoà không xảy ra ở KO — nếu có thì lấy đội nhà cho chắc)
+            int doiThang = tran.BanThangNha > tran.BanThangKhach
+                ? tran.DoiNhaId.Value
+                : tran.DoiKhachId.Value;
+
+            // Vị trí (index) của trận nguồn trong list cùng LoaiVong
+            var sameRound = tran.GiaiDau.TranDaus
+                .Where(t => t.LoaiVong == tran.LoaiVong)
                 .OrderBy(t => t.Id)
-                .FirstOrDefault();
+                .ToList();
+            int srcIdx = sameRound.FindIndex(t => t.Id == tran.Id);
+            if (srcIdx < 0) return;
 
-            if (tranPending == null) return;
+            // Trận đích ở vòng kế: srcIdx / 2. Slot Nha nếu srcIdx chẵn, Khach nếu lẻ.
+            var nextRound = tran.GiaiDau.TranDaus
+                .Where(t => t.LoaiVong == vongTiepTheo)
+                .OrderBy(t => t.Id)
+                .ToList();
+            int dstIdx = srcIdx / 2;
+            if (dstIdx >= nextRound.Count) return;
 
-            // Điền đội vào slot còn trống
-            if (tranPending.DoiNhaId == 0)
-                tranPending.DoiNhaId = doiThang;
-            else if (tranPending.DoiKhachId == 0)
-            {
-                tranPending.DoiKhachId = doiThang;
-                tranPending.TrangThai = "Scheduled"; // Đủ 2 đội → mở lịch
-            }
+            var dst = nextRound[dstIdx];
+            if (srcIdx % 2 == 0) dst.DoiNhaId = doiThang;
+            else dst.DoiKhachId = doiThang;
+
+            // Nếu cả 2 slot đã có đội → chuyển từ Pending sang Scheduled
+            if (dst.DoiNhaId.HasValue && dst.DoiKhachId.HasValue && dst.TrangThai == "Pending")
+                dst.TrangThai = "Scheduled";
 
             await _context.SaveChangesAsync();
         }

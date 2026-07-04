@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
+using Web_Stadium.Hubs;
 using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
@@ -14,19 +16,25 @@ namespace Web_Stadium.Controllers
         private readonly SuspensionService _suspensionService;
         private readonly StandingService _standingService;
         private readonly TournamentNotificationService _notifService;
+        private readonly KnockOutService _knockOutService;
+        private readonly IHubContext<TournamentHub> _hubContext;
 
         public TournamentStaffController(
             SanBongContext context,
             IConfiguration config,
             SuspensionService suspensionService,
             StandingService standingService,
-            TournamentNotificationService notifService)
+            TournamentNotificationService notifService,
+            KnockOutService knockOutService,
+            IHubContext<TournamentHub> hubContext)
         {
             _context = context;
             _config = config;
             _suspensionService = suspensionService;
             _standingService = standingService;
             _notifService = notifService;
+            _knockOutService = knockOutService;
+            _hubContext = hubContext;
         }
 
         private int StaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -287,6 +295,8 @@ namespace Web_Stadium.Controllers
         {
             var tran = await _context.TranDaus
                 .Include(t => t.GiaiDau)
+                .Include(t => t.DoiNha)
+                .Include(t => t.DoiKhach)
                 .Include(t => t.SuKiens)
                 .FirstOrDefaultAsync(t => t.Id == tranDauId);
 
@@ -309,7 +319,26 @@ namespace Web_Stadium.Controllers
             // Tự động xử lý treo giò sau trận
             await _suspensionService.XuLyTreoGio(tran.GiaiDauId);
 
-            // Email kết quả đã bỏ theo flow thực tế
+            // Với trận knock-out: đẩy đội thắng lên vòng kế theo bracket cố định
+            if (tran.LoaiVong != "VongBang")
+                await _knockOutService.CapNhatDoiKnockOut(tran.Id);
+
+            // Realtime broadcast: tỷ số cuối + báo trận kết thúc + BXH mới
+            try
+            {
+                await TournamentHub.BroadcastTyso(_hubContext, tran.GiaiDauId, new TysoDto
+                {
+                    TranDauId = tran.Id,
+                    TysoNha = tran.BanThangNha ?? 0,
+                    TysoKhach = tran.BanThangKhach ?? 0,
+                    TenNha = tran.DoiNha?.TenDoi ?? "",
+                    TenKhach = tran.DoiKhach?.TenDoi ?? ""
+                });
+                await TournamentHub.BroadcastTranKetThuc(_hubContext, tran.GiaiDauId, tran.Id);
+                var bxh = await _standingService.GetStandings(tran.GiaiDauId);
+                await TournamentHub.BroadcastBXH(_hubContext, tran.GiaiDauId, bxh);
+            }
+            catch { /* realtime là best effort */ }
 
             TempData["Success"] =
                 $"✅ Đã chốt trận! Kết quả: {tran.BanThangNha} – {tran.BanThangKhach}";

@@ -222,15 +222,19 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
-        // Mở đăng ký: Draft / Approved → RegistrationOpen
+        // Mở đăng ký: Approved → RegistrationOpen
+        // Yêu cầu Admin phê duyệt trước (Draft → Approved). Owner không được
+        // tự mở đăng ký một giải Draft — tránh né khâu kiểm duyệt.
         // ══════════════════════════════════════════════════════════
         public async Task<(bool ok, string error)> MoiDangKy(int giaiId, int ownerId)
         {
             var giai = await LayGiaiCuaOwner(giaiId, ownerId);
             if (giai == null) return (false, "Không tìm thấy giải!");
 
-            if (giai.TrangThai is not ("Draft" or "Approved"))
-                return (false, "Chỉ mở đăng ký khi giải ở trạng thái Draft hoặc Approved!");
+            if (giai.TrangThai == "Draft")
+                return (false, "Giải chưa được Admin phê duyệt! Vui lòng đợi phê duyệt trước khi mở đăng ký.");
+            if (giai.TrangThai != "Approved")
+                return (false, "Chỉ mở đăng ký khi giải đã được phê duyệt (trạng thái Approved)!");
 
             giai.TrangThai = "RegistrationOpen";
             await _context.SaveChangesAsync();
@@ -544,13 +548,14 @@ namespace Web_Stadium.Services
             var matchesDto = matchesById.Select(kv =>
             {
                 var t = kv.Value;
+                // Berger sinh cho VongBang nên 2 team luôn có Id (fallback 0 chỉ để compile-safe).
                 return new MatchDto
                 {
                     MatchId = kv.Key,
-                    TeamA = t.DoiNhaId,
-                    TeamB = t.DoiKhachId,
-                    TeamAName = doiMap.TryGetValue(t.DoiNhaId, out var da) ? da.TenDoi : "?",
-                    TeamBName = doiMap.TryGetValue(t.DoiKhachId, out var db) ? db.TenDoi : "?",
+                    TeamA = t.DoiNhaId ?? 0,
+                    TeamB = t.DoiKhachId ?? 0,
+                    TeamAName = t.DoiNhaId.HasValue && doiMap.TryGetValue(t.DoiNhaId.Value, out var da) ? da.TenDoi : "?",
+                    TeamBName = t.DoiKhachId.HasValue && doiMap.TryGetValue(t.DoiKhachId.Value, out var db) ? db.TenDoi : "?",
                     Round = t.VongDau,
                     GroupId = t.BangId ?? 0,
                     GroupName = t.BangId.HasValue && bangMap.ContainsKey(t.BangId.Value)
@@ -719,10 +724,10 @@ namespace Web_Stadium.Services
                 return new MatchDto
                 {
                     MatchId = kv.Key,
-                    TeamA = t.DoiNhaId,
-                    TeamB = t.DoiKhachId,
-                    TeamAName = doiMap.TryGetValue(t.DoiNhaId, out var da) ? da.TenDoi : "?",
-                    TeamBName = doiMap.TryGetValue(t.DoiKhachId, out var db) ? db.TenDoi : "?",
+                    TeamA = t.DoiNhaId ?? 0,
+                    TeamB = t.DoiKhachId ?? 0,
+                    TeamAName = t.DoiNhaId.HasValue && doiMap.TryGetValue(t.DoiNhaId.Value, out var da) ? da.TenDoi : "?",
+                    TeamBName = t.DoiKhachId.HasValue && doiMap.TryGetValue(t.DoiKhachId.Value, out var db) ? db.TenDoi : "?",
                     Round = t.VongDau,
                     GroupId = t.BangId ?? 0,
                     GroupName = bang?.TenBang ?? "-"
